@@ -6,7 +6,7 @@ import { getToken } from '../utils/secureStore';
 // For iOS Simulator, use localhost
 // For physical devices, use your computer's local IP address (e.g., 192.168.1.x)
 // Use your computer's local IP address so physical devices can connect
-const BASE_URL = 'http://localhost:8000/api/v1';
+const BASE_URL = 'https://buddybloom.onrender.com/api/v1';
 
 const apiClient = axios.create({
   baseURL: BASE_URL,
