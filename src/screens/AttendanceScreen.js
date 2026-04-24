@@ -18,6 +18,7 @@ export default function AttendanceScreen({ navigation }) {
   const [fetchingStudents, setFetchingStudents] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [attendance, setAttendance] = useState({});
+  const [filterMode, setFilterMode] = useState('all'); // 'all', 'weekly', 'monthly'
 
   const isViewMode = role === 'parent' || role === 'student';
 
@@ -27,7 +28,7 @@ export default function AttendanceScreen({ navigation }) {
     } else {
       fetchCourses();
     }
-  }, [role]);
+  }, [role, filterMode]);
 
   const fetchCourses = async () => {
     setLoading(true);
@@ -71,15 +72,31 @@ export default function AttendanceScreen({ navigation }) {
   const fetchViewAttendance = async () => {
     setLoading(true);
     try {
+      let url = '/attendance/';
+      const now = new Date();
+      let startDate, endDate;
+
+      if (filterMode === 'weekly') {
+        const first = now.getDate() - now.getDay();
+        startDate = new Date(now.setDate(first)).toISOString().split('T')[0];
+        endDate = new Date().toISOString().split('T')[0];
+        url += `?start_date=${startDate}&end_date=${endDate}`;
+      } else if (filterMode === 'monthly') {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+        endDate = new Date().toISOString().split('T')[0];
+        url += `?start_date=${startDate}&end_date=${endDate}`;
+      }
+
       if (role === 'parent') {
         const stRes = await apiClient.get('/parents/students');
         const myStudents = stRes.data;
         if (myStudents && myStudents.length > 0) {
-          const attRes = await apiClient.get(`/parents/${myStudents[0].id}/attendance`);
+          const separator = url.includes('?') ? '&' : '?';
+          const attRes = await apiClient.get(`/parents/${myStudents[0].id}/attendance${url.replace('/attendance/', '')}`);
           setAttendanceRecords(attRes.data.records || []);
         }
       } else {
-        const res = await apiClient.get(`/attendance/?student_id=${user.id}`);
+        const res = await apiClient.get(url);
         setAttendanceRecords(res.data);
       }
     } catch (error) {
@@ -163,6 +180,19 @@ export default function AttendanceScreen({ navigation }) {
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>My Attendance</Text>
+          <View style={styles.filterRow}>
+            {['all', 'weekly', 'monthly'].map((mode) => (
+              <TouchableOpacity 
+                key={mode}
+                style={[styles.smallChip, filterMode === mode && styles.smallChipActive]}
+                onPress={() => setFilterMode(mode)}
+              >
+                <Text style={[styles.smallChipText, filterMode === mode && styles.smallChipTextActive]}>
+                  {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
         <FlatList
           data={attendanceRecords}
@@ -304,5 +334,10 @@ const styles = StyleSheet.create({
   submitBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   recordItem: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, backgroundColor: '#fff', marginHorizontal: 15, marginTop: 12, borderRadius: 12, elevation: 1 },
   recordDate: { fontSize: 15, fontWeight: '600', color: '#1E293B' },
-  recordStatus: { fontSize: 14, fontWeight: '800' }
+  recordStatus: { fontSize: 14, fontWeight: '800' },
+  filterRow: { flexDirection: 'row', marginTop: 15, gap: 10 },
+  smallChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, backgroundColor: '#F1F5F9' },
+  smallChipActive: { backgroundColor: '#6366F1' },
+  smallChipText: { fontSize: 12, fontWeight: '700', color: '#64748B' },
+  smallChipTextActive: { color: '#fff' }
 });

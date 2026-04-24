@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, ActivityIndicator, Alert, SafeAreaView,
-  Dimensions, KeyboardAvoidingView, Platform
+  Dimensions, KeyboardAvoidingView, Platform, Image
 } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
 import apiClient from '../api/apiClient';
@@ -50,7 +50,11 @@ export default function LoginScreen({ navigation }) {
       >
         <View style={styles.headerSection}>
           <View style={styles.logoCircle}>
-            <Text style={styles.logoEmoji}>🌱</Text>
+            <Image 
+              source={require('../../assets/icon.png')} 
+              style={styles.logoImage} 
+              resizeMode="contain"
+            />
           </View>
           <Text style={styles.title}>BuddyBloom</Text>
           <Text style={styles.subtitle}>Nurturing Minds, Together.</Text>
@@ -161,8 +165,9 @@ const styles = StyleSheet.create({
     elevation: 10,
     marginBottom: 20,
   },
-  logoEmoji: {
-    fontSize: 40,
+  logoImage: {
+    width: 60,
+    height: 60,
   },
   title: {
     fontSize: 36,
