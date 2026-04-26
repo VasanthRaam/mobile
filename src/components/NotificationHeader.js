@@ -23,6 +23,8 @@ export default function NotificationHeader() {
     if (notification.link_to && notification.link_to.startsWith('Quiz:')) {
       const quizId = notification.link_to.split(':')[1];
       navigation.navigate('Quiz', { quizId, quizTitle: 'New Quiz' });
+    } else if (notification.type === 'new_user_registration' || notification.message.toLowerCase().includes('register')) {
+      navigation.navigate('PendingApprovals');
     }
   };
 
