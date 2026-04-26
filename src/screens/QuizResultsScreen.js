@@ -8,16 +8,35 @@ import { useAuthStore } from '../store/useAuthStore';
 
 export default function QuizResultsScreen({ navigation }) {
   const [results, setResults] = useState([]);
+  const [batches, setBatches] = useState([]);
+  const [selectedBatchId, setSelectedBatchId] = useState(null);
   const [loading, setLoading] = useState(true);
   const { user } = useAuthStore();
+  const isStaff = user?.role === 'teacher' || user?.role === 'admin';
 
   useEffect(() => {
+    if (isStaff) {
+      fetchBatches();
+    }
     fetchResults();
-  }, []);
+  }, [selectedBatchId]);
+
+  const fetchBatches = async () => {
+    try {
+      const response = await apiClient.get('/batches/');
+      setBatches(response.data);
+    } catch (error) {
+      console.error('Failed to fetch batches:', error);
+    }
+  };
 
   const fetchResults = async () => {
     try {
-      const response = await apiClient.get('/quizzes/results/all');
+      let url = '/quizzes/results/all';
+      if (selectedBatchId) {
+        url += `?batch_id=${selectedBatchId}`;
+      }
+      const response = await apiClient.get(url);
       setResults(response.data);
     } catch (error) {
       console.error('Failed to fetch results:', error);
@@ -55,6 +74,28 @@ export default function QuizResultsScreen({ navigation }) {
         <Text style={styles.headerTitle}>Student Achievements 🏆</Text>
         <View style={{ width: 40 }} />
       </View>
+
+      {isStaff && batches.length > 0 && (
+        <View style={styles.filterContainer}>
+          <FlatList
+            horizontal
+            data={[{ id: null, name: 'All Batches' }, ...batches]}
+            keyExtractor={(item) => (item.id ? item.id.toString() : 'all')}
+            showsHorizontalScrollIndicator={false}
+            renderItem={({ item }) => (
+              <TouchableOpacity 
+                style={[styles.batchChip, selectedBatchId === item.id && styles.batchChipActive]}
+                onPress={() => setSelectedBatchId(item.id)}
+              >
+                <Text style={[styles.batchChipText, selectedBatchId === item.id && styles.batchChipTextActive]}>
+                  {item.name}
+                </Text>
+              </TouchableOpacity>
+            )}
+            style={styles.chipList}
+          />
+        </View>
+      )}
 
       {loading ? (
         <View style={styles.loaderContainer}>
@@ -200,5 +241,32 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
     textAlign: 'center',
     paddingHorizontal: 40,
+  },
+  filterContainer: {
+    backgroundColor: '#fff',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  chipList: {
+    paddingHorizontal: 15,
+  },
+  batchChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F0F2F5',
+    marginRight: 10,
+  },
+  batchChipActive: {
+    backgroundColor: '#007AFF',
+  },
+  batchChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+  },
+  batchChipTextActive: {
+    color: '#fff',
   },
 });

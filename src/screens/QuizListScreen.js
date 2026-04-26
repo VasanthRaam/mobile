@@ -42,21 +42,27 @@ export default function QuizListScreen({ navigation }) {
     
     return (
       <TouchableOpacity 
-        style={styles.quizCard}
+        style={[styles.quizCard, item.is_completed && styles.completedCard]}
         onPress={() => {
           if (isStudent) {
-            navigation.navigate('Quiz', { quizId: item.id, quizTitle: item.title });
+            if (item.is_completed) {
+              navigation.navigate('SubmissionDetail', { attemptId: item.attempt_id });
+            } else {
+              navigation.navigate('Quiz', { quizId: item.id, quizTitle: item.title });
+            }
           } else if (isStaff) {
-            navigation.navigate('QuizResults');
+            navigation.navigate('QuizResults', { quizId: item.id });
           }
         }}
       >
         <View style={styles.cardHeader}>
-          <View style={styles.iconContainer}>
-            <Text style={styles.quizIcon}>{isStudent ? '📝' : '📊'}</Text>
+          <View style={[styles.iconContainer, item.is_completed && styles.completedIconContainer]}>
+            <Text style={styles.quizIcon}>{item.is_completed ? '✅' : (isStudent ? '📝' : '📊')}</Text>
           </View>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{isStudent ? 'NEW' : 'ACTIVE'}</Text>
+          <View style={[styles.badge, item.is_completed ? styles.completedBadge : (isStudent ? styles.newBadge : styles.activeBadge)]}>
+            <Text style={[styles.badgeText, item.is_completed ? styles.completedBadgeText : (isStudent ? styles.newBadgeText : styles.activeBadgeText)]}>
+              {item.is_completed ? 'COMPLETED' : (isStudent ? 'NEW' : 'ACTIVE')}
+            </Text>
           </View>
         </View>
 
@@ -72,9 +78,9 @@ export default function QuizListScreen({ navigation }) {
             <Text style={styles.statText}>⏱️ 10m</Text>
             <Text style={styles.statText}>❓ {item.questions?.length || 0} Qs</Text>
           </View>
-          <View style={[styles.actionBtn, !isStudent && styles.staffBtn]}>
+          <View style={[styles.actionBtn, !isStudent && styles.staffBtn, item.is_completed && styles.completedBtn]}>
             <Text style={styles.actionBtnText}>
-              {isStudent ? 'Start Quiz' : 'View Results'}
+              {item.is_completed ? 'View Score' : (isStudent ? 'Start Quiz' : 'View Results')}
             </Text>
           </View>
         </View>
@@ -205,15 +211,29 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
   badge: {
-    backgroundColor: '#F0FDF4',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
+  newBadge: { backgroundColor: '#EFF6FF' },
+  activeBadge: { backgroundColor: '#F0FDF4' },
+  completedBadge: { backgroundColor: '#F1F5F9' },
   badgeText: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#16A34A',
+  },
+  newBadgeText: { color: '#2563EB' },
+  activeBadgeText: { color: '#16A34A' },
+  completedBadgeText: { color: '#64748B' },
+  completedCard: {
+    backgroundColor: '#FAFAFA',
+    borderColor: '#E2E8F0',
+  },
+  completedIconContainer: {
+    backgroundColor: '#F1F5F9',
+  },
+  completedBtn: {
+    backgroundColor: '#64748B',
   },
   quizInfo: {
     marginBottom: 20,

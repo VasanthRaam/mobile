@@ -19,6 +19,7 @@ export default function QuizScreen({ route, navigation }) {
   const [isFinished, setIsFinished] = useState(false);
   const [results, setResults] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [revealedAnswers, setRevealedAnswers] = useState({}); // Track which questions have shown feedback
 
   const timerRef = useRef(null);
 
@@ -61,9 +62,17 @@ export default function QuizScreen({ route, navigation }) {
   };
 
   const handleSelectOption = (questionId, optionId) => {
+    if (revealedAnswers[questionId]) return; // Lock if already answered
+
     setSelectedAnswers({
       ...selectedAnswers,
       [questionId]: optionId
+    });
+
+    // Provide instant feedback
+    setRevealedAnswers({
+      ...revealedAnswers,
+      [questionId]: true
     });
   };
 
@@ -158,26 +167,42 @@ export default function QuizScreen({ route, navigation }) {
         <FlatList
           data={currentQuestion.options}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <TouchableOpacity 
-              style={[
-                styles.optionButton,
-                selectedAnswers[currentQuestion.id] === item.id && styles.optionSelected
-              ]}
-              onPress={() => handleSelectOption(currentQuestion.id, item.id)}
-            >
-              <View style={[
-                styles.optionDot,
-                selectedAnswers[currentQuestion.id] === item.id && styles.optionDotSelected
-              ]} />
-              <Text style={[
-                styles.optionText,
-                selectedAnswers[currentQuestion.id] === item.id && styles.optionTextSelected
-              ]}>
-                {item.option_text}
-              </Text>
-            </TouchableOpacity>
-          )}
+          renderItem={({ item }) => {
+            const isSelected = selectedAnswers[currentQuestion.id] === item.id;
+            const isRevealed = revealedAnswers[currentQuestion.id];
+            
+            let backgroundColor = '#fff';
+            let borderColor = '#E0E0E0';
+            
+            if (isRevealed) {
+              if (item.is_correct) {
+                backgroundColor = '#D1FAE5'; // Light green
+                borderColor = '#10B981';
+              } else if (isSelected && !item.is_correct) {
+                backgroundColor = '#FEE2E2'; // Light red
+                borderColor = '#EF4444';
+              }
+            } else if (isSelected) {
+              backgroundColor = '#E3F2FD';
+              borderColor = '#007AFF';
+            }
+
+            return (
+              <TouchableOpacity 
+                style={[styles.optionButton, { backgroundColor, borderColor }]}
+                onPress={() => handleSelectOption(currentQuestion.id, item.id)}
+                disabled={isRevealed}
+              >
+                <View style={[
+                  styles.optionDot,
+                  isSelected && { backgroundColor: isRevealed ? (item.is_correct ? '#10B981' : '#EF4444') : '#007AFF', borderColor: isRevealed ? (item.is_correct ? '#10B981' : '#EF4444') : '#007AFF' }
+                ]} />
+                <Text style={[styles.optionText, isSelected && { color: isRevealed ? (item.is_correct ? '#059669' : '#DC2626') : '#007AFF' }]}>
+                  {item.option_text}
+                </Text>
+              </TouchableOpacity>
+            );
+          }}
           style={styles.optionsList}
         />
       </View>
