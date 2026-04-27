@@ -128,7 +128,10 @@ export default function DashboardScreen({ navigation }) {
       <View style={styles.bgDecor1} />
       <View style={styles.bgDecor2} />
       
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
           <View>
             <Text style={styles.welcomeText}>Academy Hub</Text>

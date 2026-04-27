@@ -132,7 +132,7 @@ export default function CreateQuizScreen({ navigation }) {
         <View style={{ width: 44 }} />
       </View>
 
-      <ScrollView style={styles.form}>
+      <ScrollView style={styles.form} showsVerticalScrollIndicator={false}>
         <Text style={styles.label}>Quiz Title</Text>
         <TextInput 
           style={styles.input}

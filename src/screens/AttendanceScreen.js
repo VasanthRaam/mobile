@@ -24,9 +24,18 @@ export default function AttendanceScreen({ navigation }) {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [holidays, setHolidays] = useState([]);
   const [isHoliday, setIsHoliday] = useState(false);
+  const [viewDate, setViewDate] = useState(new Date());
+  const [statusMsg, setStatusMsg] = useState({ text: '', type: '' }); // { text: '', type: 'success' | 'error' }
 
   const isViewMode = role === 'parent' || role === 'student';
   const isAdmin = role === 'admin';
+
+  useEffect(() => {
+    if (statusMsg.text) {
+      const timer = setTimeout(() => setStatusMsg({ text: '', type: '' }), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [statusMsg]);
   console.log('🔍 [DEBUG] Attendance Role:', role, 'isViewMode:', isViewMode);
 
   useEffect(() => {
@@ -36,7 +45,7 @@ export default function AttendanceScreen({ navigation }) {
     } else {
       fetchCourses();
     }
-  }, [role, filterMode, selectedDate]);
+  }, [role, filterMode, selectedDate, viewDate]);
 
   const fetchHolidays = async () => {
     try {
@@ -101,8 +110,8 @@ export default function AttendanceScreen({ navigation }) {
         endDate = new Date().toISOString().split('T')[0];
         url += `?start_date=${startDate}&end_date=${endDate}`;
       } else if (filterMode === 'monthly') {
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-        endDate = new Date().toISOString().split('T')[0];
+        startDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1).toISOString().split('T')[0];
+        endDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).toISOString().split('T')[0];
         url += `?start_date=${startDate}&end_date=${endDate}`;
       }
 
@@ -162,7 +171,10 @@ export default function AttendanceScreen({ navigation }) {
   };
 
   const handleSubmitAttendance = async () => {
-    if (!selectedBatchId) return;
+    if (!selectedBatchId) {
+      setStatusMsg({ text: '⚠️ Please select a batch first', type: 'error' });
+      return;
+    }
     setSubmitting(true);
     try {
       const payload = {
@@ -175,18 +187,11 @@ export default function AttendanceScreen({ navigation }) {
       };
 
       await apiClient.post('/attendance/bulk', payload);
-      if (Platform.OS === 'web') {
-        alert('✅ Attendance marked successfully for ' + selectedDate);
-      } else {
-        Alert.alert('Success', 'Attendance marked successfully');
-      }
+      setStatusMsg({ text: `✅ Attendance marked for ${selectedDate}`, type: 'success' });
     } catch (error) {
-      console.error('Failed to submit attendance:', error);
-      if (Platform.OS === 'web') {
-        alert('❌ Failed to submit attendance');
-      } else {
-        Alert.alert('Error', 'Failed to submit attendance');
-      }
+      console.error('❌ Attendance Submit Error:', error);
+      const errorMsg = error.response?.data?.detail || 'Failed to submit attendance';
+      setStatusMsg({ text: '❌ ' + errorMsg, type: 'error' });
     } finally {
       setSubmitting(false);
     }
@@ -195,18 +200,14 @@ export default function AttendanceScreen({ navigation }) {
   const handleMarkHoliday = async () => {
     setSubmitting(true);
     try {
-      if (Platform.OS === 'web') {
-        alert(isHoliday ? '✅ Holiday removed' : '✅ Academy holiday marked');
-      } else {
-        Alert.alert('Success', isHoliday ? 'Holiday removed' : 'Academy holiday marked');
-      }
+      // Logic for marking holiday would go here
+      setStatusMsg({ 
+        text: isHoliday ? '✅ Holiday removed' : '✅ Academy holiday marked', 
+        type: 'success' 
+      });
       fetchHolidays();
     } catch (error) {
-      if (Platform.OS === 'web') {
-        alert('❌ Action failed');
-      } else {
-        Alert.alert('Error', 'Action failed');
-      }
+      setStatusMsg({ text: '❌ Action failed', type: 'error' });
     } finally {
       setSubmitting(false);
     }
@@ -229,12 +230,16 @@ export default function AttendanceScreen({ navigation }) {
       });
       const holidayDates = holidays.map(h => h.date);
 
-      const today = new Date();
-      const currentMonth = today.getMonth();
-      const currentYear = today.getFullYear();
+      const displayMonth = viewDate.getMonth();
+      const displayYear = viewDate.getFullYear();
       
-      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-      const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
+      const daysInMonth = new Date(displayYear, displayMonth + 1, 0).getDate();
+      const firstDayOfMonth = new Date(displayYear, displayMonth, 1).getDay();
+
+      const changeMonth = (offset) => {
+        const next = new Date(viewDate.getFullYear(), viewDate.getMonth() + offset, 1);
+        setViewDate(next);
+      };
       
       const days = [];
       for (let i = 0; i < firstDayOfMonth; i++) days.push(null);
@@ -243,9 +248,15 @@ export default function AttendanceScreen({ navigation }) {
       return (
         <View style={styles.calendarContainer}>
           <View style={styles.calendarHeader}>
+            <TouchableOpacity onPress={() => changeMonth(-1)} style={styles.arrowBtn}>
+              <Text style={styles.arrowText}>←</Text>
+            </TouchableOpacity>
             <Text style={styles.monthTitle}>
-              {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][currentMonth]} {currentYear}
+              {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][displayMonth]} {displayYear}
             </Text>
+            <TouchableOpacity onPress={() => changeMonth(1)} style={styles.arrowBtn}>
+              <Text style={styles.arrowText}>→</Text>
+            </TouchableOpacity>
           </View>
           <View style={styles.weekDays}>
             {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
@@ -256,7 +267,7 @@ export default function AttendanceScreen({ navigation }) {
             {days.map((day, idx) => {
               if (!day) return <View key={`empty-${idx}`} style={styles.dayBox} />;
               
-              const dateStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+              const dateStr = `${displayYear}-${(displayMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
               const status = recordsMap[dateStr];
               const isAcademyHoliday = holidayDates.includes(dateStr);
               
@@ -299,8 +310,17 @@ export default function AttendanceScreen({ navigation }) {
           <Text style={styles.title}>Attendance Insights</Text>
           <Text style={styles.subtitle}>Track your learning consistency 📈</Text>
         </View>
+
+        {statusMsg.text !== '' && (
+          <View style={[styles.statusBanner, statusMsg.type === 'error' ? styles.errorBanner : styles.successBanner]}>
+            <Text style={styles.statusBannerText}>{statusMsg.text}</Text>
+          </View>
+        )}
         
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           {renderCalendar()}
           
           <View style={styles.statsSection}>
@@ -332,10 +352,16 @@ export default function AttendanceScreen({ navigation }) {
         <Text style={styles.subtitle}>Select a date to manage records</Text>
       </View>
 
+      {statusMsg.text !== '' && (
+        <View style={[styles.statusBanner, statusMsg.type === 'error' ? styles.errorBanner : styles.successBanner]}>
+          <Text style={styles.statusBannerText}>{statusMsg.text}</Text>
+        </View>
+      )}
+
       <View style={styles.dateSelection}>
         <ScrollView 
           horizontal 
-          showsHorizontalScrollIndicator={Platform.OS === 'web'} 
+          showsHorizontalScrollIndicator={false} 
           style={styles.dateList}
           contentContainerStyle={styles.dateListContent}
         >
@@ -410,6 +436,7 @@ export default function AttendanceScreen({ navigation }) {
           data={students}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
             <View style={styles.studentItem}>
               <View>
@@ -508,7 +535,19 @@ const styles = StyleSheet.create({
   },
   calendarHeader: {
     marginBottom: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  arrowBtn: {
+    padding: 10,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+  },
+  arrowText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#6366F1',
   },
   monthTitle: {
     fontSize: 18,
@@ -517,11 +556,10 @@ const styles = StyleSheet.create({
   },
   weekDays: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     marginBottom: 10,
   },
   weekDayText: {
-    width: (width - 110) / 7,
+    width: '14.28%',
     textAlign: 'center',
     fontSize: 12,
     fontWeight: '700',
@@ -532,7 +570,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   dayBox: {
-    width: (width - 110) / 7,
+    width: '14.28%',
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
@@ -664,5 +702,32 @@ const styles = StyleSheet.create({
   },
   holidayBtnTextActive: {
     color: '#fff',
+  },
+  statusBanner: {
+    padding: 12,
+    marginHorizontal: 15,
+    marginTop: 10,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  successBanner: {
+    backgroundColor: '#DCFCE7',
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+  },
+  errorBanner: {
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  statusBannerText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E293B',
   },
 });

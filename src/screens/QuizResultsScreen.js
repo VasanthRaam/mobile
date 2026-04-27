@@ -78,6 +78,7 @@ export default function QuizResultsScreen({ navigation }) {
       {isStaff && batches.length > 0 && (
         <View style={styles.filterContainer}>
           <FlatList
+            showsVerticalScrollIndicator={false}
             horizontal
             data={[{ id: null, name: 'All Batches' }, ...batches]}
             keyExtractor={(item) => (item.id ? item.id.toString() : 'all')}
@@ -104,6 +105,7 @@ export default function QuizResultsScreen({ navigation }) {
         </View>
       ) : (
         <FlatList
+          showsVerticalScrollIndicator={false}
           data={results}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}

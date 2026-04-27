@@ -165,6 +165,7 @@ export default function QuizScreen({ route, navigation }) {
         <Text style={styles.questionText}>{currentQuestion.question_text}</Text>
 
         <FlatList
+          showsVerticalScrollIndicator={false}
           data={currentQuestion.options}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => {

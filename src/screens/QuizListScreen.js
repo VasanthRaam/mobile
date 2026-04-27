@@ -110,6 +110,7 @@ export default function QuizListScreen({ navigation }) {
         </View>
       ) : (
         <FlatList
+        showsVerticalScrollIndicator={false}
           data={quizzes}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
