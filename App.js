@@ -5,6 +5,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { useAuthStore } from './src/store/useAuthStore';
 import * as Notifications from 'expo-notifications';
 import { registerForPushNotificationsAsync, syncPushTokenWithBackend } from './src/utils/notifications';
+import { navigationRef } from './src/navigation/AppNavigator';
 
 // Configure how notifications are handled when the app is open
 Notifications.setNotificationHandler({
@@ -28,10 +29,21 @@ export default function App() {
         if (token) syncPushTokenWithBackend(token);
       });
 
-      // Listen for notifications received while app is foregrounded
+      // Listen for notifications tapped by the user
       const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
-        console.log('Notification Tapped:', response.notification.request.content.data);
-        // You can add navigation logic here based on data.type
+        const data = response.notification.request.content.data;
+        console.log('Notification Tapped:', data);
+
+        if (data?.type === 'registration') {
+          // Use navigationRef to jump to the approvals screen
+          if (navigationRef.isReady()) {
+            navigationRef.navigate('PendingApprovals');
+          }
+        } else if (data?.type === 'quiz') {
+          if (navigationRef.isReady()) {
+            navigationRef.navigate('QuizList');
+          }
+        }
       });
 
       return () => {

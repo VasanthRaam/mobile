@@ -137,8 +137,25 @@ export default function DashboardScreen({ navigation }) {
             <Text style={styles.welcomeText}>Academy Hub</Text>
             <Text style={styles.nameText}>{user?.full_name || 'Teacher'} 👋</Text>
           </View>
-          <View style={styles.roleBadgeHeader}>
-            <Text style={styles.roleBadgeText}>{role?.toUpperCase()}</Text>
+          <View style={{ alignItems: 'flex-end' }}>
+            <View style={styles.roleBadgeHeader}>
+              <Text style={styles.roleBadgeText}>{role?.toUpperCase()}</Text>
+            </View>
+            <TouchableOpacity 
+              style={[styles.logoutBtn, { marginTop: 8 }]} 
+              onPress={() => {
+                Alert.alert(
+                  "Logout",
+                  "Are you sure you want to logout?",
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Logout", onPress: logout, style: 'destructive' }
+                  ]
+                );
+              }}
+            >
+              <Text style={styles.logoutText}>Logout 🚪</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
