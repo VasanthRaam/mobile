@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, Alert } from 'react-native';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../store/useAuthStore';
@@ -39,7 +39,19 @@ export default function NotificationHeader() {
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={logout} style={styles.logoutButton}>
+      <TouchableOpacity 
+        onPress={() => {
+          Alert.alert(
+            "Logout",
+            "Are you sure you want to logout?",
+            [
+              { text: "Cancel", style: "cancel" },
+              { text: "Logout", onPress: logout, style: 'destructive' }
+            ]
+          );
+        }} 
+        style={styles.logoutButton}
+      >
         <Text style={styles.logoutEmoji}>🚪</Text>
       </TouchableOpacity>
 
