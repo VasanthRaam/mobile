@@ -142,6 +142,30 @@ export default function DashboardScreen({ navigation }) {
           </View>
         </View>
 
+        {/* --- DEBUG PANEL (MOVED TO TOP) --- */}
+        <View style={{ marginBottom: 20, padding: 15, backgroundColor: '#f0f9ff', borderRadius: 10, borderWidth: 1, borderColor: '#bae6fd' }}>
+          <Text style={{ fontWeight: 'bold', fontSize: 14, color: '#0369a1', marginBottom: 5 }}>🛠 Push Debug Panel</Text>
+          <DebugLogViewer />
+          <TouchableOpacity 
+            style={{ backgroundColor: '#0369a1', padding: 8, borderRadius: 6, marginTop: 10, alignItems: 'center' }}
+            onPress={async () => {
+              const { Platform, Alert } = require('react-native');
+              if (Platform.OS === 'web') {
+                window.alert("Test Local Push\n\nMust be tested on a physical phone APK.");
+                return;
+              }
+              const Notifications = require('expo-notifications');
+              Notifications.scheduleNotificationAsync({
+                content: { title: "Test Local Push 🔔", body: "Notifications are working!" },
+                trigger: { seconds: 2 },
+              }).then(() => Alert.alert("Success", "Check your notifications in 2 seconds!"))
+                .catch(e => Alert.alert("Error", e.message));
+            }}
+          >
+            <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 12 }}>Trigger Test Local Notification</Text>
+          </TouchableOpacity>
+        </View>
+
         <NotificationBar />
 
         {loading ? (
@@ -287,37 +311,6 @@ export default function DashboardScreen({ navigation }) {
             </View>
           </>
         )}
-
-        {/* --- DEBUG PANEL --- */}
-        <View style={{ marginTop: 40, padding: 15, backgroundColor: '#f8d7da', borderRadius: 10, borderWidth: 1, borderColor: '#f5c6cb' }}>
-          <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#721c24', marginBottom: 10 }}>🛠 Push Notification Debug Panel</Text>
-          
-          <DebugLogViewer />
-          
-          <TouchableOpacity 
-            style={{ backgroundColor: '#721c24', padding: 10, borderRadius: 8, marginTop: 15, alignItems: 'center' }}
-            onPress={async () => {
-              const { Platform } = require('react-native');
-              if (Platform.OS === 'web') {
-                window.alert("Test Local Push 🔔\n\nNote: You are currently testing on the Web browser. Push notifications must be tested on your physical Android phone using the APK.");
-                return;
-              }
-              
-              const Notifications = require('expo-notifications');
-              Notifications.scheduleNotificationAsync({
-                content: {
-                  title: "Test Local Push 🔔",
-                  body: "If you see this, notifications are working on your phone!",
-                  data: { test: true },
-                },
-                trigger: { seconds: 2 },
-              }).then(() => Alert.alert("Success", "Test notification scheduled for 2 seconds from now. Close the app to see it pop up!"))
-                .catch(e => Alert.alert("Error", e.message));
-            }}
-          >
-            <Text style={{ color: 'white', fontWeight: 'bold' }}>Trigger Test Local Notification</Text>
-          </TouchableOpacity>
-        </View>
 
       </ScrollView>
     </SafeAreaView>

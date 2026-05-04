@@ -65,13 +65,17 @@ export async function registerForPushNotificationsAsync() {
 
 export async function syncPushTokenWithBackend(token) {
   if (!token) return;
+  const { addLog } = useDebugStore.getState();
+  addLog('Syncing token with backend...');
   try {
     await apiClient.post('/users/push-token', {
       push_token: token,
       device_type: Platform.OS
     });
+    addLog('SUCCESS: Push token synced with backend!');
     console.log('Push token synced with backend');
   } catch (error) {
+    addLog(`ERROR syncing token: ${error.message}`);
     console.error('Failed to sync push token:', error);
   }
 }
