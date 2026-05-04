@@ -134,7 +134,7 @@ export default function DashboardScreen({ navigation }) {
       >
         <View style={styles.header}>
           <View>
-            <Text style={styles.welcomeText}>Academy Hub</Text>
+            <Text style={styles.welcomeText}>Academy Hub (DEBUG-V3)</Text>
             <Text style={styles.nameText}>{user?.full_name || 'Teacher'} 👋</Text>
           </View>
           <View style={styles.roleBadgeHeader}>
