@@ -41,14 +41,22 @@ export default function NotificationHeader() {
 
       <TouchableOpacity 
         onPress={() => {
-          Alert.alert(
-            "Logout",
-            "Are you sure you want to logout?",
-            [
-              { text: "Cancel", style: "cancel" },
-              { text: "Logout", onPress: logout, style: 'destructive' }
-            ]
-          );
+          import('react-native').then(({ Platform }) => {
+            if (Platform.OS === 'web') {
+              if (window.confirm("Are you sure you want to logout?")) {
+                logout();
+              }
+            } else {
+              Alert.alert(
+                "Logout",
+                "Are you sure you want to logout?",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Logout", onPress: logout, style: 'destructive' }
+                ]
+              );
+            }
+          });
         }} 
         style={styles.logoutButton}
       >
