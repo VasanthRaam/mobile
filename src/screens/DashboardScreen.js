@@ -287,8 +287,59 @@ export default function DashboardScreen({ navigation }) {
             </View>
           </>
         )}
+
+        {/* --- DEBUG PANEL --- */}
+        <View style={{ marginTop: 40, padding: 15, backgroundColor: '#f8d7da', borderRadius: 10, borderWidth: 1, borderColor: '#f5c6cb' }}>
+          <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#721c24', marginBottom: 10 }}>🛠 Push Notification Debug Panel</Text>
+          
+          <DebugLogViewer />
+          
+          <TouchableOpacity 
+            style={{ backgroundColor: '#721c24', padding: 10, borderRadius: 8, marginTop: 15, alignItems: 'center' }}
+            onPress={async () => {
+              const { Platform } = require('react-native');
+              if (Platform.OS === 'web') {
+                window.alert("Test Local Push 🔔\n\nNote: You are currently testing on the Web browser. Push notifications must be tested on your physical Android phone using the APK.");
+                return;
+              }
+              
+              const Notifications = require('expo-notifications');
+              Notifications.scheduleNotificationAsync({
+                content: {
+                  title: "Test Local Push 🔔",
+                  body: "If you see this, notifications are working on your phone!",
+                  data: { test: true },
+                },
+                trigger: { seconds: 2 },
+              }).then(() => Alert.alert("Success", "Test notification scheduled for 2 seconds from now. Close the app to see it pop up!"))
+                .catch(e => Alert.alert("Error", e.message));
+            }}
+          >
+            <Text style={{ color: 'white', fontWeight: 'bold' }}>Trigger Test Local Notification</Text>
+          </TouchableOpacity>
+        </View>
+
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+// Sub-component to render the debug logs
+function DebugLogViewer() {
+  const { logs, pushToken, permissionStatus } = require('../store/useDebugStore').useDebugStore();
+  
+  return (
+    <View>
+      <Text style={{ fontSize: 12, color: '#721c24', fontWeight: 'bold' }}>Permission: {permissionStatus || 'Unknown'}</Text>
+      <Text style={{ fontSize: 12, color: '#721c24', fontWeight: 'bold', marginBottom: 10 }}>Token: {pushToken ? pushToken.substring(0, 20) + '...' : 'None'}</Text>
+      
+      <View style={{ backgroundColor: '#fff', padding: 10, borderRadius: 5, maxHeight: 150 }}>
+        {logs.length === 0 ? <Text style={{ fontSize: 10, color: '#666' }}>No logs yet...</Text> : null}
+        {logs.map((log, index) => (
+          <Text key={index} style={{ fontSize: 10, color: '#333', marginBottom: 4, fontFamily: 'monospace' }}>{log}</Text>
+        ))}
+      </View>
+    </View>
   );
 }
 
