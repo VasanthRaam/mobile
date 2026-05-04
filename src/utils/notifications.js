@@ -63,19 +63,25 @@ export async function registerForPushNotificationsAsync() {
   return token;
 }
 
-export async function syncPushTokenWithBackend(token) {
+export async function syncPushTokenWithBackend(token, retryCount = 0) {
   if (!token) return;
   const { addLog } = useDebugStore.getState();
-  addLog('Syncing token with backend...');
+  addLog(`Syncing token (Attempt ${retryCount + 1})...`);
   try {
-    await apiClient.post('/users/push-token', {
+    const response = await apiClient.post('/users/push-token', {
       push_token: token,
       device_type: Platform.OS
     });
     addLog('SUCCESS: Push token synced with backend!');
     console.log('Push token synced with backend');
   } catch (error) {
-    addLog(`ERROR syncing token: ${error.message}`);
-    console.error('Failed to sync push token:', error);
+    if (error.response?.status === 401 && retryCount < 2) {
+      addLog('Unauthorized (401). Retrying in 3s...');
+      setTimeout(() => syncPushTokenWithBackend(token, retryCount + 1), 3000);
+    } else {
+      const errorMsg = error.response?.data?.detail || error.message;
+      addLog(`ERROR syncing token: ${errorMsg}`);
+      console.error('Failed to sync push token:', error);
+    }
   }
 }

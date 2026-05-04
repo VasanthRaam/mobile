@@ -134,7 +134,7 @@ export default function DashboardScreen({ navigation }) {
       >
         <View style={styles.header}>
           <View>
-            <Text style={styles.welcomeText}>Academy Hub (DEBUG-V3)</Text>
+            <Text style={styles.welcomeText}>Academy Hub (FINAL-TEST)</Text>
             <Text style={styles.nameText}>{user?.full_name || 'Teacher'} 👋</Text>
           </View>
           <View style={styles.roleBadgeHeader}>
@@ -156,8 +156,16 @@ export default function DashboardScreen({ navigation }) {
               }
               const Notifications = require('expo-notifications');
               Notifications.scheduleNotificationAsync({
-                content: { title: "Test Local Push 🔔", body: "Notifications are working!" },
-                trigger: { seconds: 2 },
+                content: { 
+                  title: "Test Local Push 🔔", 
+                  body: "Notifications are working!",
+                  sound: true,
+                  priority: 'high',
+                  channelId: 'default',
+                },
+                trigger: { 
+                  seconds: 2,
+                },
               }).then(() => Alert.alert("Success", "Check your notifications in 2 seconds!"))
                 .catch(e => Alert.alert("Error", e.message));
             }}

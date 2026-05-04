@@ -37,7 +37,12 @@ export default function App() {
   useEffect(() => {
     if (isAuthenticated) {
       registerForPushNotificationsAsync().then(token => {
-        if (token) syncPushTokenWithBackend(token);
+        if (token) {
+          // Add a small delay to ensure the session token is fully available in SecureStore
+          setTimeout(() => {
+            syncPushTokenWithBackend(token);
+          }, 2000);
+        }
       });
 
       // Listen for notifications tapped by the user
