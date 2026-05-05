@@ -16,19 +16,23 @@ const ROLES = [
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^[+\d][\d\s\-()]{7,}$/;
 
-function validateAll({ fullName, email, phone, password, confirmPassword, role, selectedBatches }) {
+function validateAll({ fullName, email, phone, password, confirmPassword, role, selectedBatches, isGoogle }) {
   if (!fullName.trim() || fullName.trim().length < 2)
     return 'Full name must be at least 2 characters.';
   if (!email.trim() || !EMAIL_RE.test(email.trim()))
     return 'Please enter a valid email address.';
   if (phone && !PHONE_RE.test(phone.trim()))
     return 'Phone number is not valid.';
-  if (password.length < 6)
-    return 'Password must be at least 6 characters.';
-  if (!/[A-Za-z]/.test(password) || !/\d/.test(password))
-    return 'Password must contain at least one letter and one number.';
-  if (password !== confirmPassword)
-    return 'Passwords do not match.';
+  
+  if (!isGoogle) {
+    if (password.length < 6)
+      return 'Password must be at least 6 characters.';
+    if (!/[A-Za-z]/.test(password) || !/\d/.test(password))
+      return 'Password must contain at least one letter and one number.';
+    if (password !== confirmPassword)
+      return 'Passwords do not match.';
+  }
+
   if (!role)
     return 'Please select your role.';
   if (selectedBatches.length === 0)
@@ -36,12 +40,14 @@ function validateAll({ fullName, email, phone, password, confirmPassword, role, 
   return null; 
 }
 
-export default function RegisterScreen({ navigation }) {
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
+export default function RegisterScreen({ navigation, route }) {
+  const { email: initialEmail, full_name: initialName, isGoogle } = route.params || {};
+
+  const [fullName, setFullName] = useState(initialName || '');
+  const [email, setEmail] = useState(initialEmail || '');
   const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [password, setPassword] = useState(isGoogle ? 'GOOGLE_AUTH_PLACEHOLDER' : '');
+  const [confirmPassword, setConfirmPassword] = useState(isGoogle ? 'GOOGLE_AUTH_PLACEHOLDER' : '');
   const [role, setRole] = useState('student');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -95,7 +101,7 @@ export default function RegisterScreen({ navigation }) {
   };
 
   const handleRegister = async () => {
-    const err = validateAll({ fullName, email, phone, password, confirmPassword, role, selectedBatches });
+    const err = validateAll({ fullName, email, phone, password, confirmPassword, role, selectedBatches, isGoogle });
     if (err) {
       Alert.alert('Incomplete Form', err);
       return;
@@ -205,8 +211,13 @@ export default function RegisterScreen({ navigation }) {
               </View>
             )}
 
-            <Field label="Password" value={password} onChangeText={setPassword} placeholder="Min 6 characters" secureTextEntry={!showPassword} />
-            <Field label="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Re-enter password" secureTextEntry={!showConfirmPassword} />
+            {/* Hide password fields for Google users */}
+            {!isGoogle && (
+              <>
+                <Field label="Password" value={password} onChangeText={setPassword} placeholder="Min 6 characters" secureTextEntry={!showPassword} />
+                <Field label="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Re-enter password" secureTextEntry={!showConfirmPassword} />
+              </>
+            )}
 
             <TouchableOpacity style={[styles.submitBtn, loading && styles.submitBtnDisabled]} onPress={handleRegister} disabled={loading}>
               {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Submit Registration Request</Text>}

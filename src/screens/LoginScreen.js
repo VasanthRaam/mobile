@@ -4,8 +4,13 @@ import {
   StyleSheet, ActivityIndicator, Alert, SafeAreaView,
   Dimensions, KeyboardAvoidingView, Platform, Image
 } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
+import { supabase } from '../utils/supabase';
 import { useAuthStore } from '../store/useAuthStore';
 import apiClient from '../api/apiClient';
+
+WebBrowser.maybeCompleteAuthSession();
 
 const { width } = Dimensions.get('window');
 
@@ -15,6 +20,68 @@ export default function LoginScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const login = useAuthStore((state) => state.login);
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    try {
+      const redirectUri = makeRedirectUri({
+        scheme: 'buddybloom',
+        path: 'auth-callback',
+      });
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUri,
+          skipBrowserRedirect: true,
+        },
+      });
+
+      if (error) throw error;
+
+      const res = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
+
+      if (res.type === 'success') {
+        const { url } = res;
+        const params = new URLSearchParams(url.split('#')[1]);
+        const access_token = params.get('access_token');
+        const refresh_token = params.get('refresh_token');
+
+        if (access_token) {
+          const { data: { user }, error: userError } = await supabase.auth.getUser(access_token);
+          if (userError) throw userError;
+
+          // Now sync with our backend
+          try {
+            const backendRes = await apiClient.post('/auth/google-sync', {
+              access_token,
+              email: user.email,
+              full_name: user.user_metadata.full_name,
+            });
+            
+            const { user: userData } = backendRes.data;
+            await login(access_token, userData);
+          } catch (backendError) {
+            if (backendError.response?.status === 404) {
+              // User exists in Supabase but not in our DB -> New Google User
+              navigation.navigate('Register', { 
+                email: user.email, 
+                full_name: user.user_metadata.full_name,
+                isGoogle: true 
+              });
+            } else {
+              throw backendError;
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Google Login Failed', error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -108,6 +175,24 @@ export default function LoginScreen({ navigation }) {
             ) : (
               <Text style={styles.loginBtnText}>Continue to Dashboard</Text>
             )}
+          </TouchableOpacity>
+
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <TouchableOpacity
+            style={styles.googleBtn}
+            onPress={handleGoogleLogin}
+            activeOpacity={0.7}
+          >
+            <Image 
+              source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' }} 
+              style={styles.googleIcon} 
+            />
+            <Text style={styles.googleBtnText}>Continue with Google</Text>
           </TouchableOpacity>
 
           <View style={styles.linkRow}>
@@ -287,6 +372,42 @@ const styles = StyleSheet.create({
     color: '#6366F1',
     fontWeight: '700',
     fontSize: 14,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E2E8F0',
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    color: '#94A3B8',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  googleBtn: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    height: 56,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  googleIcon: {
+    width: 20,
+    height: 20,
+    marginRight: 12,
+  },
+  googleBtnText: {
+    color: '#1E293B',
+    fontSize: 16,
+    fontWeight: '700',
   },
   footer: {
     marginTop: 40,

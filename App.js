@@ -48,14 +48,22 @@ export default function App() {
       // Listen for notifications tapped by the user
       const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
         const data = response.notification.request.content.data;
-        console.log('Notification Tapped:', data);
+        console.log('Notification Tapped Data:', data);
 
-        if (data?.type === 'registration') {
-          // Use navigationRef to jump to the approvals screen
+        // Standardize the check for registration/approval requests
+        const isRegistration = data?.type === 'registration' || data?.type === 'registration_request' || data?.action === 'approval';
+
+        if (isRegistration) {
+          console.log('Redirecting to PendingApprovals...');
           if (navigationRef.isReady()) {
             navigationRef.navigate('PendingApprovals');
+          } else {
+            // If not ready, try again in a moment
+            setTimeout(() => {
+              if (navigationRef.isReady()) navigationRef.navigate('PendingApprovals');
+            }, 500);
           }
-        } else if (data?.type === 'quiz') {
+        } else if (data?.type === 'quiz' || data?.type === 'new_quiz') {
           if (navigationRef.isReady()) {
             navigationRef.navigate('QuizList');
           }
