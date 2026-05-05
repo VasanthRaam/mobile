@@ -36,7 +36,6 @@ export default function AttendanceScreen({ navigation }) {
       return () => clearTimeout(timer);
     }
   }, [statusMsg]);
-  console.log('🔍 [DEBUG] Attendance Role:', role, 'isViewMode:', isViewMode);
 
   useEffect(() => {
     fetchHolidays();

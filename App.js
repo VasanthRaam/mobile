@@ -38,36 +38,36 @@ export default function App() {
     if (isAuthenticated) {
       registerForPushNotificationsAsync().then(token => {
         if (token) {
-          // Add a small delay to ensure the session token is fully available in SecureStore
           setTimeout(() => {
             syncPushTokenWithBackend(token);
           }, 2000);
         }
       });
 
-      // Listen for notifications tapped by the user
-      const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
-        const data = response.notification.request.content.data;
-        console.log('Notification Tapped Data:', data);
-
-        // Standardize the check for registration/approval requests
-        const isRegistration = data?.type === 'registration' || data?.type === 'registration_request' || data?.action === 'approval';
+      const handleRedirect = (data) => {
+        if (!data) return;
+        const type = data.type || data.action || '';
+        const isRegistration = type.includes('registration') || type.includes('approval') || data.screen === 'PendingApprovals';
 
         if (isRegistration) {
-          console.log('Redirecting to PendingApprovals...');
           if (navigationRef.isReady()) {
             navigationRef.navigate('PendingApprovals');
-          } else {
-            // If not ready, try again in a moment
-            setTimeout(() => {
-              if (navigationRef.isReady()) navigationRef.navigate('PendingApprovals');
-            }, 500);
           }
-        } else if (data?.type === 'quiz' || data?.type === 'new_quiz') {
+        } else if (type === 'quiz' || type === 'new_quiz') {
           if (navigationRef.isReady()) {
             navigationRef.navigate('QuizList');
           }
         }
+      };
+
+      Notifications.getLastNotificationResponseAsync().then(response => {
+        if (response?.notification?.request?.content?.data) {
+          handleRedirect(response.notification.request.content.data);
+        }
+      });
+
+      const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
+        handleRedirect(response.notification.request.content.data);
       });
 
       return () => {

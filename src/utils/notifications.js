@@ -52,10 +52,8 @@ export async function syncPushTokenWithBackend(token, retryCount = 0) {
       push_token: token,
       device_type: Platform.OS
     });
-    console.log('Push token synced with backend');
   } catch (error) {
     if (error.response?.status === 401 && retryCount < 2) {
-      console.log('Unauthorized (401) during token sync. Retrying...');
       setTimeout(() => syncPushTokenWithBackend(token, retryCount + 1), 3000);
     } else {
       console.error('Failed to sync push token:', error.message);

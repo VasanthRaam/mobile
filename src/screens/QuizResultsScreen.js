@@ -8,25 +8,57 @@ import { useAuthStore } from '../store/useAuthStore';
 
 export default function QuizResultsScreen({ navigation }) {
   const [results, setResults] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [selectedCourseId, setSelectedCourseId] = useState(null);
   const [batches, setBatches] = useState([]);
   const [selectedBatchId, setSelectedBatchId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [fetchingBatches, setFetchingBatches] = useState(false);
   const { user } = useAuthStore();
   const isStaff = user?.role === 'teacher' || user?.role === 'admin';
 
   useEffect(() => {
     if (isStaff) {
-      fetchBatches();
+      fetchCourses();
+    } else {
+      fetchResults();
     }
+  }, []);
+
+  useEffect(() => {
     fetchResults();
   }, [selectedBatchId]);
 
-  const fetchBatches = async () => {
+  const fetchCourses = async () => {
+    setLoading(true);
     try {
-      const response = await apiClient.get('/batches/');
+      const response = await apiClient.get('/courses/');
+      const fetchedCourses = response.data;
+      setCourses(fetchedCourses);
+      if (fetchedCourses.length > 0) {
+        setSelectedCourseId(fetchedCourses[0].id);
+        fetchBatches(fetchedCourses[0].id);
+      }
+    } catch (error) {
+      console.error('Failed to fetch courses:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchBatches = async (courseId) => {
+    setFetchingBatches(true);
+    setSelectedBatchId(null);
+    try {
+      const response = await apiClient.get(`/batches/?course_id=${courseId}`);
       setBatches(response.data);
+      if (response.data.length > 0) {
+        setSelectedBatchId(response.data[0].id);
+      }
     } catch (error) {
       console.error('Failed to fetch batches:', error);
+    } finally {
+      setFetchingBatches(false);
     }
   };
 
@@ -75,26 +107,53 @@ export default function QuizResultsScreen({ navigation }) {
         <View style={{ width: 40 }} />
       </View>
 
-      {isStaff && batches.length > 0 && (
+      {isStaff && courses.length > 0 && (
         <View style={styles.filterContainer}>
+          <Text style={styles.filterLabel}>Select Course</Text>
           <FlatList
-            showsVerticalScrollIndicator={false}
             horizontal
-            data={[{ id: null, name: 'All Batches' }, ...batches]}
-            keyExtractor={(item) => (item.id ? item.id.toString() : 'all')}
+            data={courses}
+            keyExtractor={(item) => item.id.toString()}
             showsHorizontalScrollIndicator={false}
             renderItem={({ item }) => (
               <TouchableOpacity 
-                style={[styles.batchChip, selectedBatchId === item.id && styles.batchChipActive]}
-                onPress={() => setSelectedBatchId(item.id)}
+                style={[styles.chip, selectedCourseId === item.id && styles.chipActive]}
+                onPress={() => {
+                  setSelectedCourseId(item.id);
+                  fetchBatches(item.id);
+                }}
               >
-                <Text style={[styles.batchChipText, selectedBatchId === item.id && styles.batchChipTextActive]}>
+                <Text style={[styles.chipText, selectedCourseId === item.id && styles.chipTextActive]}>
                   {item.name}
                 </Text>
               </TouchableOpacity>
             )}
             style={styles.chipList}
           />
+
+          <Text style={[styles.filterLabel, { marginTop: 10 }]}>Select Batch</Text>
+          {fetchingBatches ? (
+            <ActivityIndicator size="small" color="#007AFF" style={{ marginVertical: 10 }} />
+          ) : (
+            <FlatList
+              horizontal
+              data={batches}
+              keyExtractor={(item) => item.id.toString()}
+              showsHorizontalScrollIndicator={false}
+              renderItem={({ item }) => (
+                <TouchableOpacity 
+                  style={[styles.chip, selectedBatchId === item.id && styles.chipActive]}
+                  onPress={() => setSelectedBatchId(item.id)}
+                >
+                  <Text style={[styles.chipText, selectedBatchId === item.id && styles.chipTextActive]}>
+                    {item.name}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              style={styles.chipList}
+              ListEmptyComponent={<Text style={styles.noDataText}>No batches found</Text>}
+            />
+          )}
         </View>
       )}
 
@@ -246,29 +305,48 @@ const styles = StyleSheet.create({
   },
   filterContainer: {
     backgroundColor: '#fff',
-    paddingVertical: 10,
+    paddingVertical: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
+  filterLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#94A3B8',
+    textTransform: 'uppercase',
+    marginLeft: 20,
+    marginBottom: 8,
+    letterSpacing: 0.5,
+  },
   chipList: {
     paddingHorizontal: 15,
+    marginBottom: 5,
   },
-  batchChip: {
+  chip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#F0F2F5',
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
     marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  batchChipActive: {
+  chipActive: {
     backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
   },
-  batchChipText: {
+  chipText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#666',
+    color: '#64748B',
   },
-  batchChipTextActive: {
+  chipTextActive: {
     color: '#fff',
+  },
+  noDataText: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginLeft: 20,
+    fontStyle: 'italic',
   },
 });

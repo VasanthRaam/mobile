@@ -35,7 +35,6 @@ apiClient.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Handle unauthorized errors (e.g., clear token, redirect to login)
-      console.warn('Unauthorized access. Token might be expired.');
     }
     return Promise.reject(error);
   }
