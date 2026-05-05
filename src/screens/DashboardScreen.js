@@ -134,44 +134,12 @@ export default function DashboardScreen({ navigation }) {
       >
         <View style={styles.header}>
           <View>
-            <Text style={styles.welcomeText}>Academy Hub (FINAL-TEST)</Text>
+            <Text style={styles.welcomeText}>Academy Hub</Text>
             <Text style={styles.nameText}>{user?.full_name || 'Teacher'} 👋</Text>
           </View>
           <View style={styles.roleBadgeHeader}>
             <Text style={styles.roleBadgeText}>{role?.toUpperCase()}</Text>
           </View>
-        </View>
-
-        {/* --- DEBUG PANEL (MOVED TO TOP) --- */}
-        <View style={{ marginBottom: 20, padding: 15, backgroundColor: '#f0f9ff', borderRadius: 10, borderWidth: 1, borderColor: '#bae6fd' }}>
-          <Text style={{ fontWeight: 'bold', fontSize: 14, color: '#0369a1', marginBottom: 5 }}>🛠 Push Debug Panel</Text>
-          <DebugLogViewer />
-          <TouchableOpacity 
-            style={{ backgroundColor: '#0369a1', padding: 8, borderRadius: 6, marginTop: 10, alignItems: 'center' }}
-            onPress={async () => {
-              const { Platform, Alert } = require('react-native');
-              if (Platform.OS === 'web') {
-                window.alert("Test Local Push\n\nMust be tested on a physical phone APK.");
-                return;
-              }
-              const Notifications = require('expo-notifications');
-              Notifications.scheduleNotificationAsync({
-                content: { 
-                  title: "Test Local Push 🔔", 
-                  body: "Notifications are working!",
-                  sound: true,
-                  priority: 'high',
-                  channelId: 'default',
-                },
-                trigger: { 
-                  seconds: 2,
-                },
-              }).then(() => Alert.alert("Success", "Check your notifications in 2 seconds!"))
-                .catch(e => Alert.alert("Error", e.message));
-            }}
-          >
-            <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 12 }}>Trigger Test Local Notification</Text>
-          </TouchableOpacity>
         </View>
 
         <NotificationBar />
@@ -325,24 +293,6 @@ export default function DashboardScreen({ navigation }) {
   );
 }
 
-// Sub-component to render the debug logs
-function DebugLogViewer() {
-  const { logs, pushToken, permissionStatus } = require('../store/useDebugStore').useDebugStore();
-  
-  return (
-    <View>
-      <Text style={{ fontSize: 12, color: '#721c24', fontWeight: 'bold' }}>Permission: {permissionStatus || 'Unknown'}</Text>
-      <Text style={{ fontSize: 12, color: '#721c24', fontWeight: 'bold', marginBottom: 10 }}>Token: {pushToken ? pushToken.substring(0, 20) + '...' : 'None'}</Text>
-      
-      <View style={{ backgroundColor: '#fff', padding: 10, borderRadius: 5, maxHeight: 150 }}>
-        {logs.length === 0 ? <Text style={{ fontSize: 10, color: '#666' }}>No logs yet...</Text> : null}
-        {logs.map((log, index) => (
-          <Text key={index} style={{ fontSize: 10, color: '#333', marginBottom: 4, fontFamily: 'monospace' }}>{log}</Text>
-        ))}
-      </View>
-    </View>
-  );
-}
 
 const styles = StyleSheet.create({
   container: {

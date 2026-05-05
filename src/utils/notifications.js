@@ -3,52 +3,34 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import apiClient from '../api/apiClient';
-import { useDebugStore } from '../store/useDebugStore';
 
 export async function registerForPushNotificationsAsync() {
   let token;
-  const { addLog, setPushToken, setPermissionStatus } = useDebugStore.getState();
-
-  addLog('Starting push notification registration...');
 
   if (Platform.OS === 'web') {
-    addLog('Platform is web, skipping push registration.');
     return null;
   }
 
   if (Device.isDevice) {
-    addLog('Checking notification permissions...');
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
-    addLog(`Existing permission status: ${existingStatus}`);
     
     if (existingStatus !== 'granted') {
-      addLog('Requesting permissions from user...');
       const { status } = await Notifications.requestPermissionsAsync();
       finalStatus = status;
-      addLog(`New permission status: ${finalStatus}`);
     }
     
-    setPermissionStatus(finalStatus);
-    
     if (finalStatus !== 'granted') {
-      addLog('Failed: User denied push notification permissions!');
       return null;
     }
     
     // Get the token from Expo
     try {
-      addLog('Fetching Expo Push Token...');
       const projectId = Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId || 'bcdae01d-74c3-45c4-8f8f-a170446f806f';
-      addLog(`Using Project ID: ${projectId}`);
       token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-      addLog(`Success! Token: ${token.substring(0, 15)}...`);
-      setPushToken(token);
     } catch (e) {
-      addLog(`ERROR getting token: ${e.message}`);
+      console.error('ERROR getting token:', e.message);
     }
-  } else {
-    addLog('ERROR: Must use physical device for Push Notifications');
   }
 
   if (Platform.OS === 'android') {
@@ -65,23 +47,18 @@ export async function registerForPushNotificationsAsync() {
 
 export async function syncPushTokenWithBackend(token, retryCount = 0) {
   if (!token) return;
-  const { addLog } = useDebugStore.getState();
-  addLog(`Syncing token (Attempt ${retryCount + 1})...`);
   try {
-    const response = await apiClient.post('/users/push-token', {
+    await apiClient.post('/users/push-token', {
       push_token: token,
       device_type: Platform.OS
     });
-    addLog('SUCCESS: Push token synced with backend!');
     console.log('Push token synced with backend');
   } catch (error) {
     if (error.response?.status === 401 && retryCount < 2) {
-      addLog('Unauthorized (401). Retrying in 3s...');
+      console.log('Unauthorized (401) during token sync. Retrying...');
       setTimeout(() => syncPushTokenWithBackend(token, retryCount + 1), 3000);
     } else {
-      const errorMsg = error.response?.data?.detail || error.message;
-      addLog(`ERROR syncing token: ${errorMsg}`);
-      console.error('Failed to sync push token:', error);
+      console.error('Failed to sync push token:', error.message);
     }
   }
 }
