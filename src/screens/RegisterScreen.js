@@ -9,6 +9,7 @@ import { makeRedirectUri } from 'expo-auth-session';
 import { supabase } from '../utils/supabase';
 import { useAuthStore } from '../store/useAuthStore';
 import apiClient from '../api/apiClient';
+import { registerForPushNotificationsAsync } from '../utils/notifications';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -71,10 +72,26 @@ export default function RegisterScreen({ navigation, route }) {
 
   const [errors, setErrors] = useState({});
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [pushToken, setPushToken] = useState(null);
 
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
     fetchCoursesBatches();
+    registerForPushNotificationsAsync().then(token => {
+      if (token) setPushToken(token);
+    });
+
+    if (Platform.OS === 'web') {
+      const hash = window.location.hash || window.location.search;
+      if (hash) {
+        const params = new URLSearchParams(hash.replace('#', '?'));
+        const access_token = params.get('access_token');
+        if (access_token) {
+          window.history.replaceState(null, null, ' ');
+          handleGoogleCallback(access_token);
+        }
+      }
+    }
   }, []);
 
   const fetchCoursesBatches = async () => {
@@ -108,13 +125,61 @@ export default function RegisterScreen({ navigation, route }) {
     }
   };
 
+  const handleGoogleCallback = async (access_token) => {
+    setLoading(true);
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser(access_token);
+      if (userError) throw userError;
+
+      try {
+        const backendRes = await apiClient.post('/auth/google-sync', {
+          access_token,
+          email: user.email,
+          full_name: user.user_metadata.full_name,
+        });
+        // If success, they are already registered and approved! Log them in.
+        const { user: userData } = backendRes.data;
+        await login(access_token, userData);
+      } catch (backendError) {
+        if (backendError.response?.status === 404) {
+           // New user, populate fields and hide password
+           setEmail(user.email);
+           setFullName(user.user_metadata.full_name);
+           setIsGoogleAuth(true);
+           setPassword('GOOGLE_AUTH_PLACEHOLDER');
+           setConfirmPassword('GOOGLE_AUTH_PLACEHOLDER');
+        } else {
+          throw backendError;
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Google Registration Failed', error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleGoogleRegistration = async () => {
     setLoading(true);
     try {
-      const redirectUri = makeRedirectUri({
-        scheme: 'buddybloom',
-        path: 'auth-callback',
-      });
+      const redirectUri = Platform.OS === 'web' 
+        ? window.location.origin
+        : makeRedirectUri({
+            scheme: 'buddybloom',
+            path: 'auth-callback',
+          });
+
+      if (Platform.OS === 'web') {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: redirectUri,
+          },
+        });
+        if (error) throw error;
+        return; // Redirects automatically on Web
+      }
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -141,30 +206,7 @@ export default function RegisterScreen({ navigation, route }) {
         }
 
         if (access_token) {
-          const { data: { user }, error: userError } = await supabase.auth.getUser(access_token);
-          if (userError) throw userError;
-
-          try {
-            const backendRes = await apiClient.post('/auth/google-sync', {
-              access_token,
-              email: user.email,
-              full_name: user.user_metadata.full_name,
-            });
-            // If success, they are already registered and approved! Log them in.
-            const { user: userData } = backendRes.data;
-            await login(access_token, userData);
-          } catch (backendError) {
-            if (backendError.response?.status === 404) {
-               // New user, populate fields and hide password
-               setEmail(user.email);
-               setFullName(user.user_metadata.full_name);
-               setIsGoogleAuth(true);
-               setPassword('GOOGLE_AUTH_PLACEHOLDER');
-               setConfirmPassword('GOOGLE_AUTH_PLACEHOLDER');
-            } else {
-              throw backendError;
-            }
-          }
+          await handleGoogleCallback(access_token);
         }
       }
     } catch (error) {
@@ -192,6 +234,7 @@ export default function RegisterScreen({ navigation, route }) {
         role,
         course_ids: selectedCourses,
         batch_ids: selectedBatches,
+        push_token: pushToken,
       });
       setSubmitted(true);
     } catch (error) {

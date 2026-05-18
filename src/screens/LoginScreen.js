@@ -21,13 +21,76 @@ export default function LoginScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const login = useAuthStore((state) => state.login);
 
+  // Web-specific OAuth hash listener
+  React.useEffect(() => {
+    if (Platform.OS === 'web') {
+      const hash = window.location.hash || window.location.search;
+      if (hash) {
+        const params = new URLSearchParams(hash.replace('#', '?'));
+        const access_token = params.get('access_token');
+        if (access_token) {
+          // Clear hash so it doesn't trigger again
+          window.history.replaceState(null, null, ' ');
+          handleGoogleCallback(access_token);
+        }
+      }
+    }
+  }, []);
+
+  const handleGoogleCallback = async (access_token) => {
+    setLoading(true);
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser(access_token);
+      if (userError) throw userError;
+
+      // Sync with backend
+      const backendRes = await apiClient.post('/auth/google-sync', {
+        access_token,
+        email: user.email,
+        full_name: user.user_metadata.full_name,
+      });
+      
+      const { user: userData } = backendRes.data;
+      await login(access_token, userData);
+    } catch (error) {
+      if (error.response?.status === 404) {
+        // User exists in Supabase but not in our DB -> New Google User
+        // Need to fetch user profile since we caught the error
+        const { data: { user } } = await supabase.auth.getUser(access_token);
+        navigation.navigate('Register', { 
+          email: user.email, 
+          full_name: user.user_metadata.full_name,
+          isGoogle: true 
+        });
+      } else {
+        console.error(error);
+        Alert.alert('Google Sync Failed', error.message || 'An error occurred during authentication.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleGoogleLogin = async () => {
     setLoading(true);
     try {
-      const redirectUri = makeRedirectUri({
-        scheme: 'buddybloom',
-        path: 'auth-callback',
-      });
+      const redirectUri = Platform.OS === 'web' 
+        ? window.location.origin
+        : makeRedirectUri({
+            scheme: 'buddybloom',
+            path: 'auth-callback',
+          });
+
+      if (Platform.OS === 'web') {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: redirectUri,
+          },
+        });
+        if (error) throw error;
+        return; // Redirects automatically on Web
+      }
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -45,42 +108,16 @@ export default function LoginScreen({ navigation }) {
         const { url } = res;
         const fragment = url.split('#')[1];
         let access_token = null;
-        let refresh_token = null;
 
         if (fragment) {
           fragment.split('&').forEach(pair => {
             const [key, value] = pair.split('=');
             if (key === 'access_token') access_token = decodeURIComponent(value || '');
-            if (key === 'refresh_token') refresh_token = decodeURIComponent(value || '');
           });
         }
 
         if (access_token) {
-          const { data: { user }, error: userError } = await supabase.auth.getUser(access_token);
-          if (userError) throw userError;
-
-          // Now sync with our backend
-          try {
-            const backendRes = await apiClient.post('/auth/google-sync', {
-              access_token,
-              email: user.email,
-              full_name: user.user_metadata.full_name,
-            });
-            
-            const { user: userData } = backendRes.data;
-            await login(access_token, userData);
-          } catch (backendError) {
-            if (backendError.response?.status === 404) {
-              // User exists in Supabase but not in our DB -> New Google User
-              navigation.navigate('Register', { 
-                email: user.email, 
-                full_name: user.user_metadata.full_name,
-                isGoogle: true 
-              });
-            } else {
-              throw backendError;
-            }
-          }
+          await handleGoogleCallback(access_token);
         }
       }
     } catch (error) {
