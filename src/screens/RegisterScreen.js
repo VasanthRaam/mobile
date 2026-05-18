@@ -309,7 +309,7 @@ export default function RegisterScreen({ navigation, route }) {
             )}
 
             {/* Hide password fields for Google users */}
-            {!isGoogle && (
+            {!isGoogleAuth && (
               <>
                 <Field label="Password" value={password} onChangeText={setPassword} placeholder="Min 6 characters" secureTextEntry={!showPassword} />
                 <Field label="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Re-enter password" secureTextEntry={!showConfirmPassword} />
