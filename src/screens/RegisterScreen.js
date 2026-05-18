@@ -2,9 +2,15 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, SafeAreaView, ScrollView,
-  KeyboardAvoidingView, Platform, Animated, StatusBar,
+  KeyboardAvoidingView, Platform, Animated, StatusBar, Image
 } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
+import { supabase } from '../utils/supabase';
+import { useAuthStore } from '../store/useAuthStore';
 import apiClient from '../api/apiClient';
+
+WebBrowser.maybeCompleteAuthSession();
 
 // ─── Role options ─────────────────────────────────────────────────────────────
 const ROLES = [
@@ -41,18 +47,21 @@ function validateAll({ fullName, email, phone, password, confirmPassword, role, 
 }
 
 export default function RegisterScreen({ navigation, route }) {
-  const { email: initialEmail, full_name: initialName, isGoogle } = route.params || {};
+  const { email: initialEmail, full_name: initialName, isGoogle: initialIsGoogle } = route.params || {};
 
+  const [isGoogleAuth, setIsGoogleAuth] = useState(initialIsGoogle || false);
   const [fullName, setFullName] = useState(initialName || '');
   const [email, setEmail] = useState(initialEmail || '');
   const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState(isGoogle ? 'GOOGLE_AUTH_PLACEHOLDER' : '');
-  const [confirmPassword, setConfirmPassword] = useState(isGoogle ? 'GOOGLE_AUTH_PLACEHOLDER' : '');
+  const [password, setPassword] = useState(initialIsGoogle ? 'GOOGLE_AUTH_PLACEHOLDER' : '');
+  const [confirmPassword, setConfirmPassword] = useState(initialIsGoogle ? 'GOOGLE_AUTH_PLACEHOLDER' : '');
   const [role, setRole] = useState('student');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  
+  const login = useAuthStore((state) => state.login);
 
   // Courses & Batches Data
   const [availableData, setAvailableData] = useState([]);
@@ -83,7 +92,6 @@ export default function RegisterScreen({ navigation, route }) {
   const toggleCourse = (courseId) => {
     if (selectedCourses.includes(courseId)) {
       setSelectedCourses(selectedCourses.filter(id => id !== courseId));
-      // Also remove its batches
       const course = availableData.find(c => c.id === courseId);
       const batchIdsToRemove = course.batches.map(b => b.id);
       setSelectedBatches(selectedBatches.filter(id => !batchIdsToRemove.includes(id)));
@@ -100,8 +108,75 @@ export default function RegisterScreen({ navigation, route }) {
     }
   };
 
+  const handleGoogleRegistration = async () => {
+    setLoading(true);
+    try {
+      const redirectUri = makeRedirectUri({
+        scheme: 'buddybloom',
+        path: 'auth-callback',
+      });
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUri,
+          skipBrowserRedirect: true,
+        },
+      });
+
+      if (error) throw error;
+
+      const res = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
+
+      if (res.type === 'success') {
+        const { url } = res;
+        const fragment = url.split('#')[1];
+        let access_token = null;
+
+        if (fragment) {
+          fragment.split('&').forEach(pair => {
+            const [key, value] = pair.split('=');
+            if (key === 'access_token') access_token = decodeURIComponent(value || '');
+          });
+        }
+
+        if (access_token) {
+          const { data: { user }, error: userError } = await supabase.auth.getUser(access_token);
+          if (userError) throw userError;
+
+          try {
+            const backendRes = await apiClient.post('/auth/google-sync', {
+              access_token,
+              email: user.email,
+              full_name: user.user_metadata.full_name,
+            });
+            // If success, they are already registered and approved! Log them in.
+            const { user: userData } = backendRes.data;
+            await login(access_token, userData);
+          } catch (backendError) {
+            if (backendError.response?.status === 404) {
+               // New user, populate fields and hide password
+               setEmail(user.email);
+               setFullName(user.user_metadata.full_name);
+               setIsGoogleAuth(true);
+               setPassword('GOOGLE_AUTH_PLACEHOLDER');
+               setConfirmPassword('GOOGLE_AUTH_PLACEHOLDER');
+            } else {
+              throw backendError;
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Google Registration Failed', error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleRegister = async () => {
-    const err = validateAll({ fullName, email, phone, password, confirmPassword, role, selectedBatches, isGoogle });
+    const err = validateAll({ fullName, email, phone, password, confirmPassword, role, selectedBatches, isGoogle: isGoogleAuth });
     if (err) {
       Alert.alert('Incomplete Form', err);
       return;
@@ -159,6 +234,28 @@ export default function RegisterScreen({ navigation, route }) {
           </View>
 
           <View style={styles.card}>
+            {!isGoogleAuth && (
+              <>
+                <TouchableOpacity
+                  style={styles.googleBtn}
+                  onPress={handleGoogleRegistration}
+                  activeOpacity={0.7}
+                >
+                  <Image 
+                    source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' }} 
+                    style={styles.googleIcon} 
+                  />
+                  <Text style={styles.googleBtnText}>Continue with Google</Text>
+                </TouchableOpacity>
+
+                <View style={styles.divider}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>or</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+              </>
+            )}
+
             <Text style={styles.sectionLabel}>Select Your Role</Text>
             <View style={styles.roleRow}>
               {ROLES.map((r) => (
@@ -242,12 +339,18 @@ function Field({ label, value, onChangeText, placeholder, ...props }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   scroll: { padding: 20 },
-  backBtn: { marginBottom: 20 },
+  backBtn: { marginTop: 20, marginBottom: 20 },
   backBtnText: { color: '#6366F1', fontWeight: '700' },
   heading: { marginBottom: 24 },
   title: { fontSize: 28, fontWeight: '900', color: '#1E293B' },
   subtitle: { fontSize: 14, color: '#64748B', marginTop: 4 },
   card: { backgroundColor: '#fff', borderRadius: 24, padding: 20, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 5 },
+  googleBtn: { flexDirection: 'row', backgroundColor: '#fff', height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 20 },
+  googleIcon: { width: 24, height: 24, marginRight: 10 },
+  googleBtnText: { color: '#1E293B', fontSize: 15, fontWeight: '600' },
+  divider: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: '#E2E8F0' },
+  dividerText: { marginHorizontal: 10, color: '#94A3B8', fontSize: 13, fontWeight: '600' },
   sectionLabel: { fontSize: 14, fontWeight: '700', color: '#475569', marginBottom: 12 },
   roleRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
   roleChip: { flex: 1, alignItems: 'center', padding: 12, borderRadius: 12, backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0' },

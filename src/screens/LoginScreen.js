@@ -43,9 +43,17 @@ export default function LoginScreen({ navigation }) {
 
       if (res.type === 'success') {
         const { url } = res;
-        const params = new URLSearchParams(url.split('#')[1]);
-        const access_token = params.get('access_token');
-        const refresh_token = params.get('refresh_token');
+        const fragment = url.split('#')[1];
+        let access_token = null;
+        let refresh_token = null;
+
+        if (fragment) {
+          fragment.split('&').forEach(pair => {
+            const [key, value] = pair.split('=');
+            if (key === 'access_token') access_token = decodeURIComponent(value || '');
+            if (key === 'refresh_token') refresh_token = decodeURIComponent(value || '');
+          });
+        }
 
         if (access_token) {
           const { data: { user }, error: userError } = await supabase.auth.getUser(access_token);

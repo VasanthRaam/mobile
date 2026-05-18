@@ -51,11 +51,15 @@ export default function App() {
 
         if (isRegistration) {
           if (navigationRef.isReady()) {
-            navigationRef.navigate('PendingApprovals');
+            setTimeout(() => {
+              navigationRef.navigate('PendingApprovals');
+            }, 100);
           }
         } else if (type === 'quiz' || type === 'new_quiz') {
           if (navigationRef.isReady()) {
-            navigationRef.navigate('QuizList');
+            setTimeout(() => {
+              navigationRef.navigate('Quiz', { quizId: data.id, quizTitle: 'New Quiz' });
+            }, 100);
           }
         }
       };
