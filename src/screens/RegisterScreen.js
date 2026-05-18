@@ -51,6 +51,7 @@ export default function RegisterScreen({ navigation, route }) {
   const { email: initialEmail, full_name: initialName, isGoogle: initialIsGoogle } = route.params || {};
 
   const [isGoogleAuth, setIsGoogleAuth] = useState(initialIsGoogle || false);
+  const [authMethod, setAuthMethod] = useState(initialIsGoogle ? 'google' : null);
   const [fullName, setFullName] = useState(initialName || '');
   const [email, setEmail] = useState(initialEmail || '');
   const [phone, setPhone] = useState('');
@@ -146,6 +147,7 @@ export default function RegisterScreen({ navigation, route }) {
            setEmail(user.email);
            setFullName(user.user_metadata.full_name);
            setIsGoogleAuth(true);
+           setAuthMethod('google');
            setPassword('GOOGLE_AUTH_PLACEHOLDER');
            setConfirmPassword('GOOGLE_AUTH_PLACEHOLDER');
         } else {
@@ -277,18 +279,18 @@ export default function RegisterScreen({ navigation, route }) {
           </View>
 
           <View style={styles.card}>
-            {!isGoogleAuth && (
-              <>
+            {authMethod === null ? (
+              <View style={styles.choiceContainer}>
                 <TouchableOpacity
-                  style={styles.googleBtn}
+                  style={styles.googleBtnLarge}
                   onPress={handleGoogleRegistration}
                   activeOpacity={0.7}
                 >
                   <Image 
                     source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' }} 
-                    style={styles.googleIcon} 
+                    style={styles.googleIconLarge} 
                   />
-                  <Text style={styles.googleBtnText}>Continue with Google</Text>
+                  <Text style={styles.googleBtnTextLarge}>Continue with Google</Text>
                 </TouchableOpacity>
 
                 <View style={styles.divider}>
@@ -296,8 +298,17 @@ export default function RegisterScreen({ navigation, route }) {
                   <Text style={styles.dividerText}>or</Text>
                   <View style={styles.dividerLine} />
                 </View>
-              </>
-            )}
+
+                <TouchableOpacity
+                  style={styles.emailBtnLarge}
+                  onPress={() => setAuthMethod('email')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.emailBtnTextLarge}>Continue with Email</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
 
             <Text style={styles.sectionLabel}>Select Your Role</Text>
             <View style={styles.roleRow}>
@@ -313,8 +324,8 @@ export default function RegisterScreen({ navigation, route }) {
               ))}
             </View>
 
-            <Field label="Full Name" value={fullName} onChangeText={setFullName} placeholder="Enter your full name" />
-            <Field label="Email Address" value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" />
+            <Field label="Full Name" value={fullName} onChangeText={setFullName} placeholder="Enter your full name" editable={authMethod !== 'google'} />
+            <Field label="Email Address" value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" editable={authMethod !== 'google'} />
             <Field label="Phone Number" value={phone} onChangeText={setPhone} placeholder="+91 9876543210" keyboardType="phone-pad" />
             
             {/* Courses & Batches Selection */}
@@ -352,7 +363,7 @@ export default function RegisterScreen({ navigation, route }) {
             )}
 
             {/* Hide password fields for Google users */}
-            {!isGoogleAuth && (
+            {authMethod === 'email' && (
               <>
                 <Field label="Password" value={password} onChangeText={setPassword} placeholder="Min 6 characters" secureTextEntry={!showPassword} />
                 <Field label="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Re-enter password" secureTextEntry={!showConfirmPassword} />
@@ -362,6 +373,8 @@ export default function RegisterScreen({ navigation, route }) {
             <TouchableOpacity style={[styles.submitBtn, loading && styles.submitBtnDisabled]} onPress={handleRegister} disabled={loading}>
               {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Submit Registration Request</Text>}
             </TouchableOpacity>
+            </>
+            )}
           </View>
           <View style={{ height: 40 }} />
         </ScrollView>
@@ -388,9 +401,11 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: '900', color: '#1E293B' },
   subtitle: { fontSize: 14, color: '#64748B', marginTop: 4 },
   card: { backgroundColor: '#fff', borderRadius: 24, padding: 20, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 5 },
-  googleBtn: { flexDirection: 'row', backgroundColor: '#fff', height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 20 },
-  googleIcon: { width: 24, height: 24, marginRight: 10 },
-  googleBtnText: { color: '#1E293B', fontSize: 15, fontWeight: '600' },
+  googleBtnLarge: { flexDirection: 'row', backgroundColor: '#fff', height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 20 },
+  googleIconLarge: { width: 24, height: 24, marginRight: 12 },
+  googleBtnTextLarge: { color: '#1E293B', fontSize: 16, fontWeight: '700' },
+  emailBtnLarge: { backgroundColor: '#F8FAFC', height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
+  emailBtnTextLarge: { color: '#475569', fontSize: 16, fontWeight: '700' },
   divider: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
   dividerLine: { flex: 1, height: 1, backgroundColor: '#E2E8F0' },
   dividerText: { marginHorizontal: 10, color: '#94A3B8', fontSize: 13, fontWeight: '600' },
