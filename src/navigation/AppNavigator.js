@@ -18,6 +18,8 @@ import AssignHomeworkScreen from '../screens/AssignHomeworkScreen';
 import HomeworkListScreen from '../screens/HomeworkListScreen';
 import MyCoursesScreen from '../screens/MyCoursesScreen';
 import PendingApprovalsScreen from '../screens/PendingApprovalsScreen';
+import FeesScreen from '../screens/FeesScreen';
+import RevenueScreen from '../screens/RevenueScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -54,6 +56,8 @@ export default function AppNavigator() {
               component={PendingApprovalsScreen}
               options={{ headerShown: false }}
             />
+            <Stack.Screen name="Fees" component={FeesScreen} options={{ title: 'Fees & Payments' }} />
+            <Stack.Screen name="Revenue" component={RevenueScreen} options={{ title: 'Revenue Tracker' }} />
           </Stack.Group>
         )}
       </Stack.Navigator>

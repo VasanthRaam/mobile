@@ -243,6 +243,20 @@ export default function DashboardScreen({ navigation }) {
               )}
               {(role === 'student' || role === 'admin') && (
                 renderCard(
+                  'Fees & Payments', '💸', '#10B981', 
+                  () => navigation.navigate('Fees'),
+                  'Manage your fee records'
+                )
+              )}
+              {role === 'admin' && (
+                renderCard(
+                  'Revenue Tracker', '📈', '#8B5CF6', 
+                  () => navigation.navigate('Revenue'),
+                  'Income, expenses, and analytics'
+                )
+              )}
+              {(role === 'student' || role === 'admin') && (
+                renderCard(
                   role === 'student' ? 'Take a Quiz' : 'View Quizzes', '📝', '#F59E0B', 
                   () => navigation.navigate('QuizList'),
                   'Challenge your knowledge'
