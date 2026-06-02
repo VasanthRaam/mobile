@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "981707949514",
+    "project_id": "buddy-bloom-fb42f",
+    "storage_bucket": "buddy-bloom-fb42f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:981707949514:android:4f9c2774950e13050e3b33",
+        "android_client_info": {
+          "package_name": "com.buddybloom.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDIgMB0T_XIBDIy6dPei6G52kk9by5WJpU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

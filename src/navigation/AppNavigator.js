@@ -23,11 +23,15 @@ import RevenueScreen from '../screens/RevenueScreen';
 
 const Stack = createNativeStackNavigator();
 
+import { createNavigationContainerRef } from '@react-navigation/native';
+
+export const navigationRef = createNavigationContainerRef();
+
 export default function AppNavigator() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {!isAuthenticated ? (
           // ── Unauthenticated Stack ──────────────────────────────────

@@ -114,7 +114,10 @@ export default function AssignHomeworkScreen({ navigation }) {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView 
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={styles.label}>1. Select Batch</Text>
         <View style={styles.batchList}>
           {batches.map(batch => (

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, Alert } from 'react-native';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../store/useAuthStore';
@@ -23,6 +23,8 @@ export default function NotificationHeader() {
     if (notification.link_to && notification.link_to.startsWith('Quiz:')) {
       const quizId = notification.link_to.split(':')[1];
       navigation.navigate('Quiz', { quizId, quizTitle: 'New Quiz' });
+    } else if (notification.type === 'new_user_registration' || notification.message.toLowerCase().includes('register')) {
+      navigation.navigate('PendingApprovals');
     }
   };
 
@@ -37,7 +39,27 @@ export default function NotificationHeader() {
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={logout} style={styles.logoutButton}>
+      <TouchableOpacity 
+        onPress={() => {
+          import('react-native').then(({ Platform }) => {
+            if (Platform.OS === 'web') {
+              if (window.confirm("Are you sure you want to logout?")) {
+                logout();
+              }
+            } else {
+              Alert.alert(
+                "Logout",
+                "Are you sure you want to logout?",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Logout", onPress: logout, style: 'destructive' }
+                ]
+              );
+            }
+          });
+        }} 
+        style={styles.logoutButton}
+      >
         <Text style={styles.logoutEmoji}>🚪</Text>
       </TouchableOpacity>
 

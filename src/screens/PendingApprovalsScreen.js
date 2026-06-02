@@ -175,6 +175,7 @@ export default function PendingApprovalsScreen({ navigation }) {
         </View>
       ) : (
         <FlatList
+        showsVerticalScrollIndicator={false}
           data={pending}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}

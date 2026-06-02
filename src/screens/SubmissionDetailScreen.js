@@ -77,6 +77,7 @@ export default function SubmissionDetailScreen({ route, navigation }) {
       </View>
 
       <FlatList
+        showsVerticalScrollIndicator={false}
         data={details.answers}
         keyExtractor={(item, index) => index.toString()}
         renderItem={({ item }) => (

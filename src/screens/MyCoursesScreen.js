@@ -50,6 +50,7 @@ export default function MyCoursesScreen({ navigation }) {
       </View>
 
       <FlatList
+        showsVerticalScrollIndicator={false}
         data={courses}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}

@@ -70,6 +70,7 @@ export default function HomeworkListScreen({ navigation }) {
       </View>
 
       <FlatList
+        showsVerticalScrollIndicator={false}
         data={homework}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
