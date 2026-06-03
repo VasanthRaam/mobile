@@ -274,6 +274,13 @@ export default function RegisterScreen({ navigation, route }) {
           </TouchableOpacity>
 
           <View style={styles.heading}>
+            <View style={styles.logoCircle}>
+              <Image 
+                source={require('../../assets/icon.png')} 
+                style={styles.logoImage} 
+                resizeMode="contain"
+              />
+            </View>
             <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>Fill in your details to join BuddyBloom</Text>
           </View>
@@ -397,8 +404,10 @@ const styles = StyleSheet.create({
   scroll: { padding: 20 },
   backBtn: { marginTop: 20, marginBottom: 20 },
   backBtnText: { color: '#6366F1', fontWeight: '700' },
-  heading: { marginBottom: 24 },
-  title: { fontSize: 28, fontWeight: '900', color: '#1E293B' },
+  heading: { marginBottom: 24, alignItems: 'center' },
+  logoCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 15, elevation: 10, marginBottom: 20 },
+  logoImage: { width: '65%', height: '65%' },
+  title: { fontSize: 28, fontWeight: '900', color: '#1E293B', textAlign: 'center' },
   subtitle: { fontSize: 14, color: '#64748B', marginTop: 4 },
   card: { backgroundColor: '#fff', borderRadius: 24, padding: 20, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 5 },
   googleBtnLarge: { flexDirection: 'row', backgroundColor: '#fff', height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 20 },

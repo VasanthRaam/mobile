@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { saveToken, deleteToken, getToken, saveUser, getUser, deleteUser } from '../utils/secureStore';
+import { supabase } from '../utils/supabase';
 
 export const useAuthStore = create((set) => ({
   user: null,
@@ -29,6 +30,11 @@ export const useAuthStore = create((set) => ({
 
   // Call this function to log out
   logout: async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.warn('Supabase signout failed', error);
+    }
     await Promise.all([deleteToken(), deleteUser()]);
     set({ token: null, user: null, isAuthenticated: false });
   },

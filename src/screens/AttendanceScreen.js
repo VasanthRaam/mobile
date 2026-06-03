@@ -267,8 +267,19 @@ export default function AttendanceScreen({ navigation }) {
               if (!day) return <View key={`empty-${idx}`} style={styles.dayBox} />;
               
               const dateStr = `${displayYear}-${(displayMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-              const status = recordsMap[dateStr];
+              let status = recordsMap[dateStr];
               const isAcademyHoliday = holidayDates.includes(dateStr);
+              
+              // Default to 'present' for non-holiday past weekdays if no explicit record exists
+              if (!status && !isAcademyHoliday) {
+                const dateObj = new Date(displayYear, displayMonth, day);
+                const isWeekend = dateObj.getDay() === 0; // Assuming Sunday is a weekend/holiday
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                if (!isWeekend && dateObj <= today) {
+                  status = 'present';
+                }
+              }
               
               return (
                 <View key={idx} style={[

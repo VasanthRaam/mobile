@@ -23,7 +23,7 @@ export default function NotificationHeader() {
     if (notification.link_to && notification.link_to.startsWith('Quiz:')) {
       const quizId = notification.link_to.split(':')[1];
       navigation.navigate('Quiz', { quizId, quizTitle: 'New Quiz' });
-    } else if (notification.type === 'new_user_registration' || notification.message.toLowerCase().includes('register')) {
+    } else if (notification.link_to && notification.link_to.startsWith('registration:')) {
       navigation.navigate('PendingApprovals');
     }
   };
@@ -52,7 +52,7 @@ export default function NotificationHeader() {
                 "Are you sure you want to logout?",
                 [
                   { text: "Cancel", style: "cancel" },
-                  { text: "Logout", onPress: logout, style: 'destructive' }
+                  { text: "Logout", onPress: () => setTimeout(logout, 150), style: 'destructive' }
                 ]
               );
             }
