@@ -199,20 +199,36 @@ export default function RegisterScreen({ navigation, route }) {
 
       const res = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
 
+      // Diagnostic Alert to see what WebBrowser actually returns on Android APK
+      if (Platform.OS !== 'web') {
+        Alert.alert('Debug Session Result', JSON.stringify(res, null, 2));
+      }
+
       if (res.type === 'success') {
         const { url } = res;
-        const fragment = url.split('#')[1];
-        let access_token = null;
+        
+        // Robust parameter parser that extracts both access_token and code from search and hash params
+        const params = {};
+        const regex = /[?&#]([^=#]+)=([^&#]*)/g;
+        let match;
+        while ((match = regex.exec(url)) !== null) {
+          params[match[1]] = decodeURIComponent(match[2]);
+        }
 
-        if (fragment) {
-          fragment.split('&').forEach(pair => {
-            const [key, value] = pair.split('=');
-            if (key === 'access_token') access_token = decodeURIComponent(value || '');
-          });
+        let access_token = params.access_token || null;
+        const code = params.code || null;
+
+        if (code) {
+          // Exchange PKCE authorization code for session
+          const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) throw exchangeError;
+          access_token = exchangeData.session?.access_token || null;
         }
 
         if (access_token) {
           await handleGoogleCallback(access_token);
+        } else {
+          Alert.alert('Authentication Failed', 'No access token or authorization code found in redirect URL.');
         }
       }
     } catch (error) {
