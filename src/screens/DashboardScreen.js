@@ -107,15 +107,15 @@ export default function DashboardScreen({ navigation }) {
   const renderGenericStats = () => (
     <View style={styles.statsContainer}>
       <View style={styles.statBox}>
-        <Text style={styles.statVal}>85%</Text>
-        <Text style={styles.statLab}>Progress</Text>
+        <Text style={styles.statVal}>{stats?.student?.avg_quiz_score || 0}%</Text>
+        <Text style={styles.statLab}>Avg Score</Text>
       </View>
       <View style={[styles.statBox, styles.statBoxMid]}>
-        <Text style={styles.statVal}>12</Text>
+        <Text style={styles.statVal}>{stats?.student?.completed_quizzes || 0}</Text>
         <Text style={styles.statLab}>Quizzes</Text>
       </View>
       <View style={styles.statBox}>
-        <Text style={styles.statVal}>98%</Text>
+        <Text style={styles.statVal}>{stats?.student?.attendance_rate || 0}%</Text>
         <Text style={styles.statLab}>Attendance</Text>
       </View>
     </View>

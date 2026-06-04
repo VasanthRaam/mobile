@@ -199,14 +199,24 @@ export default function AttendanceScreen({ navigation }) {
   const handleMarkHoliday = async () => {
     setSubmitting(true);
     try {
-      // Logic for marking holiday would go here
-      setStatusMsg({ 
-        text: isHoliday ? '✅ Holiday removed' : '✅ Academy holiday marked', 
-        type: 'success' 
-      });
-      fetchHolidays();
+      if (isHoliday) {
+        await apiClient.delete(`/attendance/holidays/${selectedDate}`);
+        setStatusMsg({ 
+          text: '✅ Academy holiday removed', 
+          type: 'success' 
+        });
+      } else {
+        await apiClient.post(`/attendance/holidays?holiday_date=${selectedDate}&description=Academy Holiday`);
+        setStatusMsg({ 
+          text: '✅ Academy holiday marked & students notified', 
+          type: 'success' 
+        });
+      }
+      await fetchHolidays();
     } catch (error) {
-      setStatusMsg({ text: '❌ Action failed', type: 'error' });
+      console.error('❌ Holiday toggle error:', error);
+      const errorMsg = error.response?.data?.detail || 'Action failed';
+      setStatusMsg({ text: '❌ ' + errorMsg, type: 'error' });
     } finally {
       setSubmitting(false);
     }

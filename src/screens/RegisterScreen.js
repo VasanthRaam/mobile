@@ -48,9 +48,10 @@ function validateAll({ fullName, email, phone, password, confirmPassword, role, 
 }
 
 export default function RegisterScreen({ navigation, route }) {
-  const { email: initialEmail, full_name: initialName, isGoogle: initialIsGoogle } = route.params || {};
+  const { email: initialEmail, full_name: initialName, isGoogle: initialIsGoogle, supabaseUid: initialSupabaseUid } = route.params || {};
 
   const [isGoogleAuth, setIsGoogleAuth] = useState(initialIsGoogle || false);
+  const [supabaseUid, setSupabaseUid] = useState(initialSupabaseUid || null);
   const [authMethod, setAuthMethod] = useState(initialIsGoogle ? 'google' : null);
   const [fullName, setFullName] = useState(initialName || '');
   const [email, setEmail] = useState(initialEmail || '');
@@ -150,6 +151,7 @@ export default function RegisterScreen({ navigation, route }) {
            setAuthMethod('google');
            setPassword('GOOGLE_AUTH_PLACEHOLDER');
            setConfirmPassword('GOOGLE_AUTH_PLACEHOLDER');
+           setSupabaseUid(user.id);
         } else {
           throw backendError;
         }
@@ -248,6 +250,7 @@ export default function RegisterScreen({ navigation, route }) {
         course_ids: selectedCourses,
         batch_ids: selectedBatches,
         push_token: pushToken,
+        supabase_uid: supabaseUid,
       });
       setSubmitted(true);
     } catch (error) {

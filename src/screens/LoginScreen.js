@@ -60,7 +60,8 @@ export default function LoginScreen({ navigation }) {
         navigation.navigate('Register', { 
           email: user.email, 
           full_name: user.user_metadata.full_name,
-          isGoogle: true 
+          isGoogle: true,
+          supabaseUid: user.id
         });
       } else {
         console.error(error);

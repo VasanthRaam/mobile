@@ -64,18 +64,25 @@ export default function App() {
         }
       };
 
-      Notifications.getLastNotificationResponseAsync().then(response => {
-        if (response?.notification?.request?.content?.data) {
-          handleRedirect(response.notification.request.content.data);
-        }
-      });
+      let responseListener;
+      if (Platform.OS !== 'web') {
+        Notifications.getLastNotificationResponseAsync().then(response => {
+          if (response?.notification?.request?.content?.data) {
+            handleRedirect(response.notification.request.content.data);
+          }
+        }).catch(err => {
+          console.warn("Failed to get last notification response:", err);
+        });
 
-      const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
-        handleRedirect(response.notification.request.content.data);
-      });
+        responseListener = Notifications.addNotificationResponseReceivedListener(response => {
+          handleRedirect(response.notification.request.content.data);
+        });
+      }
 
       return () => {
-        Notifications.removeNotificationSubscription(responseListener);
+        if (responseListener) {
+          Notifications.removeNotificationSubscription(responseListener);
+        }
       };
     }
   }, [isAuthenticated]);
