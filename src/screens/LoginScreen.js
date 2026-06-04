@@ -81,6 +81,10 @@ export default function LoginScreen({ navigation }) {
             path: 'auth-callback',
           });
 
+      if (Platform.OS !== 'web') {
+        Alert.alert('Debug Redirect URI', `Your APK is using:\n\n${redirectUri}\n\nMake sure this EXACT URL is added to Supabase Redirect URLs.`);
+      }
+
       if (Platform.OS === 'web') {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
