@@ -172,10 +172,6 @@ export default function RegisterScreen({ navigation, route }) {
             path: 'auth-callback',
           });
 
-      if (Platform.OS !== 'web') {
-        Alert.alert('Debug Redirect URI', `Your APK is using:\n\n${redirectUri}\n\nMake sure this EXACT URL is added to Supabase Redirect URLs.`);
-      }
-
       if (Platform.OS === 'web') {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
@@ -198,11 +194,6 @@ export default function RegisterScreen({ navigation, route }) {
       if (error) throw error;
 
       const res = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
-
-      // Diagnostic Alert to see what WebBrowser actually returns on Android APK
-      if (Platform.OS !== 'web') {
-        Alert.alert('Debug Session Result', JSON.stringify(res, null, 2));
-      }
 
       if (res.type === 'success') {
         const { url } = res;

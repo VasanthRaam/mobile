@@ -39,9 +39,11 @@ export default function LoginScreen({ navigation }) {
 
   const handleGoogleCallback = async (access_token) => {
     setLoading(true);
+    let user = null;
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser(access_token);
+      const { data: { user: supabaseUser }, error: userError } = await supabase.auth.getUser(access_token);
       if (userError) throw userError;
+      user = supabaseUser;
 
       // Sync with backend
       const backendRes = await apiClient.post('/auth/google-sync', {
@@ -53,10 +55,8 @@ export default function LoginScreen({ navigation }) {
       const { user: userData } = backendRes.data;
       await login(access_token, userData);
     } catch (error) {
-      if (error.response?.status === 404) {
+      if (error.response?.status === 404 && user) {
         // User exists in Supabase but not in our DB -> New Google User
-        // Need to fetch user profile since we caught the error
-        const { data: { user } } = await supabase.auth.getUser(access_token);
         navigation.navigate('Register', { 
           email: user.email, 
           full_name: user.user_metadata.full_name,
@@ -81,10 +81,6 @@ export default function LoginScreen({ navigation }) {
             path: 'auth-callback',
           });
 
-      if (Platform.OS !== 'web') {
-        Alert.alert('Debug Redirect URI', `Your APK is using:\n\n${redirectUri}\n\nMake sure this EXACT URL is added to Supabase Redirect URLs.`);
-      }
-
       if (Platform.OS === 'web') {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
@@ -107,11 +103,6 @@ export default function LoginScreen({ navigation }) {
       if (error) throw error;
 
       const res = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
-
-      // Diagnostic Alert to see what WebBrowser actually returns on Android APK
-      if (Platform.OS !== 'web') {
-        Alert.alert('Debug Session Result', JSON.stringify(res, null, 2));
-      }
 
       if (res.type === 'success') {
         const { url } = res;
