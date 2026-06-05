@@ -22,6 +22,13 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // Add cache-busting to GET requests to prevent browser/network caching of stale list/auth states
+    if (config.method === 'get') {
+      config.params = {
+        ...config.params,
+        _t: Date.now(),
+      };
+    }
     return config;
   },
   (error) => {
@@ -29,12 +36,18 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Optional: Response Interceptor for global error handling (e.g., 401 Unauthorized)
+// Response Interceptor for global error handling (e.g., 401 Unauthorized)
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401) {
-      // Handle unauthorized errors (e.g., clear token, redirect to login)
+      try {
+        // Dynamically require useAuthStore to prevent potential circular dependency issues
+        const { useAuthStore } = require('../store/useAuthStore');
+        await useAuthStore.getState().logout();
+      } catch (logoutError) {
+        console.error('Failed to log out on 401 Unauthorized:', logoutError);
+      }
     }
     return Promise.reject(error);
   }
