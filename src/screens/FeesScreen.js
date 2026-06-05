@@ -160,7 +160,9 @@ export default function FeesScreen() {
       const payload = {
         user_ids: selectedStudents,
         amount: parseFloat(amount),
-        due_date: new Date(dueDate).toISOString()
+        due_date: new Date(dueDate).toISOString(),
+        course_id: selectedCourse,
+        batch_id: selectedBatch
       };
       await apiClient.post('/fees/', payload);
       Alert.alert('Success', 'Fee reminder notifications sent!');

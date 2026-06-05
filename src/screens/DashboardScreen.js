@@ -7,6 +7,7 @@ import {
 import { useAuthStore } from '../store/useAuthStore';
 import NotificationBar from '../components/NotificationBar';
 import apiClient from '../api/apiClient';
+import ChatFAB from '../components/ChatFAB';
 
 const { width } = Dimensions.get('window');
 
@@ -303,6 +304,7 @@ export default function DashboardScreen({ navigation }) {
         )}
 
       </ScrollView>
+      <ChatFAB />
     </SafeAreaView>
   );
 }
