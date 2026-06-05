@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, FlatList, TouchableOpacity, 
   TextInput, Alert, ActivityIndicator, Linking, SafeAreaView,
-  ScrollView
+  ScrollView, Modal, Dimensions
 } from 'react-native';
+
+const { width } = Dimensions.get('window');
 import apiClient from '../api/apiClient';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -18,6 +20,8 @@ export default function FeesScreen() {
   const [adminUpi, setAdminUpi] = useState('');
   const [amount, setAmount] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [pickerDate, setPickerDate] = useState(new Date());
   
   const [courses, setCourses] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState(null);
@@ -43,7 +47,7 @@ export default function FeesScreen() {
 
   const fetchFees = async () => {
     try {
-      const res = await apiClient.get('/fees');
+      const res = await apiClient.get('/fees/');
       setFees(res.data);
     } catch (err) {
       console.error(err);
@@ -158,7 +162,7 @@ export default function FeesScreen() {
         amount: parseFloat(amount),
         due_date: new Date(dueDate).toISOString()
       };
-      await apiClient.post('/fees', payload);
+      await apiClient.post('/fees/', payload);
       Alert.alert('Success', 'Fee reminder notifications sent!');
       setAmount('');
       setDueDate('');
@@ -190,16 +194,102 @@ export default function FeesScreen() {
     }
     const upiUrl = `upi://pay?pa=${adminUpi}&pn=AcademyHub&am=${fee.amount}&cu=INR`;
     try {
-      const supported = await Linking.canOpenURL(upiUrl);
-      if (supported) {
-        await Linking.openURL(upiUrl);
-      } else {
-        Alert.alert('Error', 'No UPI app found on your device to handle payment.');
-      }
+      // Call openURL directly since canOpenURL fails on Android 11+ due to package visibility rules
+      await Linking.openURL(upiUrl);
     } catch (err) {
-      console.error(err);
-      Alert.alert('Error', 'An error occurred while opening UPI app.');
+      console.error('Failed to launch UPI app:', err);
+      Alert.alert(
+        'Manual Payment Info',
+        `Could not launch UPI app automatically.\n\nPlease copy the UPI ID below to pay ₹${fee.amount} in your preferred UPI app:\n\nUPI ID: ${adminUpi}`
+      );
     }
+  };
+
+  const renderDatePickerModal = () => {
+    const displayMonth = pickerDate.getMonth();
+    const displayYear = pickerDate.getFullYear();
+    
+    const daysInMonth = new Date(displayYear, displayMonth + 1, 0).getDate();
+    const firstDayOfMonth = new Date(displayYear, displayMonth, 1).getDay();
+
+    const changeMonth = (offset) => {
+      const next = new Date(pickerDate.getFullYear(), pickerDate.getMonth() + offset, 1);
+      setPickerDate(next);
+    };
+    
+    const days = [];
+    for (let i = 0; i < firstDayOfMonth; i++) days.push(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(i);
+
+    const handleSelectDay = (day) => {
+      if (!day) return;
+      const selectedStr = `${displayYear}-${(displayMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+      setDueDate(selectedStr);
+      setShowDatePicker(false);
+    };
+
+    return (
+      <Modal
+        visible={showDatePicker}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowDatePicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.calendarModalCard}>
+            <View style={styles.calendarModalHeader}>
+              <TouchableOpacity onPress={() => changeMonth(-1)} style={styles.arrowBtn}>
+                <Text style={styles.arrowText}>←</Text>
+              </TouchableOpacity>
+              <Text style={styles.monthTitle}>
+                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][displayMonth]} {displayYear}
+              </Text>
+              <TouchableOpacity onPress={() => changeMonth(1)} style={styles.arrowBtn}>
+                <Text style={styles.arrowText}>→</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.weekDays}>
+              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, idx) => (
+                <Text key={idx} style={styles.weekDayText}>{d}</Text>
+              ))}
+            </View>
+
+            <View style={styles.daysGrid}>
+              {days.map((day, idx) => {
+                if (!day) return <View key={`empty-${idx}`} style={styles.dayBox} />;
+                
+                const dateStr = `${displayYear}-${(displayMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                const isSelected = dateStr === dueDate;
+                
+                return (
+                  <TouchableOpacity 
+                    key={idx} 
+                    style={[
+                      styles.dayBox, 
+                      isSelected && styles.selectedDayBox
+                    ]}
+                    onPress={() => handleSelectDay(day)}
+                  >
+                    <Text style={[
+                      styles.dayText,
+                      isSelected && styles.selectedDayText
+                    ]}>{day}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <TouchableOpacity 
+              style={styles.closeModalBtn} 
+              onPress={() => setShowDatePicker(false)}
+            >
+              <Text style={styles.closeModalBtnText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
   };
 
   const renderAdminView = () => (
@@ -301,12 +391,14 @@ export default function FeesScreen() {
           value={amount}
           onChangeText={setAmount}
         />
-        <TextInput 
-          style={styles.input} 
-          placeholder="Due Date (YYYY-MM-DD)" 
-          value={dueDate}
-          onChangeText={setDueDate}
-        />
+        <TouchableOpacity 
+          style={styles.datePickerTrigger}
+          onPress={() => setShowDatePicker(true)}
+        >
+          <Text style={[styles.datePickerTriggerText, !dueDate && styles.placeholderText]}>
+            {dueDate ? `Due Date: ${dueDate}` : 'Select Due Date (YYYY-MM-DD)'}
+          </Text>
+        </TouchableOpacity>
         <TouchableOpacity 
           style={[styles.primaryBtn, selectedStudents.length === 0 && styles.disabledBtn]} 
           onPress={handleCreateFee} 
@@ -361,6 +453,7 @@ export default function FeesScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {renderDatePickerModal()}
       <FlatList 
         data={fees}
         keyExtractor={(item) => item.id}
@@ -673,5 +766,110 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#94A3B8',
     marginTop: 20,
+  },
+  datePickerTrigger: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    padding: 12,
+    height: 48,
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  datePickerTriggerText: {
+    fontSize: 14,
+    color: '#1E293B',
+    fontWeight: '500',
+  },
+  placeholderText: {
+    color: '#94A3B8',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  calendarModalCard: {
+    width: width * 0.9,
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  calendarModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  arrowBtn: {
+    padding: 10,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+  },
+  arrowText: {
+    fontSize: 18,
+    color: '#1E293B',
+    fontWeight: 'bold',
+  },
+  monthTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  weekDays: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 10,
+  },
+  weekDayText: {
+    width: 40,
+    textAlign: 'center',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#94A3B8',
+  },
+  daysGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    rowGap: 8,
+  },
+  dayBox: {
+    width: (width * 0.9 - 40) / 7,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 20,
+  },
+  dayText: {
+    fontSize: 14,
+    color: '#334155',
+    fontWeight: '600',
+  },
+  selectedDayBox: {
+    backgroundColor: '#4F46E5',
+  },
+  selectedDayText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  closeModalBtn: {
+    marginTop: 15,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+  },
+  closeModalBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#64748B',
   }
 });

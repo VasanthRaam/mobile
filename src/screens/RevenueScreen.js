@@ -34,7 +34,7 @@ export default function RevenueScreen() {
         const res = await apiClient.get('/revenue/dashboard');
         setDashboardData(res.data);
       } else if (activeTab === 'Income') {
-        const res = await apiClient.get('/fees');
+        const res = await apiClient.get('/fees/');
         setIncomes(res.data.filter(f => f.status === 'paid'));
       } else if (activeTab === 'Expenses') {
         const res = await apiClient.get('/revenue/expenses');
