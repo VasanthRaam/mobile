@@ -27,6 +27,13 @@ export default function AttendanceScreen({ navigation }) {
   const [viewDate, setViewDate] = useState(new Date());
   const [statusMsg, setStatusMsg] = useState({ text: '', type: '' }); // { text: '', type: 'success' | 'error' }
 
+  // Leave Request State
+  const [leaveModalVisible, setLeaveModalVisible] = useState(false);
+  const [leaveStartDate, setLeaveStartDate] = useState('');
+  const [leaveEndDate, setLeaveEndDate] = useState('');
+  const [leaveReason, setLeaveReason] = useState('');
+  const [submittingLeave, setSubmittingLeave] = useState(false);
+
   const isViewMode = role === 'parent' || role === 'student';
   const isAdmin = role === 'admin';
 
@@ -222,6 +229,33 @@ export default function AttendanceScreen({ navigation }) {
     }
   };
 
+  const handleRequestLeave = async () => {
+    if (!leaveStartDate || !leaveEndDate || !leaveReason) {
+      Alert.alert("Missing Fields", "Please fill in all leave details.");
+      return;
+    }
+    
+    setSubmittingLeave(true);
+    try {
+      await apiClient.post('/attendance/leave_requests', {
+        start_date: leaveStartDate,
+        end_date: leaveEndDate,
+        reason: leaveReason
+      });
+      
+      Alert.alert("Success", "Leave request submitted to your teacher and admin.");
+      setLeaveModalVisible(false);
+      setLeaveStartDate('');
+      setLeaveEndDate('');
+      setLeaveReason('');
+    } catch (e) {
+      const msg = e.response?.data?.detail || "Failed to submit leave request.";
+      Alert.alert("Error", msg);
+    } finally {
+      setSubmittingLeave(false);
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.centered}>
@@ -280,13 +314,16 @@ export default function AttendanceScreen({ navigation }) {
               let status = recordsMap[dateStr];
               const isAcademyHoliday = holidayDates.includes(dateStr);
               
-              // Default to 'present' for non-holiday past weekdays if no explicit record exists
               if (!status && !isAcademyHoliday) {
                 const dateObj = new Date(displayYear, displayMonth, day);
                 const isWeekend = dateObj.getDay() === 0; // Assuming Sunday is a weekend/holiday
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
-                if (!isWeekend && dateObj <= today) {
+                
+                const joinDate = user?.created_at ? new Date(user.created_at) : new Date(0);
+                joinDate.setHours(0, 0, 0, 0);
+                
+                if (!isWeekend && dateObj <= today && dateObj >= joinDate) {
                   status = 'present';
                 }
               }
@@ -361,6 +398,60 @@ export default function AttendanceScreen({ navigation }) {
             )}
           </View>
         </ScrollView>
+        
+        {/* Floating Action Button for Leave Requests */}
+        <TouchableOpacity style={styles.fab} onPress={() => setLeaveModalVisible(true)}>
+          <Text style={styles.fabIcon}>🏖️</Text>
+        </TouchableOpacity>
+
+        <Modal visible={leaveModalVisible} animationType="slide" transparent={true} onRequestClose={() => setLeaveModalVisible(false)}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Request Leave</Text>
+              
+              <Text style={styles.inputLabel}>Start Date (YYYY-MM-DD)</Text>
+              <TextInput 
+                style={styles.modalInput} 
+                placeholder="e.g. 2024-12-01" 
+                placeholderTextColor="#94A3B8"
+                value={leaveStartDate}
+                onChangeText={setLeaveStartDate}
+              />
+
+              <Text style={styles.inputLabel}>End Date (YYYY-MM-DD)</Text>
+              <TextInput 
+                style={styles.modalInput} 
+                placeholder="e.g. 2024-12-05" 
+                placeholderTextColor="#94A3B8"
+                value={leaveEndDate}
+                onChangeText={setLeaveEndDate}
+              />
+
+              <Text style={styles.inputLabel}>Reason</Text>
+              <TextInput 
+                style={[styles.modalInput, { height: 80, textAlignVertical: 'top' }]} 
+                placeholder="Why do you need a leave?" 
+                placeholderTextColor="#94A3B8"
+                multiline
+                value={leaveReason}
+                onChangeText={setLeaveReason}
+              />
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity style={styles.modalCancel} onPress={() => setLeaveModalVisible(false)}>
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.modalSubmit, submittingLeave && styles.disabledBtn]} 
+                  onPress={handleRequestLeave}
+                  disabled={submittingLeave}
+                >
+                  {submittingLeave ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalSubmitText}>Submit Request</Text>}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     );
   }
@@ -750,4 +841,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1E293B',
   },
+  fab: { position: 'absolute', bottom: 30, right: 30, width: 60, height: 60, borderRadius: 30, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', elevation: 5, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 5, shadowOffset: { width: 0, height: 2 }, borderWidth: 2, borderColor: '#E2E8F0' },
+  fabIcon: { fontSize: 28, marginTop: -2 },
+  modalContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: '#1E293B', marginBottom: 20 },
+  inputLabel: { fontSize: 13, fontWeight: '700', color: '#64748B', marginBottom: 6, marginTop: 10 },
+  modalInput: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 14, fontSize: 16, color: '#1E293B' },
+  modalActions: { flexDirection: 'row', gap: 12, marginTop: 24 },
+  modalCancel: { flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center' },
+  modalCancelText: { fontSize: 16, fontWeight: '700', color: '#64748B' },
+  modalSubmit: { flex: 2, padding: 16, borderRadius: 12, backgroundColor: '#6366F1', alignItems: 'center' },
+  modalSubmitText: { fontSize: 16, fontWeight: '700', color: '#fff' }
 });

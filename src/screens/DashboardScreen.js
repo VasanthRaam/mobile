@@ -212,6 +212,11 @@ export default function DashboardScreen({ navigation }) {
                 () => navigation.navigate('AssignHomework'),
                 'Send new tasks to students/batches'
               )}
+              {renderCard(
+                'Leave Approvals', '🔔', '#F59E0B', 
+                () => navigation.navigate('PendingApprovals'),
+                'Review student leave requests'
+              )}
             </View>
 
             <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Assessments & Tracking 📈</Text>

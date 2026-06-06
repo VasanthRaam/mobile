@@ -2,9 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   ActivityIndicator, SafeAreaView, RefreshControl,
-  Modal, TextInput, Alert, StatusBar, Platform,
+  Modal, TextInput, Alert, StatusBar, Platform, ScrollView
 } from 'react-native';
 import apiClient from '../api/apiClient';
+import { useAuthStore } from '../store/useAuthStore';
 
 const ROLE_COLORS = {
   teacher: '#6366F1',
@@ -13,39 +14,60 @@ const ROLE_COLORS = {
 };
 
 export default function PendingApprovalsScreen({ navigation }) {
-  const [pending, setPending] = useState([]);
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'admin';
+  const [activeTab, setActiveTab] = useState(isAdmin ? 'registrations' : 'leaves'); // registrations, enrollments, leaves
+  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
 
   // In-screen confirm modal state
   const [confirmModal, setConfirmModal] = useState(null);
-  // { type: 'approve'|'reject', item, rejectReason: '' }
+  // { type: 'approve'|'reject', item, tab: 'registrations'|'enrollments'|'leaves', rejectReason: '' }
 
-  // ── Fetch ─────────────────────────────────────────────────────────────────
-  const fetchPending = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     try {
-      const res = await apiClient.get('/auth/pending');
-      setPending(res.data);
+      let res;
+      if (activeTab === 'registrations') {
+        res = await apiClient.get('/auth/pending');
+      } else if (activeTab === 'enrollments') {
+        res = await apiClient.get('/enrollments/pending');
+      } else if (activeTab === 'leaves') {
+        res = await apiClient.get('/attendance/leave_requests');
+      }
+      setData(res.data);
     } catch (e) {
+      console.error(e);
       const msg = e.response?.data?.detail || 'Network error. Please check your connection.';
       Alert.alert('Could not load requests', msg);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [activeTab]);
 
-  useEffect(() => { fetchPending(); }, [fetchPending]);
+  useEffect(() => { 
+    setLoading(true);
+    fetchData(); 
+  }, [fetchData]);
 
-  // ── Actions (called after confirmation) ───────────────────────────────────
-  const doApprove = async (item) => {
+  // ── Actions ───────────────────────────────────
+  const doApprove = async (item, tab) => {
     setConfirmModal(null);
     setActionLoading(item.id);
     try {
-      const res = await apiClient.post(`/auth/approve/${item.id}`);
-      await fetchPending();
-      Alert.alert('✅ Approved!', `${item.full_name} can now log in to BuddyBloom.`);
+      if (tab === 'registrations') {
+        await apiClient.post(`/auth/approve/${item.id}`);
+        Alert.alert('✅ Approved!', `${item.full_name} can now log in to BuddyBloom.`);
+      } else if (tab === 'enrollments') {
+        await apiClient.post(`/enrollments/${item.id}/approve`);
+        Alert.alert('✅ Approved!', `Enrollment for ${item.student_name} approved.`);
+      } else if (tab === 'leaves') {
+        await apiClient.post(`/attendance/leave_requests/${item.id}/approve`);
+        Alert.alert('✅ Approved!', `Leave request for ${item.student_name} approved.`);
+      }
+      await fetchData();
     } catch (e) {
       const detail = e.response?.data?.detail || 'Approval failed. Please try again.';
       Alert.alert('Approval Failed', detail);
@@ -54,15 +76,21 @@ export default function PendingApprovalsScreen({ navigation }) {
     }
   };
 
-  const doReject = async (item, reason) => {
+  const doReject = async (item, tab, reason) => {
     setConfirmModal(null);
     setActionLoading(item.id);
     try {
-      await apiClient.post(`/auth/reject/${item.id}`, {
-        reason: reason?.trim() || 'Rejected by admin.',
-      });
-      await fetchPending();
-      Alert.alert('Rejected', `${item.full_name}'s registration has been rejected.`);
+      if (tab === 'registrations') {
+        await apiClient.post(`/auth/reject/${item.id}`, { reason: reason?.trim() || 'Rejected by admin.' });
+        Alert.alert('Rejected', `${item.full_name}'s registration has been rejected.`);
+      } else if (tab === 'enrollments') {
+        await apiClient.post(`/enrollments/${item.id}/reject`);
+        Alert.alert('Rejected', `Enrollment for ${item.student_name} rejected.`);
+      } else if (tab === 'leaves') {
+        await apiClient.post(`/attendance/leave_requests/${item.id}/reject`);
+        Alert.alert('Rejected', `Leave request for ${item.student_name} rejected.`);
+      }
+      await fetchData();
     } catch (e) {
       const detail = e.response?.data?.detail || 'Rejection failed. Please try again.';
       Alert.alert('Rejection Failed', detail);
@@ -71,48 +99,57 @@ export default function PendingApprovalsScreen({ navigation }) {
     }
   };
 
-  // ── Render item ───────────────────────────────────────────────────────────
+  // ── Render Items ───────────────────────────────────────────────────────────
   const renderItem = ({ item }) => {
     const isProcessing = actionLoading === item.id;
-    const roleColor = ROLE_COLORS[item.role] || '#64748B';
-    const initials = item.full_name
-      .split(' ')
-      .map((w) => w[0])
-      .slice(0, 2)
-      .join('')
-      .toUpperCase();
-    const dateStr = item.created_at
-      ? new Date(item.created_at).toLocaleDateString('en-IN', {
-          day: 'numeric', month: 'short', year: 'numeric',
-        })
+    
+    let title, subtitle, extra1, extra2, initials, dateStr;
+
+    if (activeTab === 'registrations') {
+      title = item.full_name;
+      subtitle = item.email;
+      extra1 = item.phone || '';
+      extra2 = `Role: ${item.role.toUpperCase()}`;
+      initials = item.full_name.substring(0, 2).toUpperCase();
+    } else if (activeTab === 'enrollments') {
+      title = item.student_name;
+      subtitle = `Course: ${item.course_name}`;
+      extra1 = `Batch: ${item.batch_name}`;
+      extra2 = ``;
+      initials = item.student_name ? item.student_name.substring(0, 2).toUpperCase() : 'ST';
+    } else if (activeTab === 'leaves') {
+      title = item.student_name;
+      subtitle = `From ${item.start_date} to ${item.end_date}`;
+      extra1 = `Reason: ${item.reason}`;
+      extra2 = ``;
+      initials = item.student_name ? item.student_name.substring(0, 2).toUpperCase() : 'ST';
+    }
+
+    dateStr = item.created_at
+      ? new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
       : 'Unknown date';
 
     return (
       <View style={styles.card}>
-        {/* Card header */}
         <View style={styles.cardHeader}>
-          <View style={[styles.avatar, { backgroundColor: roleColor + '20' }]}>
-            <Text style={[styles.avatarText, { color: roleColor }]}>{initials}</Text>
+          <View style={[styles.avatar, { backgroundColor: '#EEF2FF' }]}>
+            <Text style={[styles.avatarText, { color: '#6366F1' }]}>{initials}</Text>
           </View>
 
           <View style={styles.cardInfo}>
-            <Text style={styles.cardName}>{item.full_name}</Text>
-            <Text style={styles.cardEmail}>{item.email}</Text>
-            {item.phone ? <Text style={styles.cardPhone}>{item.phone}</Text> : null}
+            <Text style={styles.cardName}>{title}</Text>
+            <Text style={styles.cardSubtitle}>{subtitle}</Text>
+            {extra1 ? <Text style={styles.cardExtra}>{extra1}</Text> : null}
             <Text style={styles.cardDate}>Requested on {dateStr}</Text>
           </View>
-
-          <View style={[
-            styles.roleBadge,
-            { backgroundColor: roleColor + '15', borderColor: roleColor + '40' },
-          ]}>
-            <Text style={[styles.roleBadgeText, { color: roleColor }]}>
-              {item.role.toUpperCase()}
-            </Text>
-          </View>
+          
+          {extra2 ? (
+            <View style={styles.roleBadge}>
+              <Text style={styles.roleBadgeText}>{extra2}</Text>
+            </View>
+          ) : null}
         </View>
 
-        {/* Action row */}
         {isProcessing ? (
           <View style={styles.processingRow}>
             <ActivityIndicator color="#6366F1" size="small" />
@@ -123,14 +160,14 @@ export default function PendingApprovalsScreen({ navigation }) {
             <TouchableOpacity
               style={[styles.actionBtn, styles.rejectBtn]}
               activeOpacity={0.8}
-              onPress={() => setConfirmModal({ type: 'reject', item, rejectReason: '' })}
+              onPress={() => setConfirmModal({ type: 'reject', item, tab: activeTab, rejectReason: '' })}
             >
               <Text style={styles.rejectBtnText}>❌  Reject</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionBtn, styles.approveBtn]}
               activeOpacity={0.8}
-              onPress={() => setConfirmModal({ type: 'approve', item })}
+              onPress={() => setConfirmModal({ type: 'approve', item, tab: activeTab })}
             >
               <Text style={styles.approveBtnText}>✅  Approve</Text>
             </TouchableOpacity>
@@ -140,17 +177,6 @@ export default function PendingApprovalsScreen({ navigation }) {
     );
   };
 
-  // ── Loading state ─────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.centered}>
-        <ActivityIndicator size="large" color="#6366F1" />
-        <Text style={styles.loadingLabel}>Loading requests...</Text>
-      </SafeAreaView>
-    );
-  }
-
-  // ── Main render ───────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -160,72 +186,72 @@ export default function PendingApprovalsScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtnWrapper}>
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Pending Approvals</Text>
-        <View style={[styles.countBadge, pending.length === 0 && styles.countBadgeGreen]}>
-          <Text style={styles.countBadgeText}>{pending.length}</Text>
-        </View>
+        <Text style={styles.headerTitle}>Approvals</Text>
       </View>
 
-      {/* List */}
-      {pending.length === 0 ? (
+      <View style={styles.tabsContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 15 }}>
+          {isAdmin && (
+            <>
+              <TouchableOpacity style={[styles.tab, activeTab === 'registrations' && styles.activeTab]} onPress={() => setActiveTab('registrations')}>
+                <Text style={[styles.tabText, activeTab === 'registrations' && styles.activeTabText]}>Registrations</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.tab, activeTab === 'enrollments' && styles.activeTab]} onPress={() => setActiveTab('enrollments')}>
+                <Text style={[styles.tabText, activeTab === 'enrollments' && styles.activeTabText]}>Enrollments</Text>
+              </TouchableOpacity>
+            </>
+          )}
+          <TouchableOpacity style={[styles.tab, activeTab === 'leaves' && styles.activeTab]} onPress={() => setActiveTab('leaves')}>
+            <Text style={[styles.tabText, activeTab === 'leaves' && styles.activeTabText]}>Leave Requests</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+
+      {loading ? (
+        <SafeAreaView style={styles.centered}>
+          <ActivityIndicator size="large" color="#6366F1" />
+          <Text style={styles.loadingLabel}>Loading requests...</Text>
+        </SafeAreaView>
+      ) : data.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyIcon}>🎉</Text>
           <Text style={styles.emptyTitle}>All caught up!</Text>
-          <Text style={styles.emptySubtitle}>No pending registration requests.</Text>
+          <Text style={styles.emptySubtitle}>No pending {activeTab} requests.</Text>
         </View>
       ) : (
         <FlatList
-        showsVerticalScrollIndicator={false}
-          data={pending}
+          showsVerticalScrollIndicator={false}
+          data={data}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={() => { setRefreshing(true); fetchPending(); }}
+              onRefresh={() => { setRefreshing(true); fetchData(); }}
               tintColor="#6366F1"
             />
           }
         />
       )}
 
-      {/* ── Confirmation Modal (works on Web + Native) ─────────────────── */}
+      {/* Modal */}
       {confirmModal && (
-        <Modal
-          transparent
-          animationType="fade"
-          visible
-          onRequestClose={() => setConfirmModal(null)}
-        >
+        <Modal transparent animationType="fade" visible onRequestClose={() => setConfirmModal(null)}>
           <View style={styles.overlay}>
             <View style={styles.modalCard}>
               {confirmModal.type === 'approve' ? (
                 <>
                   <Text style={styles.modalIcon}>✅</Text>
-                  <Text style={styles.modalTitle}>Approve Registration?</Text>
+                  <Text style={styles.modalTitle}>Approve Request?</Text>
                   <Text style={styles.modalBody}>
-                    <Text style={{ fontWeight: '800', color: '#1E293B' }}>
-                      {confirmModal.item.full_name}
-                    </Text>
-                    {` will be registered as a `}
-                    <Text style={{ fontWeight: '800', color: ROLE_COLORS[confirmModal.item.role] }}>
-                      {confirmModal.item.role}
-                    </Text>
-                    {` and can log in immediately.`}
+                    Are you sure you want to approve this {confirmModal.tab} request?
                   </Text>
-                  <Text style={styles.modalEmail}>{confirmModal.item.email}</Text>
                   <View style={styles.modalActions}>
-                    <TouchableOpacity
-                      style={[styles.modalBtn, styles.modalBtnCancel]}
-                      onPress={() => setConfirmModal(null)}
-                    >
+                    <TouchableOpacity style={[styles.modalBtn, styles.modalBtnCancel]} onPress={() => setConfirmModal(null)}>
                       <Text style={styles.modalBtnCancelText}>Cancel</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.modalBtn, styles.modalBtnApprove]}
-                      onPress={() => doApprove(confirmModal.item)}
-                    >
+                    <TouchableOpacity style={[styles.modalBtn, styles.modalBtnApprove]} onPress={() => doApprove(confirmModal.item, confirmModal.tab)}>
                       <Text style={styles.modalBtnApproveText}>Approve →</Text>
                     </TouchableOpacity>
                   </View>
@@ -233,34 +259,23 @@ export default function PendingApprovalsScreen({ navigation }) {
               ) : (
                 <>
                   <Text style={styles.modalIcon}>❌</Text>
-                  <Text style={styles.modalTitle}>Reject Registration?</Text>
-                  <Text style={styles.modalBody}>
-                    Optionally provide a reason for rejecting{' '}
-                    <Text style={{ fontWeight: '800', color: '#1E293B' }}>
-                      {confirmModal.item.full_name}
-                    </Text>
-                    .
-                  </Text>
-                  <TextInput
-                    style={styles.rejectInput}
-                    placeholder="Reason (optional)"
-                    placeholderTextColor="#94A3B8"
-                    value={confirmModal.rejectReason}
-                    onChangeText={(t) => setConfirmModal({ ...confirmModal, rejectReason: t })}
-                    multiline
-                    numberOfLines={3}
-                  />
+                  <Text style={styles.modalTitle}>Reject Request?</Text>
+                  {confirmModal.tab === 'registrations' && (
+                    <TextInput
+                      style={styles.rejectInput}
+                      placeholder="Reason (optional)"
+                      placeholderTextColor="#94A3B8"
+                      value={confirmModal.rejectReason}
+                      onChangeText={(t) => setConfirmModal({ ...confirmModal, rejectReason: t })}
+                      multiline
+                      numberOfLines={3}
+                    />
+                  )}
                   <View style={styles.modalActions}>
-                    <TouchableOpacity
-                      style={[styles.modalBtn, styles.modalBtnCancel]}
-                      onPress={() => setConfirmModal(null)}
-                    >
+                    <TouchableOpacity style={[styles.modalBtn, styles.modalBtnCancel]} onPress={() => setConfirmModal(null)}>
                       <Text style={styles.modalBtnCancelText}>Cancel</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.modalBtn, styles.modalBtnReject]}
-                      onPress={() => doReject(confirmModal.item, confirmModal.rejectReason)}
-                    >
+                    <TouchableOpacity style={[styles.modalBtn, styles.modalBtnReject]} onPress={() => doReject(confirmModal.item, confirmModal.tab, confirmModal.rejectReason)}>
                       <Text style={styles.modalBtnRejectText}>Reject</Text>
                     </TouchableOpacity>
                   </View>
@@ -278,7 +293,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
   loadingLabel: { marginTop: 12, fontSize: 14, color: '#64748B', fontWeight: '600' },
-
   header: {
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20,
     paddingVertical: 16, backgroundColor: '#fff',
@@ -287,76 +301,45 @@ const styles = StyleSheet.create({
   backBtnWrapper: { paddingRight: 12 },
   backText: { fontSize: 15, color: '#6366F1', fontWeight: '700' },
   headerTitle: { flex: 1, fontSize: 18, fontWeight: '800', color: '#1E293B' },
-  countBadge: {
-    backgroundColor: '#EF4444', borderRadius: 12,
-    paddingHorizontal: 9, paddingVertical: 3, minWidth: 26, alignItems: 'center',
-  },
-  countBadgeGreen: { backgroundColor: '#10B981' },
-  countBadgeText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-
+  tabsContainer: { backgroundColor: '#fff', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  tab: { paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, backgroundColor: '#F1F5F9', marginRight: 10 },
+  activeTab: { backgroundColor: '#6366F1' },
+  tabText: { fontSize: 14, fontWeight: '700', color: '#64748B' },
+  activeTabText: { color: '#fff' },
   list: { padding: 16, gap: 12 },
-
-  card: {
-    backgroundColor: '#fff', borderRadius: 20, padding: 18,
-    shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06, shadowRadius: 12, elevation: 5,
-    marginBottom: 4,
-  },
+  card: { backgroundColor: '#fff', borderRadius: 20, padding: 18, shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 5, marginBottom: 4 },
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 },
   avatar: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   avatarText: { fontSize: 18, fontWeight: '800' },
   cardInfo: { flex: 1 },
   cardName: { fontSize: 16, fontWeight: '800', color: '#1E293B', marginBottom: 2 },
-  cardEmail: { fontSize: 13, color: '#64748B', marginBottom: 2 },
-  cardPhone: { fontSize: 13, color: '#64748B', marginBottom: 2 },
+  cardSubtitle: { fontSize: 13, color: '#64748B', marginBottom: 2 },
+  cardExtra: { fontSize: 13, color: '#64748B', marginBottom: 2 },
   cardDate: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
-  roleBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, borderWidth: 1, alignSelf: 'flex-start' },
-  roleBadgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
-
+  roleBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, backgroundColor: '#F1F5F9' },
+  roleBadgeText: { fontSize: 10, fontWeight: '800', color: '#475569' },
   actionRow: { flexDirection: 'row', gap: 10 },
   actionBtn: { flex: 1, paddingVertical: 13, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   rejectBtn: { backgroundColor: '#FEF2F2', borderWidth: 1.5, borderColor: '#FECACA' },
-  approveBtn: {
-    backgroundColor: '#6366F1',
-    shadowColor: '#6366F1', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 4,
-  },
+  approveBtn: { backgroundColor: '#6366F1' },
   rejectBtnText: { fontSize: 14, fontWeight: '700', color: '#EF4444' },
   approveBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
-
   processingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 12 },
   processingText: { fontSize: 14, color: '#6366F1', fontWeight: '600' },
-
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
   emptyIcon: { fontSize: 56, marginBottom: 16 },
   emptyTitle: { fontSize: 22, fontWeight: '800', color: '#1E293B', marginBottom: 8 },
   emptySubtitle: { fontSize: 15, color: '#64748B', textAlign: 'center' },
-
-  // ── Modal ──
-  overlay: {
-    flex: 1, backgroundColor: 'rgba(15,23,42,0.55)',
-    justifyContent: 'center', alignItems: 'center', padding: 24,
-  },
-  modalCard: {
-    backgroundColor: '#fff', borderRadius: 28, padding: 28, width: '100%',
-    maxWidth: 400, alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.15, shadowRadius: 32, elevation: 20,
-  },
+  overlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  modalCard: { backgroundColor: '#fff', borderRadius: 28, padding: 28, width: '100%', maxWidth: 400, alignItems: 'center' },
   modalIcon: { fontSize: 44, marginBottom: 12 },
   modalTitle: { fontSize: 20, fontWeight: '900', color: '#1E293B', marginBottom: 12, textAlign: 'center' },
-  modalBody: { fontSize: 14, color: '#64748B', textAlign: 'center', lineHeight: 22, marginBottom: 10, fontWeight: '500' },
-  modalEmail: { fontSize: 13, color: '#6366F1', fontWeight: '700', marginBottom: 22 },
-  rejectInput: {
-    width: '100%', minHeight: 80, backgroundColor: '#F8FAFC', borderWidth: 1.5,
-    borderColor: '#E2E8F0', borderRadius: 14, padding: 14, fontSize: 14, color: '#1E293B',
-    textAlignVertical: 'top', marginBottom: 20,
-  },
+  modalBody: { fontSize: 14, color: '#64748B', textAlign: 'center', lineHeight: 22, marginBottom: 20, fontWeight: '500' },
+  rejectInput: { width: '100%', minHeight: 80, backgroundColor: '#F8FAFC', borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 14, padding: 14, fontSize: 14, textAlignVertical: 'top', marginBottom: 20 },
   modalActions: { flexDirection: 'row', gap: 12, width: '100%' },
   modalBtn: { flex: 1, paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
   modalBtnCancel: { backgroundColor: '#F1F5F9', borderWidth: 1.5, borderColor: '#E2E8F0' },
-  modalBtnApprove: {
-    backgroundColor: '#6366F1',
-    shadowColor: '#6366F1', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 4,
-  },
+  modalBtnApprove: { backgroundColor: '#6366F1' },
   modalBtnReject: { backgroundColor: '#EF4444' },
   modalBtnCancelText: { fontSize: 15, fontWeight: '700', color: '#64748B' },
   modalBtnApproveText: { fontSize: 15, fontWeight: '700', color: '#fff' },

@@ -1,10 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, SafeAreaView, ActivityIndicator, TouchableOpacity, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, FlatList, SafeAreaView, ActivityIndicator, TouchableOpacity, StatusBar, Modal, Alert, ScrollView } from 'react-native';
 import apiClient from '../api/apiClient';
 
 export default function MyCoursesScreen({ navigation }) {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Modal State
+  const [modalVisible, setModalVisible] = useState(false);
+  const [allCourses, setAllCourses] = useState([]);
+  const [loadingAll, setLoadingAll] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [selectedBatch, setSelectedBatch] = useState(null);
+  const [enrolling, setEnrolling] = useState(false);
 
   useEffect(() => {
     fetchMyCourses();
@@ -12,9 +20,7 @@ export default function MyCoursesScreen({ navigation }) {
 
   const fetchMyCourses = async () => {
     try {
-      // The /courses/ endpoint already filters by role automatically
       const response = await apiClient.get('/courses/');
-      // We also want to get batch names for each course
       const coursesData = response.data;
       
       const detailedCourses = await Promise.all(coursesData.map(async (course) => {
@@ -27,6 +33,41 @@ export default function MyCoursesScreen({ navigation }) {
       console.error('Failed to fetch courses:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOpenEnrollModal = async () => {
+    setModalVisible(true);
+    setLoadingAll(true);
+    try {
+      const res = await apiClient.get('/courses/all');
+      setAllCourses(res.data);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to load available courses.');
+    } finally {
+      setLoadingAll(false);
+    }
+  };
+
+  const handleEnrollRequest = async () => {
+    if (!selectedCourse || !selectedBatch) {
+      Alert.alert('Selection Required', 'Please select a course and a batch.');
+      return;
+    }
+    
+    setEnrolling(true);
+    try {
+      await apiClient.post('/enrollments/request', {
+        batch_id: selectedBatch
+      });
+      Alert.alert('Success', 'Enrollment request sent to Admin for approval!');
+      setModalVisible(false);
+      setSelectedCourse(null);
+      setSelectedBatch(null);
+    } catch (error) {
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to submit request.');
+    } finally {
+      setEnrolling(false);
     }
   };
 
@@ -91,6 +132,69 @@ export default function MyCoursesScreen({ navigation }) {
           </View>
         }
       />
+      
+      {/* Floating Action Button for New Enrollment */}
+      <TouchableOpacity style={styles.fab} onPress={handleOpenEnrollModal}>
+        <Text style={styles.fabIcon}>+</Text>
+      </TouchableOpacity>
+
+      {/* Enroll Course Modal */}
+      <Modal visible={modalVisible} animationType="slide" transparent={true} onRequestClose={() => setModalVisible(false)}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Enroll in a New Course</Text>
+            
+            {loadingAll ? (
+              <ActivityIndicator size="large" color="#6366F1" style={{ marginVertical: 20 }} />
+            ) : (
+              <ScrollView style={styles.modalScroll}>
+                <Text style={styles.sectionLabel}>Select a Course:</Text>
+                {allCourses.map(course => (
+                  <TouchableOpacity 
+                    key={course.id} 
+                    style={[styles.modalCard, selectedCourse === course.id && styles.modalCardSelected]}
+                    onPress={() => { setSelectedCourse(course.id); setSelectedBatch(null); }}
+                  >
+                    <Text style={[styles.modalCardText, selectedCourse === course.id && styles.modalCardTextSelected]}>
+                      {course.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+                
+                {selectedCourse && (
+                  <View style={{ marginTop: 20 }}>
+                    <Text style={styles.sectionLabel}>Select a Batch:</Text>
+                    {allCourses.find(c => c.id === selectedCourse)?.batches.map(batch => (
+                      <TouchableOpacity 
+                        key={batch.id} 
+                        style={[styles.modalCard, selectedBatch === batch.id && styles.modalCardSelected]}
+                        onPress={() => setSelectedBatch(batch.id)}
+                      >
+                        <Text style={[styles.modalCardText, selectedBatch === batch.id && styles.modalCardTextSelected]}>
+                          {batch.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </ScrollView>
+            )}
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalCancel} onPress={() => { setModalVisible(false); setSelectedCourse(null); setSelectedBatch(null); }}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.modalSubmit, (!selectedCourse || !selectedBatch || enrolling) && styles.modalSubmitDisabled]} 
+                onPress={handleEnrollRequest}
+                disabled={!selectedCourse || !selectedBatch || enrolling}
+              >
+                {enrolling ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalSubmitText}>Request Enrollment</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -122,4 +226,20 @@ const styles = StyleSheet.create({
   emptyIcon: { fontSize: 60, marginBottom: 16 },
   emptyTitle: { fontSize: 20, fontWeight: '800', color: '#1E293B', marginBottom: 8 },
   emptySubtitle: { fontSize: 14, color: '#64748B', textAlign: 'center', paddingHorizontal: 40 },
+  fab: { position: 'absolute', bottom: 30, right: 30, width: 60, height: 60, borderRadius: 30, backgroundColor: '#6366F1', justifyContent: 'center', alignItems: 'center', elevation: 5, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 5, shadowOffset: { width: 0, height: 2 } },
+  fabIcon: { color: '#fff', fontSize: 32, fontWeight: '300', marginTop: -4 },
+  modalContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '80%' },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: '#1E293B', marginBottom: 20 },
+  modalScroll: { marginBottom: 20 },
+  modalCard: { padding: 16, backgroundColor: '#F1F5F9', borderRadius: 12, marginBottom: 10, borderWidth: 1, borderColor: '#E2E8F0' },
+  modalCardSelected: { backgroundColor: '#EEF2FF', borderColor: '#6366F1' },
+  modalCardText: { fontSize: 16, fontWeight: '600', color: '#475569' },
+  modalCardTextSelected: { color: '#6366F1' },
+  modalActions: { flexDirection: 'row', gap: 12 },
+  modalCancel: { flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center' },
+  modalCancelText: { fontSize: 16, fontWeight: '700', color: '#64748B' },
+  modalSubmit: { flex: 2, padding: 16, borderRadius: 12, backgroundColor: '#6366F1', alignItems: 'center' },
+  modalSubmitDisabled: { backgroundColor: '#94A3B8' },
+  modalSubmitText: { fontSize: 16, fontWeight: '700', color: '#fff' }
 });

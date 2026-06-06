@@ -29,9 +29,11 @@ const ChatScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const flatListRef = useRef(null);
 
+  const [isFetchingHistory, setIsFetchingHistory] = useState(false);
+
   useEffect(() => {
     const fetchHistory = async () => {
-      setIsLoading(true);
+      setIsFetchingHistory(true);
       try {
         const response = await apiClient.get('/chat/');
         if (response.data && response.data.length > 0) {
@@ -45,7 +47,7 @@ const ChatScreen = ({ navigation }) => {
       } catch (error) {
         console.error('Failed to load chat history:', error);
       } finally {
-        setIsLoading(false);
+        setIsFetchingHistory(false);
       }
     };
     fetchHistory();
@@ -112,8 +114,8 @@ const ChatScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView 
         style={styles.keyboardView} 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 20}
       >
         <FlatList
           ref={flatListRef}
