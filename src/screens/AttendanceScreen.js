@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, Switch, TouchableOpacity, Alert, ActivityIndicator, SafeAreaView, ScrollView, Dimensions, Platform } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Switch, TouchableOpacity, Alert, ActivityIndicator, SafeAreaView, ScrollView, Dimensions, Platform, Modal, TextInput } from 'react-native';
 import apiClient from '../api/apiClient';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -33,6 +33,7 @@ export default function AttendanceScreen({ navigation }) {
   const [leaveEndDate, setLeaveEndDate] = useState('');
   const [leaveReason, setLeaveReason] = useState('');
   const [submittingLeave, setSubmittingLeave] = useState(false);
+  const [leaveViewDate, setLeaveViewDate] = useState(new Date());
 
   const isViewMode = role === 'parent' || role === 'student';
   const isAdmin = role === 'admin';
@@ -302,8 +303,8 @@ export default function AttendanceScreen({ navigation }) {
             </TouchableOpacity>
           </View>
           <View style={styles.weekDays}>
-            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
-              <Text key={d} style={styles.weekDayText}>{d}</Text>
+            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, index) => (
+              <Text key={`weekday-${index}`} style={styles.weekDayText}>{d}</Text>
             ))}
           </View>
           <View style={styles.daysGrid}>
@@ -320,7 +321,7 @@ export default function AttendanceScreen({ navigation }) {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 
-                const joinDate = user?.created_at ? new Date(user.created_at) : new Date(0);
+                const joinDate = user?.created_at ? new Date(user.created_at) : new Date();
                 joinDate.setHours(0, 0, 0, 0);
                 
                 if (!isWeekend && dateObj <= today && dateObj >= joinDate) {
@@ -356,6 +357,90 @@ export default function AttendanceScreen({ navigation }) {
               <View style={[styles.legendDot, { backgroundColor: '#A855F7' }]} />
               <Text style={styles.legendText}>Holiday</Text>
             </View>
+          </View>
+        </View>
+      );
+    };
+
+    const renderLeaveCalendar = () => {
+      const displayMonth = leaveViewDate.getMonth();
+      const displayYear = leaveViewDate.getFullYear();
+      
+      const daysInMonth = new Date(displayYear, displayMonth + 1, 0).getDate();
+      const firstDayOfMonth = new Date(displayYear, displayMonth, 1).getDay();
+
+      const changeLeaveMonth = (offset) => {
+        const next = new Date(leaveViewDate.getFullYear(), leaveViewDate.getMonth() + offset, 1);
+        setLeaveViewDate(next);
+      };
+      
+      const days = [];
+      for (let i = 0; i < firstDayOfMonth; i++) days.push(null);
+      for (let i = 1; i <= daysInMonth; i++) days.push(i);
+
+      const handleDatePress = (dateStr) => {
+        if (!leaveStartDate || (leaveStartDate && leaveEndDate)) {
+          setLeaveStartDate(dateStr);
+          setLeaveEndDate('');
+        } else {
+          if (dateStr >= leaveStartDate) {
+            setLeaveEndDate(dateStr);
+          } else {
+            setLeaveStartDate(dateStr);
+            setLeaveEndDate('');
+          }
+        }
+      };
+
+      return (
+        <View style={styles.pickerCalendarContainer}>
+          <View style={styles.pickerCalendarHeader}>
+            <TouchableOpacity onPress={() => changeLeaveMonth(-1)} style={styles.pickerArrowBtn}>
+              <Text style={styles.pickerArrowText}>←</Text>
+            </TouchableOpacity>
+            <Text style={styles.pickerMonthTitle}>
+              {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][displayMonth]} {displayYear}
+            </Text>
+            <TouchableOpacity onPress={() => changeLeaveMonth(1)} style={styles.pickerArrowBtn}>
+              <Text style={styles.pickerArrowText}>→</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.pickerWeekDays}>
+            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, index) => (
+              <Text key={`picker-weekday-${index}`} style={styles.pickerWeekDayText}>{d}</Text>
+            ))}
+          </View>
+          <View style={styles.pickerDaysGrid}>
+            {days.map((day, idx) => {
+              if (!day) return <View key={`picker-empty-${idx}`} style={styles.pickerDayBox} />;
+              
+              const dateStr = `${displayYear}-${(displayMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+              
+              const isSelectedStart = dateStr === leaveStartDate;
+              const isSelectedEnd = dateStr === leaveEndDate;
+              const isInRange = leaveStartDate && leaveEndDate && dateStr > leaveStartDate && dateStr < leaveEndDate;
+              
+              let dayBoxStyle = styles.pickerDayBox;
+              let dayTextStyle = styles.pickerDayText;
+              
+              if (isSelectedStart || isSelectedEnd) {
+                dayBoxStyle = [styles.pickerDayBox, styles.pickerSelectedDay];
+                dayTextStyle = [styles.pickerDayText, styles.pickerSelectedDayText];
+              } else if (isInRange) {
+                dayBoxStyle = [styles.pickerDayBox, styles.pickerInRangeDay];
+                dayTextStyle = [styles.pickerDayText, styles.pickerInRangeDayText];
+              }
+              
+              return (
+                <TouchableOpacity 
+                  key={`picker-day-${day}-${idx}`} 
+                  style={dayBoxStyle} 
+                  onPress={() => handleDatePress(dateStr)}
+                >
+                  <Text style={dayTextStyle}>{day}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
       );
@@ -409,33 +494,31 @@ export default function AttendanceScreen({ navigation }) {
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>Request Leave</Text>
               
-              <Text style={styles.inputLabel}>Start Date (YYYY-MM-DD)</Text>
-              <TextInput 
-                style={styles.modalInput} 
-                placeholder="e.g. 2024-12-01" 
-                placeholderTextColor="#94A3B8"
-                value={leaveStartDate}
-                onChangeText={setLeaveStartDate}
-              />
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={styles.dateRangeDisplay}>
+                  <View style={styles.dateRangeBox}>
+                    <Text style={styles.dateRangeLabel}>START DATE</Text>
+                    <Text style={styles.dateRangeValue}>{leaveStartDate || 'Select below'}</Text>
+                  </View>
+                  <Text style={styles.dateRangeArrow}>➔</Text>
+                  <View style={styles.dateRangeBox}>
+                    <Text style={styles.dateRangeLabel}>END DATE</Text>
+                    <Text style={styles.dateRangeValue}>{leaveEndDate || 'Select below'}</Text>
+                  </View>
+                </View>
 
-              <Text style={styles.inputLabel}>End Date (YYYY-MM-DD)</Text>
-              <TextInput 
-                style={styles.modalInput} 
-                placeholder="e.g. 2024-12-05" 
-                placeholderTextColor="#94A3B8"
-                value={leaveEndDate}
-                onChangeText={setLeaveEndDate}
-              />
+                {renderLeaveCalendar()}
 
-              <Text style={styles.inputLabel}>Reason</Text>
-              <TextInput 
-                style={[styles.modalInput, { height: 80, textAlignVertical: 'top' }]} 
-                placeholder="Why do you need a leave?" 
-                placeholderTextColor="#94A3B8"
-                multiline
-                value={leaveReason}
-                onChangeText={setLeaveReason}
-              />
+                <Text style={styles.inputLabel}>Reason</Text>
+                <TextInput 
+                  style={[styles.modalInput, { height: 80, textAlignVertical: 'top', marginBottom: 10 }]} 
+                  placeholder="Why do you need a leave?" 
+                  placeholderTextColor="#94A3B8"
+                  multiline
+                  value={leaveReason}
+                  onChangeText={setLeaveReason}
+                />
+              </ScrollView>
 
               <View style={styles.modalActions}>
                 <TouchableOpacity style={styles.modalCancel} onPress={() => setLeaveModalVisible(false)}>
@@ -844,7 +927,7 @@ const styles = StyleSheet.create({
   fab: { position: 'absolute', bottom: 30, right: 30, width: 60, height: 60, borderRadius: 30, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', elevation: 5, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 5, shadowOffset: { width: 0, height: 2 }, borderWidth: 2, borderColor: '#E2E8F0' },
   fabIcon: { fontSize: 28, marginTop: -2 },
   modalContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '90%' },
   modalTitle: { fontSize: 20, fontWeight: '800', color: '#1E293B', marginBottom: 20 },
   inputLabel: { fontSize: 13, fontWeight: '700', color: '#64748B', marginBottom: 6, marginTop: 10 },
   modalInput: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 14, fontSize: 16, color: '#1E293B' },
@@ -852,5 +935,110 @@ const styles = StyleSheet.create({
   modalCancel: { flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center' },
   modalCancelText: { fontSize: 16, fontWeight: '700', color: '#64748B' },
   modalSubmit: { flex: 2, padding: 16, borderRadius: 12, backgroundColor: '#6366F1', alignItems: 'center' },
-  modalSubmitText: { fontSize: 16, fontWeight: '700', color: '#fff' }
+  modalSubmitText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  dateRangeDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 15,
+  },
+  dateRangeBox: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  dateRangeLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#94A3B8',
+    marginBottom: 4,
+  },
+  dateRangeValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  dateRangeArrow: {
+    fontSize: 18,
+    color: '#94A3B8',
+    marginHorizontal: 10,
+  },
+  pickerCalendarContainer: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 15,
+  },
+  pickerCalendarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  pickerArrowBtn: {
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  pickerArrowText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  pickerMonthTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  pickerWeekDays: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  pickerWeekDayText: {
+    width: `${100 / 7}%`,
+    textAlign: 'center',
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#94A3B8',
+  },
+  pickerDaysGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  pickerDayBox: {
+    width: `${100 / 7}%`,
+    aspectRatio: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+    marginVertical: 2,
+  },
+  pickerDayText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  pickerSelectedDay: {
+    backgroundColor: '#6366F1',
+  },
+  pickerSelectedDayText: {
+    color: '#fff',
+    fontWeight: '800',
+  },
+  pickerInRangeDay: {
+    backgroundColor: '#E0E7FF',
+  },
+  pickerInRangeDayText: {
+    color: '#4F46E5',
+    fontWeight: '700',
+  }
 });

@@ -40,7 +40,7 @@ export default function MyCoursesScreen({ navigation }) {
     setModalVisible(true);
     setLoadingAll(true);
     try {
-      const res = await apiClient.get('/courses/all');
+      const res = await apiClient.get('/auth/courses-batches');
       setAllCourses(res.data);
     } catch (error) {
       Alert.alert('Error', 'Failed to load available courses.');
