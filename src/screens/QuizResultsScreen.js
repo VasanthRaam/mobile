@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, FlatList, 
-  ActivityIndicator, SafeAreaView, TouchableOpacity 
+  ActivityIndicator, SafeAreaView, TouchableOpacity, ScrollView
 } from 'react-native';
 import apiClient from '../api/apiClient';
 import { useAuthStore } from '../store/useAuthStore';
@@ -16,6 +16,7 @@ export default function QuizResultsScreen({ navigation }) {
   const [fetchingBatches, setFetchingBatches] = useState(false);
   const { user } = useAuthStore();
   const isStaff = user?.role === 'teacher' || user?.role === 'admin';
+  const [activeTab, setActiveTab] = useState('Scores');
 
   useEffect(() => {
     if (isStaff) {
@@ -74,6 +75,235 @@ export default function QuizResultsScreen({ navigation }) {
       console.error('Failed to fetch results:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const getStudentDashboardData = () => {
+    const courseStats = {};
+
+    results.forEach(attempt => {
+      const courseName = attempt.course_name || 'General / Other';
+      const courseId = attempt.course_id || 'general';
+
+      if (!courseStats[courseId]) {
+        courseStats[courseId] = {
+          courseId,
+          courseName,
+          totalQuizzes: 0,
+          totalEarned: 0,
+          totalMax: 0,
+          highestPct: 0,
+          attempts: []
+        };
+      }
+
+      const stat = courseStats[courseId];
+      stat.totalQuizzes += 1;
+      stat.totalEarned += attempt.total_score;
+      stat.totalMax += attempt.max_score;
+
+      const pct = attempt.max_score > 0 ? (attempt.total_score / attempt.max_score) * 100 : 0;
+      if (pct > stat.highestPct) {
+        stat.highestPct = pct;
+      }
+
+      stat.attempts.push({
+        ...attempt,
+        percentage: pct
+      });
+    });
+
+    return Object.values(courseStats).map(stat => {
+      const avgPct = stat.totalMax > 0 ? (stat.totalEarned / stat.totalMax) * 100 : 0;
+      return {
+        ...stat,
+        averagePercentage: avgPct
+      };
+    });
+  };
+
+  const getStaffDashboardData = () => {
+    if (results.length === 0) return null;
+
+    let totalEarned = 0;
+    let totalMax = 0;
+    const studentAverages = {};
+    const quizStats = {};
+
+    results.forEach(attempt => {
+      totalEarned += attempt.total_score;
+      totalMax += attempt.max_score;
+
+      const sName = attempt.student_name;
+      if (!studentAverages[sName]) {
+        studentAverages[sName] = { name: sName, earned: 0, max: 0, count: 0 };
+      }
+      studentAverages[sName].earned += attempt.total_score;
+      studentAverages[sName].max += attempt.max_score;
+      studentAverages[sName].count += 1;
+
+      const qTitle = attempt.quiz_title;
+      if (!quizStats[qTitle]) {
+        quizStats[qTitle] = { title: qTitle, earned: 0, max: 0, count: 0 };
+      }
+      quizStats[qTitle].earned += attempt.total_score;
+      quizStats[qTitle].max += attempt.max_score;
+      quizStats[qTitle].count += 1;
+    });
+
+    const classAverage = totalMax > 0 ? (totalEarned / totalMax) * 100 : 0;
+
+    const topStudents = Object.values(studentAverages).map(s => {
+      const pct = s.max > 0 ? (s.earned / s.max) * 100 : 0;
+      return { name: s.name, percentage: pct, count: s.count };
+    }).sort((a, b) => b.percentage - a.percentage).slice(0, 5);
+
+    const quizzesSummary = Object.values(quizStats).map(q => {
+      const pct = q.max > 0 ? (q.earned / q.max) * 100 : 0;
+      return { title: q.title, percentage: pct, count: q.count };
+    });
+
+    return {
+      classAverage,
+      totalAttempts: results.length,
+      topStudents,
+      quizzesSummary
+    };
+  };
+
+  const getProgressColor = (percent) => {
+    if (percent >= 75) return '#10B981';
+    if (percent >= 50) return '#F59E0B';
+    return '#EF4444';
+  };
+
+  const renderDashboard = () => {
+    if (isStaff) {
+      const staffData = getStaffDashboardData();
+      if (!staffData) {
+        return (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyEmoji}>📊</Text>
+            <Text style={styles.emptyText}>No dashboard data available. Please select a different course/batch or wait for submissions.</Text>
+          </View>
+        );
+      }
+
+      const avgColor = getProgressColor(staffData.classAverage);
+
+      return (
+        <View style={styles.staffDashboard}>
+          <View style={styles.statsRow}>
+            <View style={[styles.statBox, { borderTopColor: avgColor, borderTopWidth: 4 }]}>
+              <Text style={styles.statLabel}>Class Average</Text>
+              <Text style={[styles.statVal, { color: avgColor }]}>{staffData.classAverage.toFixed(1)}%</Text>
+              <View style={styles.miniProgressBg}>
+                <View style={[styles.miniProgressFill, { width: `${staffData.classAverage}%`, backgroundColor: avgColor }]} />
+              </View>
+            </View>
+            <View style={[styles.statBox, { borderTopColor: '#007AFF', borderTopWidth: 4 }]}>
+              <Text style={styles.statLabel}>Total Submissions</Text>
+              <Text style={[styles.statVal, { color: '#007AFF' }]}>{staffData.totalAttempts}</Text>
+              <Text style={styles.statSubText}>attempts recorded</Text>
+            </View>
+          </View>
+
+          <Text style={styles.dashSectionTitle}>Top Performers 🌟</Text>
+          <View style={styles.cardSection}>
+            {staffData.topStudents.map((s, idx) => (
+              <View key={idx} style={styles.studentLeaderboardRow}>
+                <View style={styles.leaderboardLeft}>
+                  <Text style={[styles.leaderboardRank, idx === 0 && { color: '#FFD700' }, idx === 1 && { color: '#C0C0C0' }, idx === 2 && { color: '#CD7F32' }]}>#{idx + 1}</Text>
+                  <Text style={styles.leaderboardName}>{s.name}</Text>
+                </View>
+                <View style={styles.leaderboardRight}>
+                  <Text style={styles.leaderboardScore}>{s.percentage.toFixed(0)}%</Text>
+                  <Text style={styles.leaderboardAttempts}>{s.count} quizzes</Text>
+                </View>
+              </View>
+            ))}
+            {staffData.topStudents.length === 0 && (
+              <Text style={styles.noDataText}>No students record available</Text>
+            )}
+          </View>
+
+          <Text style={styles.dashSectionTitle}>Quiz wise Performance 📋</Text>
+          <View style={styles.cardSection}>
+            {staffData.quizzesSummary.map((q, idx) => {
+              const color = getProgressColor(q.percentage);
+              return (
+                <View key={idx} style={styles.quizStatRow}>
+                  <View style={styles.quizStatHeader}>
+                    <Text style={styles.quizStatTitle} numberOfLines={1}>{q.title}</Text>
+                    <Text style={[styles.quizStatPct, { color }]}>{q.percentage.toFixed(0)}%</Text>
+                  </View>
+                  <View style={styles.progressBg}>
+                    <View style={[styles.progressFill, { width: `${q.percentage}%`, backgroundColor: color }]} />
+                  </View>
+                  <Text style={styles.quizStatAttempts}>{q.count} student submissions</Text>
+                </View>
+              );
+            })}
+            {staffData.quizzesSummary.length === 0 && (
+              <Text style={styles.noDataText}>No quizzes attempts record available</Text>
+            )}
+          </View>
+        </View>
+      );
+    } else {
+      const studentData = getStudentDashboardData();
+      if (studentData.length === 0) {
+        return (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyEmoji}>📊</Text>
+            <Text style={styles.emptyText}>No quiz attempts found. Start attempting quizzes to see your dashboard!</Text>
+          </View>
+        );
+      }
+
+      return (
+        <View style={styles.studentDashboard}>
+          {studentData.map(course => {
+            const avgColor = getProgressColor(course.averagePercentage);
+            
+            return (
+              <View key={course.courseId} style={styles.courseDashCard}>
+                <View style={styles.courseDashHeader}>
+                  <Text style={styles.courseDashTitle}>📚 {course.courseName}</Text>
+                  <View style={styles.courseQuizzesBadge}>
+                    <Text style={styles.courseQuizzesBadgeText}>{course.totalQuizzes} Quizzes</Text>
+                  </View>
+                </View>
+
+                <View style={styles.courseDashMetrics}>
+                  <View style={styles.metricItem}>
+                    <Text style={styles.metricLabel}>Average Score</Text>
+                    <Text style={[styles.metricVal, { color: avgColor }]}>{course.averagePercentage.toFixed(1)}%</Text>
+                  </View>
+                  <View style={styles.metricItem}>
+                    <Text style={styles.metricLabel}>Best Score</Text>
+                    <Text style={[styles.metricVal, { color: '#10B981' }]}>{course.highestPct.toFixed(0)}%</Text>
+                  </View>
+                </View>
+
+                <View style={styles.progressBgLarge}>
+                  <View style={[styles.progressFillLarge, { width: `${course.averagePercentage}%`, backgroundColor: avgColor }]} />
+                </View>
+
+                <Text style={styles.attemptsSectionHeader}>Recent Submissions</Text>
+                {course.attempts.slice(0, 3).map((attempt, idx) => (
+                  <View key={idx} style={styles.miniAttemptRow}>
+                    <Text style={styles.miniAttemptTitle} numberOfLines={1}>{attempt.quiz_title}</Text>
+                    <Text style={styles.miniAttemptScore}>
+                      {attempt.total_score} / {attempt.max_score} ({attempt.percentage.toFixed(0)}%)
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            );
+          })}
+        </View>
+      );
     }
   };
 
@@ -157,12 +387,28 @@ export default function QuizResultsScreen({ navigation }) {
         </View>
       )}
 
+      {/* Top Tab Bar */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity 
+          style={[styles.tabBtn, activeTab === 'Scores' && styles.tabBtnActive]}
+          onPress={() => setActiveTab('Scores')}
+        >
+          <Text style={[styles.tabBtnText, activeTab === 'Scores' && styles.tabBtnTextActive]}>Quiz Scores</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.tabBtn, activeTab === 'Dashboard' && styles.tabBtnActive]}
+          onPress={() => setActiveTab('Dashboard')}
+        >
+          <Text style={[styles.tabBtnText, activeTab === 'Dashboard' && styles.tabBtnTextActive]}>Performance Dashboard</Text>
+        </TouchableOpacity>
+      </View>
+
       {loading ? (
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color="#FFD700" />
           <Text style={styles.loadingText}>Loading scores...</Text>
         </View>
-      ) : (
+      ) : activeTab === 'Scores' ? (
         <FlatList
           showsVerticalScrollIndicator={false}
           data={results}
@@ -176,6 +422,10 @@ export default function QuizResultsScreen({ navigation }) {
             </View>
           }
         />
+      ) : (
+        <ScrollView contentContainerStyle={styles.dashboardContainer} showsVerticalScrollIndicator={false}>
+          {renderDashboard()}
+        </ScrollView>
       )}
     </SafeAreaView>
   );
@@ -348,5 +598,262 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     marginLeft: 20,
     fontStyle: 'italic',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+    paddingHorizontal: 10,
+    paddingTop: 5,
+  },
+  tabBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderBottomWidth: 3,
+    borderBottomColor: 'transparent',
+  },
+  tabBtnActive: {
+    borderBottomColor: '#007AFF',
+  },
+  tabBtnText: {
+    fontSize: 14,
+    color: '#8E8E93',
+    fontWeight: '600',
+  },
+  tabBtnTextActive: {
+    color: '#007AFF',
+    fontWeight: '700',
+  },
+  dashboardContainer: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  staffDashboard: {
+    gap: 20,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 15,
+  },
+  statBox: {
+    flex: 1,
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 16,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#8E8E93',
+    fontWeight: '600',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  statVal: {
+    fontSize: 24,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  miniProgressBg: {
+    height: 6,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  miniProgressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  statSubText: {
+    fontSize: 12,
+    color: '#8E8E93',
+    fontWeight: '500',
+  },
+  dashSectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333',
+    marginTop: 10,
+    marginBottom: 2,
+  },
+  cardSection: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 16,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    gap: 12,
+  },
+  studentLeaderboardRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8F9FA',
+  },
+  leaderboardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  leaderboardRank: {
+    fontSize: 14,
+    fontWeight: '800',
+    width: 25,
+  },
+  leaderboardName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  leaderboardRight: {
+    alignItems: 'flex-end',
+  },
+  leaderboardScore: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#2E7D32',
+  },
+  leaderboardAttempts: {
+    fontSize: 10,
+    color: '#8E8E93',
+    marginTop: 2,
+  },
+  quizStatRow: {
+    paddingVertical: 4,
+  },
+  quizStatHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  quizStatTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#333',
+    flex: 1,
+    marginRight: 10,
+  },
+  quizStatPct: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  progressBg: {
+    height: 8,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  quizStatAttempts: {
+    fontSize: 10,
+    color: '#8E8E93',
+    marginTop: 4,
+  },
+  studentDashboard: {
+    gap: 16,
+  },
+  courseDashCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 16,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+  },
+  courseDashHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  courseDashTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333',
+  },
+  courseQuizzesBadge: {
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  courseQuizzesBadgeText: {
+    fontSize: 11,
+    color: '#4F46E5',
+    fontWeight: '600',
+  },
+  courseDashMetrics: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  metricItem: {
+    flex: 1,
+  },
+  metricLabel: {
+    fontSize: 11,
+    color: '#8E8E93',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  metricVal: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  progressBgLarge: {
+    height: 10,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 5,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  progressFillLarge: {
+    height: '100%',
+    borderRadius: 5,
+  },
+  attemptsSectionHeader: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8E8E93',
+    textTransform: 'uppercase',
+    marginBottom: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F8F9FA',
+    paddingTop: 12,
+  },
+  miniAttemptRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  miniAttemptTitle: {
+    fontSize: 13,
+    color: '#333',
+    flex: 1,
+    marginRight: 10,
+  },
+  miniAttemptScore: {
+    fontSize: 12,
+    color: '#555',
+    fontWeight: '600',
   },
 });

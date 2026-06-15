@@ -13,9 +13,25 @@ export default function NotificationBar() {
 
   const handlePress = () => {
     markAsRead(latestUnread.id);
-    if (latestUnread.link_to && latestUnread.link_to.startsWith('Quiz:')) {
-      const quizId = latestUnread.link_to.split(':')[1];
-      navigation.navigate('Quiz', { quizId, quizTitle: 'New Quiz' });
+    if (latestUnread.link_to) {
+      if (latestUnread.link_to.startsWith('Quiz:')) {
+        const quizId = latestUnread.link_to.split(':')[1];
+        navigation.navigate('Quiz', { quizId, quizTitle: 'New Quiz' });
+      } else if (latestUnread.link_to.startsWith('Homework:')) {
+        navigation.navigate('HomeworkList');
+      } else if (
+        latestUnread.link_to.startsWith('registration:') || 
+        latestUnread.link_to.startsWith('PendingApproval:') || 
+        latestUnread.link_to === 'PendingApprovals'
+      ) {
+        navigation.navigate('PendingApprovals');
+      } else if (latestUnread.link_to === 'Attendance') {
+        navigation.navigate('Attendance');
+      } else if (latestUnread.link_to === 'MyCourses') {
+        navigation.navigate('MyCourses');
+      } else if (latestUnread.link_to === 'Fees') {
+        navigation.navigate('Fees');
+      }
     }
   };
 

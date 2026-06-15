@@ -23,6 +23,28 @@ export default function RevenueScreen() {
   const [expDate, setExpDate] = useState(new Date().toISOString().split('T')[0]);
   const [addingExp, setAddingExp] = useState(false);
 
+  // Accordion state for Income tab
+  const [courseBatchTree, setCourseBatchTree] = useState([]);
+  const [expandedCourses, setExpandedCourses] = useState({});
+  const [expandedBatches, setExpandedBatches] = useState({});
+
+  const fetchCoursesAndBatches = async () => {
+    try {
+      const res = await apiClient.get('/auth/courses-batches');
+      setCourseBatchTree(res.data);
+    } catch (err) {
+      console.error('Failed to fetch courses & batches:', err);
+    }
+  };
+
+  const toggleCourseExpand = (courseId) => {
+    setExpandedCourses(prev => ({ ...prev, [courseId]: !prev[courseId] }));
+  };
+
+  const toggleBatchExpand = (batchId) => {
+    setExpandedBatches(prev => ({ ...prev, [batchId]: !prev[batchId] }));
+  };
+
   useEffect(() => {
     fetchData();
   }, [activeTab]);
@@ -36,6 +58,7 @@ export default function RevenueScreen() {
       } else if (activeTab === 'Income') {
         const res = await apiClient.get('/fees/');
         setIncomes(res.data.filter(f => f.status === 'paid'));
+        await fetchCoursesAndBatches();
       } else if (activeTab === 'Expenses') {
         const res = await apiClient.get('/revenue/expenses');
         setExpenses(res.data);
@@ -89,17 +112,17 @@ export default function RevenueScreen() {
         <View style={styles.summaryGrid}>
           <View style={[styles.summaryCard, { borderLeftColor: '#10B981' }]}>
             <Text style={styles.summaryLabel}>Total Income</Text>
-            <Text style={[styles.summaryValue, { color: '#10B981' }]}>₹{dashboardData.total_income}</Text>
+            <Text style={[styles.summaryValue, { color: '#10B981' }]}>₹{Number(dashboardData.total_income).toFixed(1)}</Text>
           </View>
           <View style={[styles.summaryCard, { borderLeftColor: '#EF4444' }]}>
             <Text style={styles.summaryLabel}>Total Expenses</Text>
-            <Text style={[styles.summaryValue, { color: '#EF4444' }]}>₹{dashboardData.total_expenses}</Text>
+            <Text style={[styles.summaryValue, { color: '#EF4444' }]}>₹{Number(dashboardData.total_expenses).toFixed(1)}</Text>
           </View>
         </View>
         <View style={[styles.summaryCard, { borderLeftColor: '#4F46E5', marginBottom: 24 }]}>
           <Text style={styles.summaryLabel}>Net Profit</Text>
           <Text style={[styles.summaryValue, { color: '#4F46E5', fontSize: 28 }]}>
-            ₹{dashboardData.net_profit}
+            ₹{Number(dashboardData.net_profit).toFixed(1)}
           </Text>
         </View>
 
@@ -141,7 +164,7 @@ export default function RevenueScreen() {
             <View key={idx} style={styles.breakdownRow}>
               <View style={styles.breakdownInfo}>
                 <Text style={styles.breakdownName}>{item.name}</Text>
-                <Text style={styles.breakdownAmt}>₹{item.amount}</Text>
+                <Text style={styles.breakdownAmt}>₹{Number(item.amount).toFixed(1)}</Text>
               </View>
               <View style={styles.progressBg}>
                 <View style={[styles.progressFill, { width: `${item.percentage}%`, backgroundColor: '#8B5CF6' }]} />
@@ -158,7 +181,7 @@ export default function RevenueScreen() {
             <View key={idx} style={styles.breakdownRow}>
               <View style={styles.breakdownInfo}>
                 <Text style={styles.breakdownName}>{item.name}</Text>
-                <Text style={styles.breakdownAmt}>₹{item.amount}</Text>
+                <Text style={styles.breakdownAmt}>₹{Number(item.amount).toFixed(1)}</Text>
               </View>
               <View style={styles.progressBg}>
                 <View style={[styles.progressFill, { width: `${item.percentage}%`, backgroundColor: '#F59E0B' }]} />
@@ -173,23 +196,139 @@ export default function RevenueScreen() {
     );
   };
 
-  const renderIncomeTab = () => (
-    <FlatList 
-      data={incomes}
-      keyExtractor={item => item.id}
-      contentContainerStyle={styles.listContent}
-      ListEmptyComponent={<Text style={styles.emptyText}>No income records.</Text>}
-      renderItem={({item}) => (
-        <View style={styles.recordCard}>
-          <View style={styles.recLeft}>
-            <Text style={styles.recTitle}>{item.user ? item.user.full_name : 'Unknown Student'}</Text>
-            <Text style={styles.recSub}>Fee Payment • {item.paid_at ? item.paid_at.substring(0,10) : ''}</Text>
+  const renderIncomeTab = () => {
+    // Group the incomes (paid fees)
+    const groupedIncomes = {}; // { courseId: { batchId: [incomes] } }
+    const unassignedIncomes = [];
+
+    incomes.forEach(inc => {
+      if (inc.course_id && inc.batch_id) {
+        if (!groupedIncomes[inc.course_id]) {
+          groupedIncomes[inc.course_id] = {};
+        }
+        if (!groupedIncomes[inc.course_id][inc.batch_id]) {
+          groupedIncomes[inc.course_id][inc.batch_id] = [];
+        }
+        groupedIncomes[inc.course_id][inc.batch_id].push(inc);
+      } else {
+        unassignedIncomes.push(inc);
+      }
+    });
+
+    const unassignedTotal = unassignedIncomes.reduce((acc, curr) => acc + curr.amount, 0);
+
+    return (
+      <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+        {courseBatchTree.map(course => {
+          const isCourseExpanded = expandedCourses[course.id] !== false;
+          const courseIncomes = incomes.filter(inc => inc.course_id === course.id);
+          const courseTotal = courseIncomes.reduce((acc, curr) => acc + curr.amount, 0);
+
+          return (
+            <View key={course.id} style={styles.courseAccordionBlock}>
+              <TouchableOpacity 
+                style={[styles.courseAccordionHeader, isCourseExpanded && styles.courseAccordionHeaderActive]}
+                onPress={() => toggleCourseExpand(course.id)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.headerTitleRow}>
+                  <Text style={styles.courseTitleText}>📚 {course.name}</Text>
+                  <View style={styles.badgeContainer}>
+                    <Text style={styles.badgeText}>₹{courseTotal.toFixed(1)}</Text>
+                  </View>
+                </View>
+                <Text style={styles.expandIcon}>{isCourseExpanded ? '▲' : '▼'}</Text>
+              </TouchableOpacity>
+              
+              {isCourseExpanded && (
+                <View style={styles.courseAccordionBody}>
+                  {course.batches.map(batch => {
+                    const isBatchExpanded = expandedBatches[batch.id] !== false;
+                    const batchIncomes = (groupedIncomes[course.id] && groupedIncomes[course.id][batch.id]) || [];
+                    const batchTotal = batchIncomes.reduce((acc, curr) => acc + curr.amount, 0);
+
+                    return (
+                      <View key={batch.id} style={styles.batchAccordionBlock}>
+                        <TouchableOpacity 
+                          style={[styles.batchAccordionHeader, isBatchExpanded && styles.batchAccordionHeaderActive]}
+                          onPress={() => toggleBatchExpand(batch.id)}
+                          activeOpacity={0.8}
+                        >
+                          <View style={styles.headerTitleRow}>
+                            <Text style={styles.batchTitleText}>👥 {batch.name}</Text>
+                            <View style={[styles.badgeContainer, { backgroundColor: '#F1F5F9' }]}>
+                              <Text style={[styles.badgeText, { color: '#64748B' }]}>₹{batchTotal.toFixed(1)}</Text>
+                            </View>
+                          </View>
+                          <Text style={styles.expandIcon}>{isBatchExpanded ? '▲' : '▼'}</Text>
+                        </TouchableOpacity>
+                        
+                        {isBatchExpanded && (
+                          <View style={styles.batchAccordionBody}>
+                            {batchIncomes.map(item => (
+                              <View key={item.id} style={styles.recordCard}>
+                                <View style={styles.recLeft}>
+                                  <Text style={styles.recTitle}>{item.user ? item.user.full_name : 'Unknown Student'}</Text>
+                                  <Text style={styles.recSub}>Fee Payment • {item.paid_at ? item.paid_at.substring(0,10) : ''}</Text>
+                                </View>
+                                <Text style={[styles.recAmt, {color: '#10B981'}]}>+₹{Number(item.amount).toFixed(1)}</Text>
+                              </View>
+                            ))}
+                            {batchIncomes.length === 0 && (
+                              <Text style={styles.accordionEmptyText}>No income records for this batch.</Text>
+                            )}
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })}
+                  {course.batches.length === 0 && (
+                    <Text style={styles.accordionEmptyText}>No batches available for this course.</Text>
+                  )}
+                </View>
+              )}
+            </View>
+          );
+        })}
+
+        {unassignedIncomes.length > 0 && (
+          <View style={styles.courseAccordionBlock}>
+            <TouchableOpacity 
+              style={[styles.courseAccordionHeader, expandedCourses['unassigned'] !== false && styles.courseAccordionHeaderActive]}
+              onPress={() => toggleCourseExpand('unassigned')}
+              activeOpacity={0.8}
+            >
+              <View style={styles.headerTitleRow}>
+                <Text style={styles.courseTitleText}>💳 Direct / Unassigned Income</Text>
+                <View style={[styles.badgeContainer, { backgroundColor: '#FEE2E2' }]}>
+                  <Text style={[styles.badgeText, { color: '#EF4444' }]}>₹{unassignedTotal.toFixed(1)}</Text>
+                </View>
+              </View>
+              <Text style={styles.expandIcon}>{expandedCourses['unassigned'] !== false ? '▲' : '▼'}</Text>
+            </TouchableOpacity>
+            
+            {expandedCourses['unassigned'] !== false && (
+              <View style={styles.courseAccordionBody}>
+                {unassignedIncomes.map(item => (
+                  <View key={item.id} style={styles.recordCard}>
+                    <View style={styles.recLeft}>
+                      <Text style={styles.recTitle}>{item.user ? item.user.full_name : 'Unknown Student'}</Text>
+                      <Text style={styles.recSub}>Fee Payment • {item.paid_at ? item.paid_at.substring(0,10) : ''}</Text>
+                    </View>
+                    <Text style={[styles.recAmt, {color: '#10B981'}]}>+₹{Number(item.amount).toFixed(1)}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
-          <Text style={[styles.recAmt, {color: '#10B981'}]}>+₹{item.amount}</Text>
-        </View>
-      )}
-    />
-  );
+        )}
+
+        {incomes.length === 0 && (
+          <Text style={styles.emptyText}>No income records.</Text>
+        )}
+      </ScrollView>
+    );
+  };
 
   const renderExpensesTab = () => (
     <View style={{flex: 1}}>
@@ -577,5 +716,97 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     marginTop: 20,
     fontStyle: 'italic',
-  }
+  },
+  courseAccordionBlock: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  courseAccordionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#F8FAFC',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  courseAccordionHeaderActive: {
+    backgroundColor: '#EEF2FF',
+    borderBottomColor: '#E2E8F0',
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  courseTitleText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  badgeContainer: {
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#4F46E5',
+  },
+  expandIcon: {
+    fontSize: 12,
+    color: '#94A3B8',
+    fontWeight: '700',
+  },
+  courseAccordionBody: {
+    padding: 12,
+    backgroundColor: '#FFF',
+  },
+  batchAccordionBlock: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    overflow: 'hidden',
+  },
+  batchAccordionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#F8FAFC',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  batchAccordionHeaderActive: {
+    backgroundColor: '#ECFDF5',
+  },
+  batchTitleText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  batchAccordionBody: {
+    padding: 10,
+    backgroundColor: '#FFF',
+  },
+  accordionEmptyText: {
+    textAlign: 'center',
+    fontSize: 12,
+    color: '#94A3B8',
+    fontStyle: 'italic',
+    paddingVertical: 12,
+  },
 });

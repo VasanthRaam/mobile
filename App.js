@@ -61,6 +61,30 @@ export default function App() {
               navigationRef.navigate('Quiz', { quizId: data.id, quizTitle: 'New Quiz' });
             }, 100);
           }
+        } else if (type === 'homework' || type === 'new_homework') {
+          if (navigationRef.isReady()) {
+            setTimeout(() => {
+              navigationRef.navigate('HomeworkList');
+            }, 100);
+          }
+        } else if (type === 'fee' || type === 'fee_payment' || data.screen === 'Fees') {
+          if (navigationRef.isReady()) {
+            setTimeout(() => {
+              navigationRef.navigate('Fees');
+            }, 100);
+          }
+        } else if (type === 'holiday' || type.startsWith('leave') || data.screen === 'Attendance') {
+          if (navigationRef.isReady()) {
+            setTimeout(() => {
+              navigationRef.navigate('Attendance');
+            }, 100);
+          }
+        } else if (type.startsWith('enrollment') || data.screen === 'MyCourses') {
+          if (navigationRef.isReady()) {
+            setTimeout(() => {
+              navigationRef.navigate('MyCourses');
+            }, 100);
+          }
         }
       };
 

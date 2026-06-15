@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, FlatList, TouchableOpacity, 
   TextInput, Alert, ActivityIndicator, Linking, SafeAreaView,
-  ScrollView, Modal, Dimensions
+  ScrollView, Modal, Dimensions, RefreshControl
 } from 'react-native';
 
 const { width } = Dimensions.get('window');
@@ -35,8 +35,14 @@ export default function FeesScreen() {
   const [savingUpi, setSavingUpi] = useState(false);
   const [creatingFee, setCreatingFee] = useState(false);
 
+  // Accordion state
+  const [courseBatchTree, setCourseBatchTree] = useState([]);
+  const [expandedCourses, setExpandedCourses] = useState({});
+  const [expandedBatches, setExpandedBatches] = useState({});
+
   useEffect(() => {
     fetchFees();
+    fetchCoursesAndBatches();
     if (role === 'admin') {
       fetchAdminUpi();
       fetchCourses();
@@ -44,6 +50,23 @@ export default function FeesScreen() {
       fetchAdminUpi(); // To get UPI ID for payment
     }
   }, [role]);
+
+  const fetchCoursesAndBatches = async () => {
+    try {
+      const res = await apiClient.get('/auth/courses-batches');
+      setCourseBatchTree(res.data);
+    } catch (err) {
+      console.error('Failed to fetch courses & batches:', err);
+    }
+  };
+
+  const toggleCourseExpand = (courseId) => {
+    setExpandedCourses(prev => ({ ...prev, [courseId]: !prev[courseId] }));
+  };
+
+  const toggleBatchExpand = (batchId) => {
+    setExpandedBatches(prev => ({ ...prev, [batchId]: !prev[batchId] }));
+  };
 
   const fetchFees = async () => {
     try {
@@ -427,6 +450,10 @@ export default function FeesScreen() {
           </View>
         </View>
         
+        {item.course?.name && item.batch?.name && (
+          <Text style={styles.feeCourseBatch}>📚 {item.course.name} • {item.batch.name}</Text>
+        )}
+
         {role === 'admin' && item.user && (
           <Text style={styles.feeStudentName}>Student: {item.user.full_name}</Text>
         )}
@@ -450,48 +477,173 @@ export default function FeesScreen() {
     );
   };
 
+  const renderAccordionTree = () => {
+    // Group the fees
+    const groupedFees = {};
+    const unassignedFees = [];
+
+    fees.forEach(fee => {
+      if (fee.course_id && fee.batch_id) {
+        if (!groupedFees[fee.course_id]) {
+          groupedFees[fee.course_id] = {};
+        }
+        if (!groupedFees[fee.course_id][fee.batch_id]) {
+          groupedFees[fee.course_id][fee.batch_id] = [];
+        }
+        groupedFees[fee.course_id][fee.batch_id].push(fee);
+      } else {
+        unassignedFees.push(fee);
+      }
+    });
+
+    return (
+      <View style={styles.accordionContainer}>
+        {courseBatchTree.map(course => {
+          const isCourseExpanded = expandedCourses[course.id] !== false;
+          const courseFeesCount = fees.filter(f => f.course_id === course.id).length;
+          
+          return (
+            <View key={course.id} style={styles.courseAccordionBlock}>
+              <TouchableOpacity 
+                style={[styles.courseAccordionHeader, isCourseExpanded && styles.courseAccordionHeaderActive]}
+                onPress={() => toggleCourseExpand(course.id)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.headerTitleRow}>
+                  <Text style={styles.courseTitleText}>📚 {course.name}</Text>
+                  <View style={styles.badgeContainer}>
+                    <Text style={styles.badgeText}>{courseFeesCount} Fees</Text>
+                  </View>
+                </View>
+                <Text style={styles.expandIcon}>{isCourseExpanded ? '▲' : '▼'}</Text>
+              </TouchableOpacity>
+              
+              {isCourseExpanded && (
+                <View style={styles.courseAccordionBody}>
+                  {course.batches.map(batch => {
+                    const isBatchExpanded = expandedBatches[batch.id] !== false;
+                    const batchFees = (groupedFees[course.id] && groupedFees[course.id][batch.id]) || [];
+                    
+                    return (
+                      <View key={batch.id} style={styles.batchAccordionBlock}>
+                        <TouchableOpacity 
+                          style={[styles.batchAccordionHeader, isBatchExpanded && styles.batchAccordionHeaderActive]}
+                          onPress={() => toggleBatchExpand(batch.id)}
+                          activeOpacity={0.8}
+                        >
+                          <View style={styles.headerTitleRow}>
+                            <Text style={styles.batchTitleText}>👥 {batch.name}</Text>
+                            <View style={[styles.badgeContainer, { backgroundColor: '#F1F5F9' }]}>
+                              <Text style={[styles.badgeText, { color: '#64748B' }]}>{batchFees.length} Fees</Text>
+                            </View>
+                          </View>
+                          <Text style={styles.expandIcon}>{isBatchExpanded ? '▲' : '▼'}</Text>
+                        </TouchableOpacity>
+                        
+                        {isBatchExpanded && (
+                          <View style={styles.batchAccordionBody}>
+                            {batchFees.map(fee => renderFeeItem({ item: fee }))}
+                            {batchFees.length === 0 && (
+                              <Text style={styles.accordionEmptyText}>No fee records for this batch.</Text>
+                            )}
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })}
+                  {course.batches.length === 0 && (
+                    <Text style={styles.accordionEmptyText}>No batches available for this course.</Text>
+                  )}
+                </View>
+              )}
+            </View>
+          );
+        })}
+
+        {unassignedFees.length > 0 && (
+          <View style={styles.courseAccordionBlock}>
+            <TouchableOpacity 
+              style={[styles.courseAccordionHeader, expandedCourses['unassigned'] !== false && styles.courseAccordionHeaderActive]}
+              onPress={() => toggleCourseExpand('unassigned')}
+              activeOpacity={0.8}
+            >
+              <View style={styles.headerTitleRow}>
+                <Text style={styles.courseTitleText}>💳 Direct / Unassigned Fees</Text>
+                <View style={[styles.badgeContainer, { backgroundColor: '#FEE2E2' }]}>
+                  <Text style={[styles.badgeText, { color: '#EF4444' }]}>{unassignedFees.length} Fees</Text>
+                </View>
+              </View>
+              <Text style={styles.expandIcon}>{expandedCourses['unassigned'] !== false ? '▲' : '▼'}</Text>
+            </TouchableOpacity>
+            
+            {expandedCourses['unassigned'] !== false && (
+              <View style={styles.courseAccordionBody}>
+                {unassignedFees.map(fee => renderFeeItem({ item: fee }))}
+              </View>
+            )}
+          </View>
+        )}
+      </View>
+    );
+  };
+
   const totalPaid = fees.filter(f => f.status === 'paid').reduce((acc, curr) => acc + curr.amount, 0);
   const totalPending = fees.filter(f => f.status !== 'paid').reduce((acc, curr) => acc + curr.amount, 0);
+
+  const handleRefresh = () => {
+    setLoading(true);
+    fetchFees();
+    fetchCoursesAndBatches();
+    if (role === 'admin') {
+      fetchAdminUpi();
+      fetchCourses();
+    } else if (role === 'student') {
+      fetchAdminUpi();
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       {renderDatePickerModal()}
-      <FlatList 
-        data={fees}
-        keyExtractor={(item) => item.id}
+      <ScrollView 
         contentContainerStyle={styles.listContent}
-        ListHeaderComponent={
-          <View>
-            {role === 'admin' && renderAdminView()}
-            
-            {(role === 'student' || role === 'parent') && (
-               <View style={styles.summaryCard}>
-                  <Text style={styles.summaryTitle}>Fee Summary</Text>
-                  <View style={styles.summaryRow}>
-                    <View style={styles.summaryBox}>
-                      <Text style={styles.summaryLabel}>Total Paid</Text>
-                      <Text style={styles.summaryValuePaid}>₹{totalPaid}</Text>
-                    </View>
-                    <View style={styles.summaryBox}>
-                      <Text style={styles.summaryLabel}>Total Pending</Text>
-                      <Text style={styles.summaryValuePending}>₹{totalPending}</Text>
-                    </View>
-                  </View>
-               </View>
-            )}
-            
-            <Text style={[styles.sectionTitle, {marginTop: 20}]}>All Fee Records</Text>
-          </View>
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={handleRefresh} tintColor="#4F46E5" />
         }
-        renderItem={renderFeeItem}
-        ListEmptyComponent={
-          !loading && <Text style={styles.emptyText}>No fee records found.</Text>
-        }
-        refreshing={loading}
-        onRefresh={fetchFees}
-      />
+      >
+        {role === 'admin' && renderAdminView()}
+        
+        {(role === 'student' || role === 'parent') && (
+           <View style={styles.summaryCard}>
+              <Text style={styles.summaryTitle}>Fee Summary</Text>
+              <View style={styles.summaryRow}>
+                <View style={styles.summaryBox}>
+                  <Text style={styles.summaryLabel}>Total Paid</Text>
+                  <Text style={styles.summaryValuePaid}>₹{totalPaid}</Text>
+                </View>
+                <View style={styles.summaryBox}>
+                  <Text style={styles.summaryLabel}>Total Pending</Text>
+                  <Text style={styles.summaryValuePending}>₹{totalPending}</Text>
+                </View>
+              </View>
+           </View>
+        )}
+        
+        <Text style={[styles.sectionTitle, {marginTop: 20}]}>All Fee Records</Text>
+        
+        {loading && fees.length === 0 ? (
+          <ActivityIndicator size="small" color="#4F46E5" style={{ marginVertical: 20 }} />
+        ) : (
+          renderAccordionTree()
+        )}
+        
+        {!loading && fees.length === 0 && (
+          <Text style={styles.emptyText}>No fee records found.</Text>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
+
 }
 
 const styles = StyleSheet.create({
@@ -768,6 +920,107 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#94A3B8',
     marginTop: 20,
+  },
+  accordionContainer: {
+    marginTop: 10,
+  },
+  courseAccordionBlock: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  courseAccordionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#F8FAFC',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  courseAccordionHeaderActive: {
+    backgroundColor: '#EEF2FF',
+    borderBottomColor: '#E2E8F0',
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  courseTitleText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  badgeContainer: {
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#4F46E5',
+  },
+  expandIcon: {
+    fontSize: 12,
+    color: '#94A3B8',
+    fontWeight: '700',
+  },
+  courseAccordionBody: {
+    padding: 12,
+    backgroundColor: '#FFF',
+  },
+  batchAccordionBlock: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    overflow: 'hidden',
+  },
+  batchAccordionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#F8FAFC',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  batchAccordionHeaderActive: {
+    backgroundColor: '#ECFDF5',
+  },
+  batchTitleText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  batchAccordionBody: {
+    padding: 10,
+    backgroundColor: '#FFF',
+  },
+  accordionEmptyText: {
+    textAlign: 'center',
+    fontSize: 12,
+    color: '#94A3B8',
+    fontStyle: 'italic',
+    paddingVertical: 12,
+  },
+  feeCourseBatch: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '500',
+    marginBottom: 4,
   },
   datePickerTrigger: {
     backgroundColor: '#fff',

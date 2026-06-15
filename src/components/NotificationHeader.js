@@ -20,11 +20,25 @@ export default function NotificationHeader() {
     markAsRead(notification.id);
     setShowModal(false);
     
-    if (notification.link_to && notification.link_to.startsWith('Quiz:')) {
-      const quizId = notification.link_to.split(':')[1];
-      navigation.navigate('Quiz', { quizId, quizTitle: 'New Quiz' });
-    } else if (notification.link_to && (notification.link_to.startsWith('registration:') || notification.link_to.startsWith('PendingApproval:'))) {
-      navigation.navigate('PendingApprovals');
+    if (notification.link_to) {
+      if (notification.link_to.startsWith('Quiz:')) {
+        const quizId = notification.link_to.split(':')[1];
+        navigation.navigate('Quiz', { quizId, quizTitle: 'New Quiz' });
+      } else if (notification.link_to.startsWith('Homework:')) {
+        navigation.navigate('HomeworkList');
+      } else if (
+        notification.link_to.startsWith('registration:') || 
+        notification.link_to.startsWith('PendingApproval:') || 
+        notification.link_to === 'PendingApprovals'
+      ) {
+        navigation.navigate('PendingApprovals');
+      } else if (notification.link_to === 'Attendance') {
+        navigation.navigate('Attendance');
+      } else if (notification.link_to === 'MyCourses') {
+        navigation.navigate('MyCourses');
+      } else if (notification.link_to === 'Fees') {
+        navigation.navigate('Fees');
+      }
     }
   };
 
