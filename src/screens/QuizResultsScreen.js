@@ -1,22 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, FlatList, 
-  ActivityIndicator, TouchableOpacity, ScrollView
+  TouchableOpacity, ScrollView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import apiClient from '../api/apiClient';
 import { useAuthStore } from '../store/useAuthStore';
+import { getCache, setCache } from '../utils/cacheManager';
 
 export default function QuizResultsScreen({ navigation }) {
-  const [results, setResults] = useState([]);
-  const [courses, setCourses] = useState([]);
-  const [selectedCourseId, setSelectedCourseId] = useState(null);
-  const [batches, setBatches] = useState([]);
-  const [selectedBatchId, setSelectedBatchId] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [fetchingBatches, setFetchingBatches] = useState(false);
   const { user } = useAuthStore();
   const isStaff = user?.role === 'teacher' || user?.role === 'admin';
+
+  const cachedCourses = getCache('courses') || [];
+  const [courses, setCourses] = useState(isStaff ? [{ id: 'all', name: 'All Courses' }, ...cachedCourses] : []);
+  const [selectedCourseId, setSelectedCourseId] = useState(isStaff && courses.length > 0 ? courses[0].id : null);
+  const [batches, setBatches] = useState([]);
+  const [selectedBatchId, setSelectedBatchId] = useState(null);
+  
+  const [results, setResults] = useState(getCache('quiz_results') || []);
+  const [loading, setLoading] = useState(isStaff ? !getCache('courses') : !getCache('quiz_results'));
+  const [fetchingBatches, setFetchingBatches] = useState(false);
   const [activeTab, setActiveTab] = useState('Scores');
 
   useEffect(() => {
@@ -40,12 +44,12 @@ export default function QuizResultsScreen({ navigation }) {
   }, [selectedBatchId]);
 
   const fetchCourses = async () => {
-    setLoading(true);
     try {
       const response = await apiClient.get('/courses/');
       const fetchedCourses = [{ id: 'all', name: 'All Courses' }, ...response.data];
       setCourses(fetchedCourses);
-      if (fetchedCourses.length > 0) {
+      setCache('courses', response.data);
+      if (fetchedCourses.length > 0 && !selectedCourseId) {
         setSelectedCourseId(fetchedCourses[0].id);
       }
     } catch (error) {
@@ -86,6 +90,9 @@ export default function QuizResultsScreen({ navigation }) {
       }
       const response = await apiClient.get(url);
       setResults(response.data);
+      if (!selectedBatchId && !selectedCourseId) {
+        setCache('quiz_results', response.data);
+      }
     } catch (error) {
       console.error('Failed to fetch results:', error);
     } finally {
@@ -378,7 +385,7 @@ export default function QuizResultsScreen({ navigation }) {
 
           <Text style={[styles.filterLabel, { marginTop: 10 }]}>Select Batch</Text>
           {fetchingBatches ? (
-            <ActivityIndicator size="small" color="#007AFF" style={{ marginVertical: 10 }} />
+            <Text style={{ marginVertical: 10, color: '#64748B' }}>Fetching batches...</Text>
           ) : (
             <FlatList
               horizontal
@@ -420,7 +427,6 @@ export default function QuizResultsScreen({ navigation }) {
 
       {loading ? (
         <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color="#FFD700" />
           <Text style={styles.loadingText}>Loading scores...</Text>
         </View>
       ) : activeTab === 'Scores' ? (

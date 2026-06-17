@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, Switch, TouchableOpacity, Alert, ActivityIndicator, SafeAreaView, ScrollView, Dimensions, Platform, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Switch, TouchableOpacity, Alert, SafeAreaView, ScrollView, Dimensions, Platform, Modal, TextInput } from 'react-native';
 import apiClient from '../api/apiClient';
 import { useAuthStore } from '../store/useAuthStore';
+import { getCache, setCache } from '../utils/cacheManager';
 
 const { width } = Dimensions.get('window');
 
@@ -10,19 +11,19 @@ export default function AttendanceScreen({ navigation }) {
   const role = user?.role;
 
   const [students, setStudents] = useState([]);
-  const [courses, setCourses] = useState([]);
+  const [courses, setCourses] = useState(getCache('courses') || []);
   const [batches, setBatches] = useState([]);
   const [selectedCourseId, setSelectedCourseId] = useState(null);
   const [selectedBatchId, setSelectedBatchId] = useState(null);
-  const [attendanceRecords, setAttendanceRecords] = useState([]); // for viewing mode
-  const [loading, setLoading] = useState(true);
+  const [attendanceRecords, setAttendanceRecords] = useState(getCache('attendance_records') || []); // for viewing mode
+  const [loading, setLoading] = useState(role === 'student' || role === 'parent' ? !getCache('attendance_records') : !getCache('courses'));
   const [fetchingBatches, setFetchingBatches] = useState(false);
   const [fetchingStudents, setFetchingStudents] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [attendance, setAttendance] = useState({});
   const [filterMode, setFilterMode] = useState('all'); // 'all', 'weekly', 'monthly'
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [holidays, setHolidays] = useState([]);
+  const [holidays, setHolidays] = useState(getCache('holidays') || []);
   const [isHoliday, setIsHoliday] = useState(false);
   const [viewDate, setViewDate] = useState(new Date());
   const [statusMsg, setStatusMsg] = useState({ text: '', type: '' }); // { text: '', type: 'success' | 'error' }
@@ -58,6 +59,7 @@ export default function AttendanceScreen({ navigation }) {
     try {
       const res = await apiClient.get('/attendance/holidays');
       setHolidays(res.data);
+      setCache('holidays', res.data);
       const holidayDates = res.data.map(h => h.date);
       setIsHoliday(holidayDates.includes(selectedDate));
     } catch (error) {
@@ -66,11 +68,11 @@ export default function AttendanceScreen({ navigation }) {
   };
 
   const fetchCourses = async () => {
-    setLoading(true);
     try {
       const response = await apiClient.get('/courses/');
       const fetchedCourses = response.data;
       setCourses(fetchedCourses);
+      setCache('courses', fetchedCourses);
       if (fetchedCourses.length > 0) {
         setSelectedCourseId(fetchedCourses[0].id);
         fetchBatches(fetchedCourses[0].id);
@@ -105,7 +107,6 @@ export default function AttendanceScreen({ navigation }) {
   };
 
   const fetchViewAttendance = async () => {
-    setLoading(true);
     try {
       let url = '/attendance/';
       const now = new Date();
@@ -129,10 +130,12 @@ export default function AttendanceScreen({ navigation }) {
           const separator = url.includes('?') ? '&' : '?';
           const attRes = await apiClient.get(`/parents/${myStudents[0].id}/attendance${url.replace('/attendance/', '')}`);
           setAttendanceRecords(attRes.data.records || []);
+          setCache('attendance_records', attRes.data.records || []);
         }
       } else {
         const res = await apiClient.get(url);
         setAttendanceRecords(res.data);
+        setCache('attendance_records', res.data);
       }
     } catch (error) {
       console.error('Failed to fetch attendance records:', error);
@@ -257,11 +260,10 @@ export default function AttendanceScreen({ navigation }) {
     }
   };
 
-  if (loading) {
+  if (loading && (isViewMode ? attendanceRecords.length === 0 : courses.length === 0)) {
     return (
       <SafeAreaView style={styles.centered}>
-        <ActivityIndicator size="large" color="#6366F1" />
-        <Text style={styles.loadingText}>Loading Dashboard...</Text>
+        <Text style={styles.loadingText}>Loading attendance data...</Text>
       </SafeAreaView>
     );
   }
@@ -529,7 +531,9 @@ export default function AttendanceScreen({ navigation }) {
                   onPress={handleRequestLeave}
                   disabled={submittingLeave}
                 >
-                  {submittingLeave ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalSubmitText}>Submit Request</Text>}
+                  <Text style={styles.modalSubmitText}>
+                    {submittingLeave ? 'Submitting Request...' : 'Submit Request'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -598,8 +602,8 @@ export default function AttendanceScreen({ navigation }) {
         </ScrollView>
 
         <Text style={styles.filterLabel}>Batch:</Text>
-        {fetchingBatches ? (
-          <ActivityIndicator size="small" color="#6366F1" />
+        {fetchingBatches && batches.length === 0 ? (
+          <Text style={styles.emptyFilterText}>Loading batches...</Text>
         ) : batches.length > 0 ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
             {batches.map(batch => (
@@ -620,9 +624,8 @@ export default function AttendanceScreen({ navigation }) {
         )}
       </View>
 
-      {fetchingStudents ? (
+      {fetchingStudents && students.length === 0 ? (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#6366F1" />
           <Text style={styles.loadingText}>Fetching students...</Text>
         </View>
       ) : students.length > 0 ? (
@@ -658,11 +661,9 @@ export default function AttendanceScreen({ navigation }) {
             onPress={handleSubmitAttendance}
             disabled={submitting}
           >
-            {submitting ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.submitBtnText}>Update Attendance for {selectedDate}</Text>
-            )}
+            <Text style={styles.submitBtnText}>
+              {submitting ? 'Updating Attendance...' : `Update Attendance for ${selectedDate}`}
+            </Text>
           </TouchableOpacity>
         </View>
       )}

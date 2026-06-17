@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, SafeAreaView, ScrollView,
+  Alert, SafeAreaView, ScrollView,
   KeyboardAvoidingView, Platform, Animated, StatusBar, Image
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
@@ -10,6 +10,7 @@ import { supabase } from '../utils/supabase';
 import { useAuthStore } from '../store/useAuthStore';
 import apiClient from '../api/apiClient';
 import { registerForPushNotificationsAsync } from '../utils/notifications';
+import { getCache, setCache } from '../utils/cacheManager';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -67,10 +68,11 @@ export default function RegisterScreen({ navigation, route }) {
   const login = useAuthStore((state) => state.login);
 
   // Courses & Batches Data
-  const [availableData, setAvailableData] = useState([]);
+  const cachedData = getCache('courses_batches') || [];
+  const [availableData, setAvailableData] = useState(cachedData);
   const [selectedCourses, setSelectedCourses] = useState([]);
   const [selectedBatches, setSelectedBatches] = useState([]);
-  const [fetchingData, setFetchingData] = useState(true);
+  const [fetchingData, setFetchingData] = useState(cachedData.length === 0);
 
   const [errors, setErrors] = useState({});
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -100,6 +102,7 @@ export default function RegisterScreen({ navigation, route }) {
     try {
       const res = await apiClient.get('/auth/courses-batches');
       setAvailableData(res.data);
+      setCache('courses_batches', res.data);
     } catch (e) {
       console.error(e);
       Alert.alert('Error', 'Failed to load courses and batches.');
@@ -352,7 +355,7 @@ export default function RegisterScreen({ navigation, route }) {
             {/* Courses & Batches Selection */}
             <Text style={[styles.sectionLabel, { marginTop: 10 }]}>Select Courses & Batches</Text>
             {fetchingData ? (
-              <ActivityIndicator color="#6366F1" style={{ marginVertical: 10 }} />
+              <Text style={{ marginVertical: 10, color: '#6366F1', fontWeight: '600' }}>Loading courses & batches...</Text>
             ) : (
               <View style={styles.selectionArea}>
                 {availableData.map(course => (
@@ -392,7 +395,7 @@ export default function RegisterScreen({ navigation, route }) {
             )}
 
             <TouchableOpacity style={[styles.submitBtn, loading && styles.submitBtnDisabled]} onPress={handleRegister} disabled={loading}>
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Submit Registration Request</Text>}
+              <Text style={styles.submitText}>{loading ? 'Submitting...' : 'Submit Registration Request'}</Text>
             </TouchableOpacity>
             </>
             )}

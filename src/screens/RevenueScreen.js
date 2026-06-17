@@ -1,23 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, FlatList, TouchableOpacity, 
-  TextInput, Alert, ActivityIndicator, ScrollView
+  TextInput, Alert, ScrollView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import apiClient from '../api/apiClient';
+import { getCache, setCache } from '../utils/cacheManager';
 
 export default function RevenueScreen() {
   const [activeTab, setActiveTab] = useState('Dashboard'); // 'Dashboard', 'Income', 'Expenses'
-  const [loading, setLoading] = useState(true);
   
   // Dashboard Data
-  const [dashboardData, setDashboardData] = useState(null);
+  const [dashboardData, setDashboardData] = useState(getCache('revenue_dashboard') || null);
   
   // Income Data
-  const [incomes, setIncomes] = useState([]);
+  const [incomes, setIncomes] = useState(getCache('revenue_income') || []);
   
   // Expense Data
-  const [expenses, setExpenses] = useState([]);
+  const [expenses, setExpenses] = useState(getCache('revenue_expenses') || []);
   const [expAmount, setExpAmount] = useState('');
   const [expCategory, setExpCategory] = useState('Salary'); // Default
   const [expDesc, setExpDesc] = useState('');
@@ -25,7 +25,12 @@ export default function RevenueScreen() {
   const [addingExp, setAddingExp] = useState(false);
 
   // Accordion state for Income tab
-  const [courseBatchTree, setCourseBatchTree] = useState([]);
+  const [courseBatchTree, setCourseBatchTree] = useState(getCache('revenue_courses_batches') || []);
+  const [loading, setLoading] = useState(
+    activeTab === 'Dashboard' ? !getCache('revenue_dashboard') :
+    activeTab === 'Income' ? (!getCache('revenue_income') || !getCache('revenue_courses_batches')) :
+    !getCache('revenue_expenses')
+  );
   const [expandedCourses, setExpandedCourses] = useState({});
   const [expandedBatches, setExpandedBatches] = useState({});
 
@@ -33,6 +38,7 @@ export default function RevenueScreen() {
     try {
       const res = await apiClient.get('/auth/courses-batches');
       setCourseBatchTree(res.data);
+      setCache('revenue_courses_batches', res.data);
     } catch (err) {
       console.error('Failed to fetch courses & batches:', err);
     }
@@ -47,22 +53,30 @@ export default function RevenueScreen() {
   };
 
   useEffect(() => {
+    const hasCache = 
+      activeTab === 'Dashboard' ? getCache('revenue_dashboard') :
+      activeTab === 'Income' ? (getCache('revenue_income') && getCache('revenue_courses_batches')) :
+      getCache('revenue_expenses');
+    setLoading(!hasCache);
     fetchData();
   }, [activeTab]);
 
   const fetchData = async () => {
-    setLoading(true);
     try {
       if (activeTab === 'Dashboard') {
         const res = await apiClient.get('/revenue/dashboard');
         setDashboardData(res.data);
+        setCache('revenue_dashboard', res.data);
       } else if (activeTab === 'Income') {
         const res = await apiClient.get('/fees/');
-        setIncomes(res.data.filter(f => f.status === 'paid'));
+        const filtered = res.data.filter(f => f.status === 'paid');
+        setIncomes(filtered);
+        setCache('revenue_income', filtered);
         await fetchCoursesAndBatches();
       } else if (activeTab === 'Expenses') {
         const res = await apiClient.get('/revenue/expenses');
         setExpenses(res.data);
+        setCache('revenue_expenses', res.data);
       }
     } catch (err) {
       console.error(err);
@@ -409,7 +423,7 @@ export default function RevenueScreen() {
 
       {loading ? (
         <View style={styles.loaderWrap}>
-          <ActivityIndicator size="large" color="#4F46E5" />
+          <Text style={{ fontSize: 16, color: '#64748B' }}>Loading {activeTab.toLowerCase()} data...</Text>
         </View>
       ) : (
         <>

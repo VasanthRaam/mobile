@@ -8,11 +8,11 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
-  ActivityIndicator
+  SafeAreaView
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import apiClient from '../api/apiClient';
+import { getCache, setCache } from '../utils/cacheManager';
 
 /**
  * @typedef {Object} Message
@@ -22,7 +22,7 @@ import apiClient from '../api/apiClient';
  */
 
 const ChatScreen = ({ navigation }) => {
-  const [messages, setMessages] = useState([
+  const [messages, setMessages] = useState(getCache('chat_history') || [
     { id: 'initial-msg', text: 'Namaste! I am the Academy AI Teacher. How can I help you today?', isUser: false }
   ]);
   const [inputText, setInputText] = useState('');
@@ -43,6 +43,7 @@ const ChatScreen = ({ navigation }) => {
             isUser: msg.role === 'user'
           }));
           setMessages(formatted);
+          setCache('chat_history', formatted);
         }
       } catch (error) {
         console.error('Failed to load chat history:', error);
@@ -52,6 +53,13 @@ const ChatScreen = ({ navigation }) => {
     };
     fetchHistory();
   }, []);
+
+  useEffect(() => {
+    const scrollTimeout = setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: false });
+    }, 100);
+    return () => clearTimeout(scrollTimeout);
+  }, [messages]);
 
 
   const sendMessage = async () => {
@@ -64,7 +72,9 @@ const ChatScreen = ({ navigation }) => {
       isUser: true,
     };
 
-    setMessages((prev) => [...prev, newUserMsg]);
+    const updatedMessages = [...messages, newUserMsg];
+    setMessages(updatedMessages);
+    setCache('chat_history', updatedMessages);
     setInputText('');
     setIsLoading(true);
 
@@ -77,7 +87,9 @@ const ChatScreen = ({ navigation }) => {
         isUser: false,
       };
 
-      setMessages((prev) => [...prev, botMessage]);
+      const finalMessages = [...updatedMessages, botMessage];
+      setMessages(finalMessages);
+      setCache('chat_history', finalMessages);
     } catch (error) {
       console.error('Chat API Error:', error);
       const errorMsg = {
@@ -85,7 +97,9 @@ const ChatScreen = ({ navigation }) => {
         text: "I'm sorry, I encountered an error connecting to the academy systems. Please try again later.",
         isUser: false,
       };
-      setMessages((prev) => [...prev, errorMsg]);
+      const finalErrorMessages = [...updatedMessages, errorMsg];
+      setMessages(finalErrorMessages);
+      setCache('chat_history', finalErrorMessages);
     } finally {
       setIsLoading(false);
     }
@@ -129,7 +143,6 @@ const ChatScreen = ({ navigation }) => {
 
         {isLoading && (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color="#6200EE" />
             <Text style={styles.loadingText}>AI Teacher is typing...</Text>
           </View>
         )}

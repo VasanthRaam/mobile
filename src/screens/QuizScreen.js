@@ -1,21 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, Text, StyleSheet, TouchableOpacity, 
-  FlatList, ActivityIndicator, Alert, SafeAreaView,
+  FlatList, Alert, SafeAreaView,
   Dimensions
 } from 'react-native';
 import apiClient from '../api/apiClient';
+import { getCache, setCache } from '../utils/cacheManager';
 
 const { width } = Dimensions.get('window');
 
 export default function QuizScreen({ route, navigation }) {
   const { quizId, quizTitle } = route.params;
 
-  const [loading, setLoading] = useState(true);
-  const [quiz, setQuiz] = useState(null);
+  const cachedQuiz = getCache('quiz_detail_' + quizId);
+  const [loading, setLoading] = useState(!cachedQuiz);
+  const [quiz, setQuiz] = useState(cachedQuiz || null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState({});
-  const [timeLeft, setTimeLeft] = useState(600); // 10 minutes default
+  const [timeLeft, setTimeLeft] = useState(cachedQuiz?.questions ? cachedQuiz.questions.length * 60 : 600); // 10 minutes default
   const [isFinished, setIsFinished] = useState(false);
   const [results, setResults] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -48,6 +50,7 @@ export default function QuizScreen({ route, navigation }) {
     try {
       const response = await apiClient.get(`/quizzes/${quizId}`);
       setQuiz(response.data);
+      setCache('quiz_detail_' + quizId, response.data);
       // If quiz has questions, set a reasonable timer (e.g., 1 min per question)
       if (response.data.questions) {
         setTimeLeft(response.data.questions.length * 60);
@@ -110,7 +113,6 @@ export default function QuizScreen({ route, navigation }) {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#FFD700" />
         <Text style={styles.loadingText}>Loading Fun Quiz...</Text>
       </View>
     );

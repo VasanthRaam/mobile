@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, FlatList, 
-  TouchableOpacity, ActivityIndicator, SafeAreaView,
+  TouchableOpacity, SafeAreaView,
   RefreshControl
 } from 'react-native';
 import apiClient from '../api/apiClient';
 import { useAuthStore } from '../store/useAuthStore';
+import { getCache, setCache } from '../utils/cacheManager';
 
 export default function QuizListScreen({ navigation }) {
-  const [quizzes, setQuizzes] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [quizzes, setQuizzes] = useState(getCache('quiz_list') || []);
+  const [loading, setLoading] = useState(!getCache('quiz_list'));
   const [refreshing, setRefreshing] = useState(false);
   const { user } = useAuthStore();
   const role = user?.role;
@@ -23,6 +24,7 @@ export default function QuizListScreen({ navigation }) {
       const response = await apiClient.get('/quizzes');
       console.log('Fetched quizzes:', response.data.length);
       setQuizzes(response.data);
+      setCache('quiz_list', response.data);
     } catch (error) {
       console.error('Failed to fetch quizzes:', error);
     } finally {
@@ -105,7 +107,6 @@ export default function QuizListScreen({ navigation }) {
 
       {loading ? (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#007AFF" />
           <Text style={styles.loadingText}>Fetching your challenges...</Text>
         </View>
       ) : (

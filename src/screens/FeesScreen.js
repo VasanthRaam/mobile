@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, FlatList, TouchableOpacity, 
-  TextInput, Alert, ActivityIndicator, Linking,
+  TextInput, Alert, Linking,
   ScrollView, Modal, Dimensions, RefreshControl
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,22 +9,24 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 const { width } = Dimensions.get('window');
 import apiClient from '../api/apiClient';
 import { useAuthStore } from '../store/useAuthStore';
+import { getCache, setCache } from '../utils/cacheManager';
 
 export default function FeesScreen() {
   const { user } = useAuthStore();
   const role = user?.role;
   
-  const [fees, setFees] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [fees, setFees] = useState(getCache('fees_list') || []);
+  const [loading, setLoading] = useState(!getCache('fees_list'));
+  const [refreshing, setRefreshing] = useState(false);
   
   // Admin specific states
-  const [adminUpi, setAdminUpi] = useState('');
+  const [adminUpi, setAdminUpi] = useState(getCache('admin_upi') || '');
   const [amount, setAmount] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [pickerDate, setPickerDate] = useState(new Date());
   
-  const [courses, setCourses] = useState([]);
+  const [courses, setCourses] = useState(getCache('courses') || []);
   const [selectedCourse, setSelectedCourse] = useState(null);
   
   const [batches, setBatches] = useState([]);
@@ -68,11 +70,13 @@ export default function FeesScreen() {
     try {
       const res = await apiClient.get('/fees/');
       setFees(res.data);
+      setCache('fees_list', res.data);
     } catch (err) {
       console.error(err);
       Alert.alert('Error', 'Failed to fetch fees');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -80,6 +84,7 @@ export default function FeesScreen() {
     try {
       const res = await apiClient.get('/fees/admin-upi');
       setAdminUpi(res.data.upi_id);
+      setCache('admin_upi', res.data.upi_id);
     } catch (err) {
       console.error(err);
     }
@@ -89,6 +94,7 @@ export default function FeesScreen() {
     try {
       const res = await apiClient.get('/courses/');
       setCourses(res.data);
+      setCache('courses', res.data);
       if (res.data.length > 0 && !filterCourseId) {
         handleFilterCourseSelect(res.data[0].id);
       }
@@ -495,7 +501,7 @@ export default function FeesScreen() {
   const totalPending = fees.filter(f => f.status !== 'paid').reduce((acc, curr) => acc + curr.amount, 0);
 
   const handleRefresh = () => {
-    setLoading(true);
+    setRefreshing(true);
     fetchFees();
     fetchCourses();
     fetchAdminUpi();
@@ -510,7 +516,7 @@ export default function FeesScreen() {
       <ScrollView 
         contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={handleRefresh} tintColor="#4F46E5" />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#4F46E5" />
         }
       >
         {role === 'admin' && renderAdminView()}
@@ -581,7 +587,7 @@ export default function FeesScreen() {
 
         {/* Fees list matching selection */}
         {loading ? (
-          <ActivityIndicator size="small" color="#4F46E5" style={{ marginVertical: 20 }} />
+          <Text style={{ textAlign: 'center', marginVertical: 20, color: '#64748B' }}>Loading fees...</Text>
         ) : (
           <View style={styles.feesList}>
             {filteredFees.map(fee => renderFeeItem({ item: fee }))}

@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, SafeAreaView, ActivityIndicator, TouchableOpacity, StatusBar, Modal, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, StatusBar, Modal, Alert, ScrollView } from 'react-native';
 import apiClient from '../api/apiClient';
+import { getCache, setCache } from '../utils/cacheManager';
 
 export default function MyCoursesScreen({ navigation }) {
-  const [courses, setCourses] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [courses, setCourses] = useState(getCache('my_courses') || []);
+  const [loading, setLoading] = useState(!getCache('my_courses'));
   
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
-  const [allCourses, setAllCourses] = useState([]);
+  const [allCourses, setAllCourses] = useState(getCache('courses_batches') || []);
   const [loadingAll, setLoadingAll] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [selectedBatch, setSelectedBatch] = useState(null);
@@ -29,6 +30,7 @@ export default function MyCoursesScreen({ navigation }) {
       }));
       
       setCourses(detailedCourses);
+      setCache('my_courses', detailedCourses);
     } catch (error) {
       console.error('Failed to fetch courses:', error);
     } finally {
@@ -38,10 +40,12 @@ export default function MyCoursesScreen({ navigation }) {
 
   const handleOpenEnrollModal = async () => {
     setModalVisible(true);
-    setLoadingAll(true);
+    const cached = getCache('courses_batches');
+    setLoadingAll(!cached);
     try {
       const res = await apiClient.get('/auth/courses-batches');
       setAllCourses(res.data);
+      setCache('courses_batches', res.data);
     } catch (error) {
       Alert.alert('Error', 'Failed to load available courses.');
     } finally {
@@ -74,7 +78,6 @@ export default function MyCoursesScreen({ navigation }) {
   if (loading) {
     return (
       <SafeAreaView style={styles.centered}>
-        <ActivityIndicator size="large" color="#6366F1" />
         <Text style={styles.loadingText}>Loading your programs...</Text>
       </SafeAreaView>
     );
@@ -145,7 +148,7 @@ export default function MyCoursesScreen({ navigation }) {
             <Text style={styles.modalTitle}>Enroll in a New Course</Text>
             
             {loadingAll ? (
-              <ActivityIndicator size="large" color="#6366F1" style={{ marginVertical: 20 }} />
+              <Text style={{ textAlign: 'center', marginVertical: 20, color: '#6366F1', fontWeight: '600' }}>Loading available courses...</Text>
             ) : (
               <ScrollView style={styles.modalScroll}>
                 <Text style={styles.sectionLabel}>Select a Course:</Text>
@@ -189,7 +192,7 @@ export default function MyCoursesScreen({ navigation }) {
                 onPress={handleEnrollRequest}
                 disabled={!selectedCourse || !selectedBatch || enrolling}
               >
-                {enrolling ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalSubmitText}>Request Enrollment</Text>}
+                <Text style={styles.modalSubmitText}>{enrolling ? 'Requesting...' : 'Request Enrollment'}</Text>
               </TouchableOpacity>
             </View>
           </View>

@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, FlatList, 
-  ActivityIndicator, SafeAreaView, TouchableOpacity 
+  SafeAreaView, TouchableOpacity 
 } from 'react-native';
 import apiClient from '../api/apiClient';
+import { getCache, setCache } from '../utils/cacheManager';
 
 export default function SubmissionDetailScreen({ route, navigation }) {
   const { attemptId } = route.params;
-  const [details, setDetails] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [details, setDetails] = useState(getCache('submission_detail_' + attemptId) || null);
+  const [loading, setLoading] = useState(!getCache('submission_detail_' + attemptId));
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -19,6 +20,7 @@ export default function SubmissionDetailScreen({ route, navigation }) {
     try {
       const response = await apiClient.get(`/quizzes/attempts/${attemptId}/details`);
       setDetails(response.data);
+      setCache('submission_detail_' + attemptId, response.data);
     } catch (err) {
       console.error('Failed to fetch submission details:', err);
       setError(err.response?.data?.detail || 'Failed to load submission review.');
@@ -30,7 +32,6 @@ export default function SubmissionDetailScreen({ route, navigation }) {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#007AFF" />
         <Text style={styles.loadingText}>Analyzing results...</Text>
       </View>
     );

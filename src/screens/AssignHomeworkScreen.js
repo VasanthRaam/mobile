@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, TextInput, 
   TouchableOpacity, ScrollView, 
-  Alert, ActivityIndicator 
+  Alert 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import apiClient from '../api/apiClient';
+import { getCache, setCache } from '../utils/cacheManager';
 
 export default function AssignHomeworkScreen({ navigation }) {
-  const [courses, setCourses] = useState([]);
+  const [courses, setCourses] = useState(getCache('courses') || []);
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const [batches, setBatches] = useState([]);
   const [selectedBatchId, setSelectedBatchId] = useState('');
@@ -18,7 +19,7 @@ export default function AssignHomeworkScreen({ navigation }) {
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!getCache('courses'));
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -41,6 +42,7 @@ export default function AssignHomeworkScreen({ navigation }) {
     try {
       const response = await apiClient.get('/courses/');
       setCourses(response.data);
+      setCache('courses', response.data);
       if (response.data.length > 0) {
         setSelectedCourseId(response.data[0].id);
       } else {
@@ -123,10 +125,10 @@ export default function AssignHomeworkScreen({ navigation }) {
     }
   };
 
-  if (loading) {
+  if (loading && courses.length === 0) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#4F46E5" />
+        <Text style={{ color: '#64748B', fontWeight: '600' }}>Loading courses...</Text>
       </View>
     );
   }

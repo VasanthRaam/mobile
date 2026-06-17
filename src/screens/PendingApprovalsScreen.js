@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ActivityIndicator, SafeAreaView, RefreshControl,
+  SafeAreaView, RefreshControl,
   Modal, TextInput, Alert, StatusBar, Platform, ScrollView
 } from 'react-native';
 import apiClient from '../api/apiClient';
 import { useAuthStore } from '../store/useAuthStore';
+import { getCache, setCache } from '../utils/cacheManager';
 
 const ROLE_COLORS = {
   teacher: '#6366F1',
@@ -17,8 +18,8 @@ export default function PendingApprovalsScreen({ navigation }) {
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'admin';
   const [activeTab, setActiveTab] = useState(isAdmin ? 'registrations' : 'leaves'); // registrations, enrollments, leaves
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(getCache('pending_' + (isAdmin ? 'registrations' : 'leaves')) || []);
+  const [loading, setLoading] = useState(!getCache('pending_' + (isAdmin ? 'registrations' : 'leaves')));
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
 
@@ -37,6 +38,7 @@ export default function PendingApprovalsScreen({ navigation }) {
         res = await apiClient.get('/attendance/leave_requests');
       }
       setData(res.data);
+      setCache('pending_' + activeTab, res.data);
     } catch (e) {
       console.error(e);
       const msg = e.response?.data?.detail || 'Network error. Please check your connection.';
@@ -48,9 +50,9 @@ export default function PendingApprovalsScreen({ navigation }) {
   }, [activeTab]);
 
   useEffect(() => { 
-    setLoading(true);
+    setLoading(!getCache('pending_' + activeTab));
     fetchData(); 
-  }, [fetchData]);
+  }, [activeTab]);
 
   // ── Actions ───────────────────────────────────
   const doApprove = async (item, tab) => {
@@ -152,7 +154,6 @@ export default function PendingApprovalsScreen({ navigation }) {
 
         {isProcessing ? (
           <View style={styles.processingRow}>
-            <ActivityIndicator color="#6366F1" size="small" />
             <Text style={styles.processingText}>Processing...</Text>
           </View>
         ) : (
@@ -209,7 +210,6 @@ export default function PendingApprovalsScreen({ navigation }) {
 
       {loading ? (
         <SafeAreaView style={styles.centered}>
-          <ActivityIndicator size="large" color="#6366F1" />
           <Text style={styles.loadingLabel}>Loading requests...</Text>
         </SafeAreaView>
       ) : data.length === 0 ? (

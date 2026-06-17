@@ -1,11 +1,12 @@
 import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useAuthStore } from './src/store/useAuthStore';
 import * as Notifications from 'expo-notifications';
 import { registerForPushNotificationsAsync, syncPushTokenWithBackend } from './src/utils/notifications';
 import { navigationRef } from './src/navigation/AppNavigator';
+import { initCache } from './src/utils/cacheManager';
 
 import { Platform } from 'react-native';
 
@@ -31,7 +32,11 @@ export default function App() {
   const { restoreSession, isLoading, isAuthenticated } = useAuthStore();
 
   useEffect(() => {
-    restoreSession();
+    const initialize = async () => {
+      await initCache();
+      await restoreSession();
+    };
+    initialize();
   }, []);
 
   useEffect(() => {
@@ -114,7 +119,7 @@ export default function App() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0000ff" />
+        {/* Silent boot loader - no spinner */}
       </View>
     );
   }

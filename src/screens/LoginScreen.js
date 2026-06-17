@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, ActivityIndicator, Alert, SafeAreaView,
+  StyleSheet, Alert, SafeAreaView,
   Dimensions, KeyboardAvoidingView, Platform, Image
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
@@ -227,11 +227,7 @@ export default function LoginScreen({ navigation }) {
             disabled={loading}
             activeOpacity={0.8}
           >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.loginBtnText}>Continue to Dashboard</Text>
-            )}
+            <Text style={styles.loginBtnText}>{loading ? 'Signing in...' : 'Continue to Dashboard'}</Text>
           </TouchableOpacity>
 
           <View style={styles.divider}>

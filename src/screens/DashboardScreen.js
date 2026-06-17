@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { 
   View, Text, StyleSheet, TouchableOpacity, 
   ScrollView, Dimensions, Animated,
-  ActivityIndicator, Alert
+  Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -10,6 +10,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import NotificationBar from '../components/NotificationBar';
 import apiClient from '../api/apiClient';
 import ChatFAB from '../components/ChatFAB';
+import { getCache, setCache } from '../utils/cacheManager';
 
 const { width } = Dimensions.get('window');
 
@@ -17,8 +18,8 @@ export default function DashboardScreen({ navigation }) {
   const { user } = useAuthStore();
   const role = user?.role;
 
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState(getCache('dashboard_stats'));
+  const [loading, setLoading] = useState(!getCache('dashboard_stats'));
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -45,6 +46,7 @@ export default function DashboardScreen({ navigation }) {
     try {
       const response = await apiClient.get('/dashboard/stats');
       setStats(response.data);
+      setCache('dashboard_stats', response.data);
     } catch (error) {
       console.error('Failed to fetch stats:', error);
     } finally {
@@ -149,9 +151,9 @@ export default function DashboardScreen({ navigation }) {
 
         <NotificationBar />
 
-        {loading ? (
+        {loading && !stats ? (
           <View style={[styles.statsContainer, { justifyContent: 'center' }]}>
-            <ActivityIndicator color="#4F46E5" />
+            <Text style={{ color: '#64748B', fontWeight: '600' }}>Loading stats...</Text>
           </View>
         ) : (
           role === 'admin' ? renderAdminStats() : 

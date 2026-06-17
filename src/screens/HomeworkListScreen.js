@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import apiClient from '../api/apiClient';
 import { useAuthStore } from '../store/useAuthStore';
+import { getCache, setCache } from '../utils/cacheManager';
 
 export default function HomeworkListScreen({ navigation }) {
   const { user } = useAuthStore();
-  const [homework, setHomework] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [homework, setHomework] = useState(getCache('homework_list') || []);
+  const [loading, setLoading] = useState(!getCache('homework_list'));
   const [refreshing, setRefreshing] = useState(false);
   const [togglingId, setTogglingId] = useState(null);
 
@@ -15,6 +16,7 @@ export default function HomeworkListScreen({ navigation }) {
     try {
       const response = await apiClient.get('/homework');
       setHomework(response.data);
+      setCache('homework_list', response.data);
     } catch (error) {
       console.error('Failed to fetch homework:', error);
       // If 405 occurs, it might be the reloader hasn't finished or route mismatch
@@ -53,10 +55,10 @@ export default function HomeworkListScreen({ navigation }) {
     }
   };
 
-  if (loading) {
+  if (loading && homework.length === 0) {
     return (
       <SafeAreaView style={styles.centered}>
-        <ActivityIndicator size="large" color="#6366F1" />
+        <Text style={{ color: '#64748B', fontWeight: '600' }}>Loading homework...</Text>
       </SafeAreaView>
     );
   }
@@ -84,8 +86,11 @@ export default function HomeworkListScreen({ navigation }) {
               disabled={togglingId === item.id}
             >
               <View style={[styles.checkbox, item.is_completed && styles.checkboxChecked]}>
-                {item.is_completed && <Text style={styles.checkMark}>✓</Text>}
-                {togglingId === item.id && <ActivityIndicator size="small" color="#6366F1" />}
+                {togglingId === item.id ? (
+                  <Text style={{ color: '#6366F1', fontSize: 10 }}>...</Text>
+                ) : (
+                  item.is_completed && <Text style={styles.checkMark}>✓</Text>
+                )}
               </View>
               
               <View style={styles.content}>

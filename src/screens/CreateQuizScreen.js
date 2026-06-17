@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, TextInput, 
-  TouchableOpacity, ScrollView, ActivityIndicator, Alert, 
+  TouchableOpacity, ScrollView, Alert, 
   SafeAreaView 
 } from 'react-native';
 import apiClient from '../api/apiClient';
+import { getCache, setCache } from '../utils/cacheManager';
 
 export default function CreateQuizScreen({ navigation }) {
-  const [courses, setCourses] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const cachedCourses = getCache('courses') || [];
+  const [courses, setCourses] = useState(cachedCourses);
+  const [loading, setLoading] = useState(cachedCourses.length === 0);
   const [submitting, setSubmitting] = useState(false);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [selectedCourseId, setSelectedCourseId] = useState(null);
+  const [selectedCourseId, setSelectedCourseId] = useState(cachedCourses.length > 0 ? cachedCourses[0].id : null);
   
   const [questions, setQuestions] = useState([
     {
@@ -34,7 +36,8 @@ export default function CreateQuizScreen({ navigation }) {
     try {
       const response = await apiClient.get('/courses/');
       setCourses(response.data);
-      if (response.data.length > 0) {
+      setCache('courses', response.data);
+      if (response.data.length > 0 && !selectedCourseId) {
         setSelectedCourseId(response.data[0].id);
       }
     } catch (error) {
@@ -117,7 +120,7 @@ export default function CreateQuizScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={{ fontSize: 16, color: '#64748B' }}>Loading courses...</Text>
       </View>
     );
   }
@@ -236,11 +239,9 @@ export default function CreateQuizScreen({ navigation }) {
           onPress={handleCreateQuiz}
           disabled={submitting}
         >
-          {submitting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.submitButtonText}>Create Quiz & Notify Students 🚀</Text>
-          )}
+          <Text style={styles.submitButtonText}>
+            {submitting ? 'Creating Quiz...' : 'Create Quiz & Notify Students 🚀'}
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
