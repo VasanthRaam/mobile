@@ -36,49 +36,32 @@ export default function FeesScreen() {
   const [savingUpi, setSavingUpi] = useState(false);
   const [creatingFee, setCreatingFee] = useState(false);
 
-  // Accordion state
-  const [courseBatchTree, setCourseBatchTree] = useState([]);
-  const [expandedCourses, setExpandedCourses] = useState({});
-  const [expandedBatches, setExpandedBatches] = useState({});
-  const [teacherBatches, setTeacherBatches] = useState([]);
+  // Filter state
+  const [filterCourseId, setFilterCourseId] = useState(null);
+  const [filterBatchId, setFilterBatchId] = useState(null);
+  const [filterBatches, setFilterBatches] = useState([]);
 
   useEffect(() => {
     fetchFees();
-    fetchCoursesAndBatches();
-    if (role === 'admin') {
-      fetchAdminUpi();
-      fetchCourses();
-    } else if (role === 'student') {
-      fetchAdminUpi(); // To get UPI ID for payment
-    } else if (role === 'teacher') {
-      fetchTeacherBatches();
-    }
+    fetchCourses();
+    fetchAdminUpi();
   }, [role]);
 
-  const fetchTeacherBatches = async () => {
-    try {
-      const res = await apiClient.get('/batches/');
-      setTeacherBatches(res.data);
-    } catch (err) {
-      console.error('Failed to fetch teacher batches:', err);
+  const handleFilterCourseSelect = async (courseId) => {
+    setFilterCourseId(courseId);
+    setFilterBatchId(null);
+    setFilterBatches([]);
+    if (courseId && courseId !== 'unassigned') {
+      try {
+        const res = await apiClient.get(`/batches/?course_id=${courseId}`);
+        setFilterBatches(res.data);
+        if (res.data.length > 0) {
+          setFilterBatchId(res.data[0].id);
+        }
+      } catch (err) {
+        console.error('Failed to fetch batches for filter:', err);
+      }
     }
-  };
-
-  const fetchCoursesAndBatches = async () => {
-    try {
-      const res = await apiClient.get('/auth/courses-batches');
-      setCourseBatchTree(res.data);
-    } catch (err) {
-      console.error('Failed to fetch courses & batches:', err);
-    }
-  };
-
-  const toggleCourseExpand = (courseId) => {
-    setExpandedCourses(prev => ({ ...prev, [courseId]: !prev[courseId] }));
-  };
-
-  const toggleBatchExpand = (batchId) => {
-    setExpandedBatches(prev => ({ ...prev, [batchId]: !prev[batchId] }));
   };
 
   const fetchFees = async () => {
@@ -106,6 +89,9 @@ export default function FeesScreen() {
     try {
       const res = await apiClient.get('/courses/');
       setCourses(res.data);
+      if (res.data.length > 0 && !filterCourseId) {
+        handleFilterCourseSelect(res.data[0].id);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -467,7 +453,7 @@ export default function FeesScreen() {
           <Text style={styles.feeCourseBatch}>📚 {item.course.name} • {item.batch.name}</Text>
         )}
 
-        {role === 'admin' && item.user && (
+        {(role === 'admin' || role === 'teacher') && item.user && (
           <Text style={styles.feeStudentName}>Student: {item.user.full_name}</Text>
         )}
         
@@ -490,131 +476,20 @@ export default function FeesScreen() {
     );
   };
 
-  const filteredCourseBatchTree = React.useMemo(() => {
-    if (role === 'admin') {
-      return courseBatchTree;
+  const courseFilterOptions = React.useMemo(() => {
+    const opts = [...courses];
+    if (fees.some(f => !f.course_id || !f.batch_id)) {
+      opts.push({ id: 'unassigned', name: 'Direct / Unassigned' });
     }
-    if (role === 'teacher') {
-      const teacherBatchIds = new Set(teacherBatches.map(b => b.id));
-      return courseBatchTree
-        .map(course => {
-          const filteredBatches = course.batches.filter(b => teacherBatchIds.has(b.id));
-          return { ...course, batches: filteredBatches };
-        })
-        .filter(course => course.batches.length > 0);
+    return opts;
+  }, [courses, fees]);
+
+  const filteredFees = React.useMemo(() => {
+    if (filterCourseId === 'unassigned') {
+      return fees.filter(f => !f.course_id || !f.batch_id);
     }
-    return [];
-  }, [courseBatchTree, teacherBatches, role]);
-
-  const renderAccordionTree = () => {
-    // Group the fees
-    const groupedFees = {};
-    const unassignedFees = [];
-
-    fees.forEach(fee => {
-      if (fee.course_id && fee.batch_id) {
-        if (!groupedFees[fee.course_id]) {
-          groupedFees[fee.course_id] = {};
-        }
-        if (!groupedFees[fee.course_id][fee.batch_id]) {
-          groupedFees[fee.course_id][fee.batch_id] = [];
-        }
-        groupedFees[fee.course_id][fee.batch_id].push(fee);
-      } else {
-        unassignedFees.push(fee);
-      }
-    });
-
-    return (
-      <View style={styles.accordionContainer}>
-        {filteredCourseBatchTree.map(course => {
-          const isCourseExpanded = expandedCourses[course.id] !== false;
-          const courseFeesCount = fees.filter(f => f.course_id === course.id).length;
-          
-          return (
-            <View key={course.id} style={styles.courseAccordionBlock}>
-              <TouchableOpacity 
-                style={[styles.courseAccordionHeader, isCourseExpanded && styles.courseAccordionHeaderActive]}
-                onPress={() => toggleCourseExpand(course.id)}
-                activeOpacity={0.8}
-              >
-                <View style={styles.headerTitleRow}>
-                  <Text style={styles.courseTitleText}>📚 {course.name}</Text>
-                  <View style={styles.badgeContainer}>
-                    <Text style={styles.badgeText}>{courseFeesCount} Fees</Text>
-                  </View>
-                </View>
-                <Text style={styles.expandIcon}>{isCourseExpanded ? '▲' : '▼'}</Text>
-              </TouchableOpacity>
-              
-              {isCourseExpanded && (
-                <View style={styles.courseAccordionBody}>
-                  {course.batches.map(batch => {
-                    const isBatchExpanded = expandedBatches[batch.id] !== false;
-                    const batchFees = (groupedFees[course.id] && groupedFees[course.id][batch.id]) || [];
-                    
-                    return (
-                      <View key={batch.id} style={styles.batchAccordionBlock}>
-                        <TouchableOpacity 
-                          style={[styles.batchAccordionHeader, isBatchExpanded && styles.batchAccordionHeaderActive]}
-                          onPress={() => toggleBatchExpand(batch.id)}
-                          activeOpacity={0.8}
-                        >
-                          <View style={styles.headerTitleRow}>
-                            <Text style={styles.batchTitleText}>👥 {batch.name}</Text>
-                            <View style={[styles.badgeContainer, { backgroundColor: '#F1F5F9' }]}>
-                              <Text style={[styles.badgeText, { color: '#64748B' }]}>{batchFees.length} Fees</Text>
-                            </View>
-                          </View>
-                          <Text style={styles.expandIcon}>{isBatchExpanded ? '▲' : '▼'}</Text>
-                        </TouchableOpacity>
-                        
-                        {isBatchExpanded && (
-                          <View style={styles.batchAccordionBody}>
-                            {batchFees.map(fee => renderFeeItem({ item: fee }))}
-                            {batchFees.length === 0 && (
-                              <Text style={styles.accordionEmptyText}>No fee records for this batch.</Text>
-                            )}
-                          </View>
-                        )}
-                      </View>
-                    );
-                  })}
-                  {course.batches.length === 0 && (
-                    <Text style={styles.accordionEmptyText}>No batches available for this course.</Text>
-                  )}
-                </View>
-              )}
-            </View>
-          );
-        })}
-
-        {unassignedFees.length > 0 && (
-          <View style={styles.courseAccordionBlock}>
-            <TouchableOpacity 
-              style={[styles.courseAccordionHeader, expandedCourses['unassigned'] !== false && styles.courseAccordionHeaderActive]}
-              onPress={() => toggleCourseExpand('unassigned')}
-              activeOpacity={0.8}
-            >
-              <View style={styles.headerTitleRow}>
-                <Text style={styles.courseTitleText}>💳 Direct / Unassigned Fees</Text>
-                <View style={[styles.badgeContainer, { backgroundColor: '#FEE2E2' }]}>
-                  <Text style={[styles.badgeText, { color: '#EF4444' }]}>{unassignedFees.length} Fees</Text>
-                </View>
-              </View>
-              <Text style={styles.expandIcon}>{expandedCourses['unassigned'] !== false ? '▲' : '▼'}</Text>
-            </TouchableOpacity>
-            
-            {expandedCourses['unassigned'] !== false && (
-              <View style={styles.courseAccordionBody}>
-                {unassignedFees.map(fee => renderFeeItem({ item: fee }))}
-              </View>
-            )}
-          </View>
-        )}
-      </View>
-    );
-  };
+    return fees.filter(f => f.course_id === filterCourseId && f.batch_id === filterBatchId);
+  }, [fees, filterCourseId, filterBatchId]);
 
   const totalPaid = fees.filter(f => f.status === 'paid').reduce((acc, curr) => acc + curr.amount, 0);
   const totalPending = fees.filter(f => f.status !== 'paid').reduce((acc, curr) => acc + curr.amount, 0);
@@ -622,14 +497,10 @@ export default function FeesScreen() {
   const handleRefresh = () => {
     setLoading(true);
     fetchFees();
-    fetchCoursesAndBatches();
-    if (role === 'admin') {
-      fetchAdminUpi();
-      fetchCourses();
-    } else if (role === 'student') {
-      fetchAdminUpi();
-    } else if (role === 'teacher') {
-      fetchTeacherBatches();
+    fetchCourses();
+    fetchAdminUpi();
+    if (filterCourseId) {
+      handleFilterCourseSelect(filterCourseId);
     }
   };
 
@@ -660,28 +531,64 @@ export default function FeesScreen() {
            </View>
         )}
         
-        {(role === 'admin' || role === 'teacher') ? (
-          <>
-            <Text style={[styles.sectionTitle, {marginTop: 20}]}>All Fee Records</Text>
-            {loading && fees.length === 0 ? (
-              <ActivityIndicator size="small" color="#4F46E5" style={{ marginVertical: 20 }} />
-            ) : (
-              renderAccordionTree()
+        <Text style={[styles.sectionTitle, {marginTop: 20}]}>
+          {role === 'student' || role === 'parent' ? 'My Fees' : 'Fee Records'}
+        </Text>
+
+        {/* Course Filter Selection */}
+        <View style={styles.filterSection}>
+          <Text style={styles.filterLabel}>Select Course:</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
+            {courseFilterOptions.map(course => (
+              <TouchableOpacity 
+                key={course.id}
+                style={[styles.filterChip, filterCourseId === course.id && styles.filterChipActive]}
+                onPress={() => handleFilterCourseSelect(course.id)}
+              >
+                <Text style={[styles.filterChipText, filterCourseId === course.id && styles.filterChipTextActive]}>
+                  {course.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+            {courseFilterOptions.length === 0 && !loading && (
+              <Text style={styles.noDataText}>No courses available</Text>
             )}
-          </>
-        ) : (
-          <>
-            <Text style={[styles.sectionTitle, {marginTop: 20}]}>My Fees</Text>
-            {loading && fees.length === 0 ? (
-              <ActivityIndicator size="small" color="#4F46E5" style={{ marginVertical: 20 }} />
-            ) : (
-              fees.map(fee => renderFeeItem({ item: fee }))
-            )}
-          </>
+          </ScrollView>
+        </View>
+
+        {/* Batch Filter Selection */}
+        {filterCourseId && filterCourseId !== 'unassigned' && (
+          <View style={styles.filterSection}>
+            <Text style={styles.filterLabel}>Select Batch:</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
+              {filterBatches.map(batch => (
+                <TouchableOpacity 
+                  key={batch.id}
+                  style={[styles.filterChip, filterBatchId === batch.id && styles.filterChipActive]}
+                  onPress={() => setFilterBatchId(batch.id)}
+                >
+                  <Text style={[styles.filterChipText, filterBatchId === batch.id && styles.filterChipTextActive]}>
+                    {batch.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+              {filterBatches.length === 0 && !loading && (
+                <Text style={styles.noDataText}>No batches available</Text>
+              )}
+            </ScrollView>
+          </View>
         )}
-        
-        {!loading && fees.length === 0 && (
-          <Text style={styles.emptyText}>No fee records found.</Text>
+
+        {/* Fees list matching selection */}
+        {loading ? (
+          <ActivityIndicator size="small" color="#4F46E5" style={{ marginVertical: 20 }} />
+        ) : (
+          <View style={styles.feesList}>
+            {filteredFees.map(fee => renderFeeItem({ item: fee }))}
+            {filteredFees.length === 0 && (
+              <Text style={styles.emptyText}>No fee records found for this selection.</Text>
+            )}
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -964,100 +871,40 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     marginTop: 20,
   },
-  accordionContainer: {
-    marginTop: 10,
+  filterSection: {
+    marginBottom: 16,
   },
-  courseAccordionBlock: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    marginBottom: 12,
+  filterLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#64748B',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  filterChip: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginRight: 10,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 2,
   },
-  courseAccordionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#F8FAFC',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+  filterChipActive: {
+    backgroundColor: '#4F46E5',
+    borderColor: '#4F46E5',
   },
-  courseAccordionHeaderActive: {
-    backgroundColor: '#EEF2FF',
-    borderBottomColor: '#E2E8F0',
-  },
-  headerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  courseTitleText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1E293B',
-  },
-  badgeContainer: {
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-  },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#4F46E5',
-  },
-  expandIcon: {
-    fontSize: 12,
-    color: '#94A3B8',
-    fontWeight: '700',
-  },
-  courseAccordionBody: {
-    padding: 12,
-    backgroundColor: '#FFF',
-  },
-  batchAccordionBlock: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    overflow: 'hidden',
-  },
-  batchAccordionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#F8FAFC',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  batchAccordionHeaderActive: {
-    backgroundColor: '#ECFDF5',
-  },
-  batchTitleText: {
+  filterChipText: {
     fontSize: 13,
+    color: '#475569',
+    fontWeight: '500',
+  },
+  filterChipTextActive: {
+    color: '#ffffff',
     fontWeight: '600',
-    color: '#334155',
   },
-  batchAccordionBody: {
-    padding: 10,
-    backgroundColor: '#FFF',
-  },
-  accordionEmptyText: {
-    textAlign: 'center',
-    fontSize: 12,
-    color: '#94A3B8',
-    fontStyle: 'italic',
-    paddingVertical: 12,
+  feesList: {
+    marginTop: 8,
   },
   feeCourseBatch: {
     fontSize: 12,
