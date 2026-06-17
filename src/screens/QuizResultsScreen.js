@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, FlatList, 
-  ActivityIndicator, SafeAreaView, TouchableOpacity, ScrollView
+  ActivityIndicator, TouchableOpacity, ScrollView
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import apiClient from '../api/apiClient';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -27,18 +28,25 @@ export default function QuizResultsScreen({ navigation }) {
   }, []);
 
   useEffect(() => {
-    fetchResults();
+    if (selectedCourseId) {
+      fetchBatches(selectedCourseId);
+    }
+  }, [selectedCourseId]);
+
+  useEffect(() => {
+    if (selectedBatchId !== null) {
+      fetchResults();
+    }
   }, [selectedBatchId]);
 
   const fetchCourses = async () => {
     setLoading(true);
     try {
       const response = await apiClient.get('/courses/');
-      const fetchedCourses = response.data;
+      const fetchedCourses = [{ id: 'all', name: 'All Courses' }, ...response.data];
       setCourses(fetchedCourses);
       if (fetchedCourses.length > 0) {
         setSelectedCourseId(fetchedCourses[0].id);
-        fetchBatches(fetchedCourses[0].id);
       }
     } catch (error) {
       console.error('Failed to fetch courses:', error);
@@ -51,10 +59,15 @@ export default function QuizResultsScreen({ navigation }) {
     setFetchingBatches(true);
     setSelectedBatchId(null);
     try {
-      const response = await apiClient.get(`/batches/?course_id=${courseId}`);
-      setBatches(response.data);
-      if (response.data.length > 0) {
-        setSelectedBatchId(response.data[0].id);
+      let url = '/batches/';
+      if (courseId !== 'all') {
+        url += `?course_id=${courseId}`;
+      }
+      const response = await apiClient.get(url);
+      const fetchedBatches = [{ id: 'all', name: 'All Batches' }, ...response.data];
+      setBatches(fetchedBatches);
+      if (fetchedBatches.length > 0) {
+        setSelectedBatchId(fetchedBatches[0].id);
       }
     } catch (error) {
       console.error('Failed to fetch batches:', error);
@@ -66,8 +79,10 @@ export default function QuizResultsScreen({ navigation }) {
   const fetchResults = async () => {
     try {
       let url = '/quizzes/results/all';
-      if (selectedBatchId) {
+      if (selectedBatchId && selectedBatchId !== 'all') {
         url += `?batch_id=${selectedBatchId}`;
+      } else if (selectedCourseId && selectedCourseId !== 'all') {
+        url += `?course_id=${selectedCourseId}`;
       }
       const response = await apiClient.get(url);
       setResults(response.data);

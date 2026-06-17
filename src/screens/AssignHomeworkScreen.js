@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, TextInput, 
-  TouchableOpacity, ScrollView, SafeAreaView, 
+  TouchableOpacity, ScrollView, 
   Alert, ActivityIndicator 
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import apiClient from '../api/apiClient';
 
 export default function AssignHomeworkScreen({ navigation }) {
+  const [courses, setCourses] = useState([]);
+  const [selectedCourseId, setSelectedCourseId] = useState('');
   const [batches, setBatches] = useState([]);
   const [selectedBatchId, setSelectedBatchId] = useState('');
   const [targetType, setTargetType] = useState('batch'); // 'batch' or 'student'
@@ -19,8 +22,14 @@ export default function AssignHomeworkScreen({ navigation }) {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    fetchBatches();
+    fetchCourses();
   }, []);
+
+  useEffect(() => {
+    if (selectedCourseId) {
+      fetchBatches(selectedCourseId);
+    }
+  }, [selectedCourseId]);
 
   useEffect(() => {
     if (selectedBatchId && targetType === 'student') {
@@ -28,12 +37,30 @@ export default function AssignHomeworkScreen({ navigation }) {
     }
   }, [selectedBatchId, targetType]);
 
-  const fetchBatches = async () => {
+  const fetchCourses = async () => {
     try {
-      const response = await apiClient.get('/batches/');
+      const response = await apiClient.get('/courses/');
+      setCourses(response.data);
+      if (response.data.length > 0) {
+        setSelectedCourseId(response.data[0].id);
+      } else {
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('Failed to fetch courses:', error);
+      setLoading(false);
+    }
+  };
+
+  const fetchBatches = async (courseId) => {
+    setLoading(true);
+    try {
+      const response = await apiClient.get(`/batches/?course_id=${courseId}`);
       setBatches(response.data);
       if (response.data.length > 0) {
         setSelectedBatchId(response.data[0].id);
+      } else {
+        setSelectedBatchId('');
       }
     } catch (error) {
       console.error('Failed to fetch batches:', error);
@@ -118,7 +145,23 @@ export default function AssignHomeworkScreen({ navigation }) {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.label}>1. Select Batch</Text>
+        <Text style={styles.label}>1. Select Course</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
+          {courses.map(course => (
+            <TouchableOpacity 
+              key={course.id}
+              style={[styles.batchItem, selectedCourseId === course.id && styles.batchItemSelected]}
+              onPress={() => setSelectedCourseId(course.id)}
+            >
+              <Text style={[styles.batchText, selectedCourseId === course.id && styles.batchTextSelected]}>
+                {course.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+          {courses.length === 0 && <Text style={styles.noDataText}>No courses available</Text>}
+        </ScrollView>
+
+        <Text style={styles.label}>2. Select Batch</Text>
         <View style={styles.batchList}>
           {batches.map(batch => (
             <TouchableOpacity 
@@ -131,9 +174,10 @@ export default function AssignHomeworkScreen({ navigation }) {
               </Text>
             </TouchableOpacity>
           ))}
+          {batches.length === 0 && <Text style={styles.noDataText}>No batches available</Text>}
         </View>
 
-        <Text style={styles.label}>2. Assign To</Text>
+        <Text style={styles.label}>3. Assign To</Text>
         <View style={styles.targetRow}>
           <TouchableOpacity 
             style={[styles.targetBtn, targetType === 'batch' && styles.targetBtnActive]}
@@ -171,7 +215,7 @@ export default function AssignHomeworkScreen({ navigation }) {
           </View>
         )}
 
-        <Text style={styles.label}>{targetType === 'batch' ? '3.' : '4.'} Homework Details</Text>
+        <Text style={styles.label}>{targetType === 'batch' ? '4.' : '5.'} Homework Details</Text>
         <TextInput 
           style={styles.input}
           placeholder="Homework Title"
@@ -249,6 +293,15 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: 16,
     textTransform: 'uppercase',
+  },
+  chipRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  noDataText: {
+    fontSize: 13,
+    color: '#94A3B8',
+    fontStyle: 'italic',
   },
   batchList: {
     flexDirection: 'row',

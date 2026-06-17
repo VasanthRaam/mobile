@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, FlatList, TouchableOpacity, 
-  TextInput, Alert, ActivityIndicator, Linking, SafeAreaView,
+  TextInput, Alert, ActivityIndicator, Linking,
   ScrollView, Modal, Dimensions, RefreshControl
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 import apiClient from '../api/apiClient';
@@ -39,6 +40,7 @@ export default function FeesScreen() {
   const [courseBatchTree, setCourseBatchTree] = useState([]);
   const [expandedCourses, setExpandedCourses] = useState({});
   const [expandedBatches, setExpandedBatches] = useState({});
+  const [teacherBatches, setTeacherBatches] = useState([]);
 
   useEffect(() => {
     fetchFees();
@@ -48,8 +50,19 @@ export default function FeesScreen() {
       fetchCourses();
     } else if (role === 'student') {
       fetchAdminUpi(); // To get UPI ID for payment
+    } else if (role === 'teacher') {
+      fetchTeacherBatches();
     }
   }, [role]);
+
+  const fetchTeacherBatches = async () => {
+    try {
+      const res = await apiClient.get('/batches/');
+      setTeacherBatches(res.data);
+    } catch (err) {
+      console.error('Failed to fetch teacher batches:', err);
+    }
+  };
 
   const fetchCoursesAndBatches = async () => {
     try {
@@ -477,6 +490,22 @@ export default function FeesScreen() {
     );
   };
 
+  const filteredCourseBatchTree = React.useMemo(() => {
+    if (role === 'admin') {
+      return courseBatchTree;
+    }
+    if (role === 'teacher') {
+      const teacherBatchIds = new Set(teacherBatches.map(b => b.id));
+      return courseBatchTree
+        .map(course => {
+          const filteredBatches = course.batches.filter(b => teacherBatchIds.has(b.id));
+          return { ...course, batches: filteredBatches };
+        })
+        .filter(course => course.batches.length > 0);
+    }
+    return [];
+  }, [courseBatchTree, teacherBatches, role]);
+
   const renderAccordionTree = () => {
     // Group the fees
     const groupedFees = {};
@@ -498,7 +527,7 @@ export default function FeesScreen() {
 
     return (
       <View style={styles.accordionContainer}>
-        {courseBatchTree.map(course => {
+        {filteredCourseBatchTree.map(course => {
           const isCourseExpanded = expandedCourses[course.id] !== false;
           const courseFeesCount = fees.filter(f => f.course_id === course.id).length;
           
@@ -599,6 +628,8 @@ export default function FeesScreen() {
       fetchCourses();
     } else if (role === 'student') {
       fetchAdminUpi();
+    } else if (role === 'teacher') {
+      fetchTeacherBatches();
     }
   };
 
@@ -629,12 +660,24 @@ export default function FeesScreen() {
            </View>
         )}
         
-        <Text style={[styles.sectionTitle, {marginTop: 20}]}>All Fee Records</Text>
-        
-        {loading && fees.length === 0 ? (
-          <ActivityIndicator size="small" color="#4F46E5" style={{ marginVertical: 20 }} />
+        {(role === 'admin' || role === 'teacher') ? (
+          <>
+            <Text style={[styles.sectionTitle, {marginTop: 20}]}>All Fee Records</Text>
+            {loading && fees.length === 0 ? (
+              <ActivityIndicator size="small" color="#4F46E5" style={{ marginVertical: 20 }} />
+            ) : (
+              renderAccordionTree()
+            )}
+          </>
         ) : (
-          renderAccordionTree()
+          <>
+            <Text style={[styles.sectionTitle, {marginTop: 20}]}>My Fees</Text>
+            {loading && fees.length === 0 ? (
+              <ActivityIndicator size="small" color="#4F46E5" style={{ marginVertical: 20 }} />
+            ) : (
+              fees.map(fee => renderFeeItem({ item: fee }))
+            )}
+          </>
         )}
         
         {!loading && fees.length === 0 && (
