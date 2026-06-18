@@ -7,7 +7,7 @@ import * as Notifications from 'expo-notifications';
 import { registerForPushNotificationsAsync, syncPushTokenWithBackend } from './src/utils/notifications';
 import { navigationRef } from './src/navigation/AppNavigator';
 import { initCache } from './src/utils/cacheManager';
-
+import { Ionicons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
 
 // Configure how notifications are handled when the app is open
@@ -119,7 +119,10 @@ export default function App() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        {/* Silent boot loader - no spinner */}
+        <View style={styles.iconContainer}>
+          <Ionicons name="lock-closed" size={48} color="#166534" />
+        </View>
+        <Text style={styles.loadingText}>Securing BuddyBloom...</Text>
       </View>
     );
   }
@@ -137,6 +140,20 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#F8FAFC',
+  },
+  iconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#EEF2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  loadingText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1E293B',
   },
 });

@@ -6,6 +6,11 @@ import { useAuthStore } from '../store/useAuthStore';
 // Screens
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
+import ResetPasswordScreen from '../screens/ResetPasswordScreen';
+import MobileLoginScreen from '../screens/MobileLoginScreen';
+import MobileOTPVerifyScreen from '../screens/MobileOTPVerifyScreen';
+import ProfileSelectionScreen from '../screens/ProfileSelectionScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import AttendanceScreen from '../screens/AttendanceScreen';
 import QuizListScreen from '../screens/QuizListScreen';
@@ -39,6 +44,11 @@ export default function AppNavigator() {
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
+            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+            <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+            <Stack.Screen name="MobileLogin" component={MobileLoginScreen} />
+            <Stack.Screen name="MobileOTPVerify" component={MobileOTPVerifyScreen} />
+            <Stack.Screen name="ProfileSelection" component={ProfileSelectionScreen} />
           </>
         ) : (
           // ── Authenticated Stack ────────────────────────────────────

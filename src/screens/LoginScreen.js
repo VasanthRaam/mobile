@@ -248,8 +248,17 @@ export default function LoginScreen({ navigation }) {
             <Text style={styles.googleBtnText}>Continue with Google</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity
+            style={[styles.googleBtn, { marginTop: 12, backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}
+            onPress={() => navigation.navigate('MobileLogin')}
+            activeOpacity={0.7}
+          >
+            <Text style={{ fontSize: 20, marginRight: 12 }}>📱</Text>
+            <Text style={[styles.googleBtnText, { color: '#166534' }]}>Continue with Mobile</Text>
+          </TouchableOpacity>
+
           <View style={styles.linkRow}>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
               <Text style={styles.forgotText}>Forgot Password?</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>

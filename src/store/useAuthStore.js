@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { saveToken, deleteToken, getToken, saveUser, getUser, deleteUser } from '../utils/secureStore';
 import { supabase } from '../utils/supabase';
+import * as LocalAuthentication from 'expo-local-authentication';
 
 export const useAuthStore = create((set) => ({
   user: null,
@@ -13,7 +14,36 @@ export const useAuthStore = create((set) => ({
     try {
       const [token, user] = await Promise.all([getToken(), getUser()]);
       if (token) {
-        set({ token, user, isAuthenticated: true, isLoading: false });
+        // Token exists, now prompt for Biometrics if available
+        let biometricSuccess = false;
+        try {
+          const hasHardware = await LocalAuthentication.hasHardwareAsync();
+          const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+          if (hasHardware && isEnrolled) {
+            const result = await LocalAuthentication.authenticateAsync({
+              promptMessage: 'Unlock BuddyBloom',
+              fallbackLabel: 'Use Passcode',
+              cancelLabel: 'Cancel',
+              disableDeviceFallback: false,
+            });
+            biometricSuccess = result.success;
+          } else {
+            // No biometrics on device, or not enrolled. Allow entry.
+            biometricSuccess = true;
+          }
+        } catch (authError) {
+          console.warn('Biometric auth error:', authError);
+          biometricSuccess = false; // Fallback to login if it fails unexpectedly
+        }
+
+        if (biometricSuccess) {
+          set({ token, user, isAuthenticated: true, isLoading: false });
+        } else {
+          // Failed biometric (e.g. canceled). Wipe session or just don't authenticate.
+          // For security, if they cancel, we keep them logged out for this session.
+          set({ token: null, user: null, isAuthenticated: false, isLoading: false });
+        }
       } else {
         set({ token: null, user: null, isAuthenticated: false, isLoading: false });
       }
