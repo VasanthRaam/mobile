@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  SafeAreaView, RefreshControl,
+  RefreshControl,
   Modal, TextInput, Alert, StatusBar, Platform, ScrollView
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import apiClient from '../api/apiClient';
 import { useAuthStore } from '../store/useAuthStore';
 import { getCache, setCache } from '../utils/cacheManager';
@@ -209,9 +210,9 @@ export default function PendingApprovalsScreen({ navigation }) {
       </View>
 
       {loading ? (
-        <SafeAreaView style={styles.centered}>
+        <View style={styles.centered}>
           <Text style={styles.loadingLabel}>Loading requests...</Text>
-        </SafeAreaView>
+        </View>
       ) : data.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyIcon}>🎉</Text>
@@ -220,6 +221,7 @@ export default function PendingApprovalsScreen({ navigation }) {
         </View>
       ) : (
         <FlatList
+          style={{ backgroundColor: '#F8FAFC' }}
           showsVerticalScrollIndicator={false}
           data={data}
           keyExtractor={(item) => item.id}
@@ -290,7 +292,7 @@ export default function PendingApprovalsScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, backgroundColor: '#fff' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
   loadingLabel: { marginTop: 12, fontSize: 14, color: '#64748B', fontWeight: '600' },
   header: {
@@ -326,7 +328,7 @@ const styles = StyleSheet.create({
   approveBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
   processingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 12 },
   processingText: { fontSize: 14, color: '#6366F1', fontWeight: '600' },
-  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
+  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40, backgroundColor: '#F8FAFC' },
   emptyIcon: { fontSize: 56, marginBottom: 16 },
   emptyTitle: { fontSize: 22, fontWeight: '800', color: '#1E293B', marginBottom: 8 },
   emptySubtitle: { fontSize: 15, color: '#64748B', textAlign: 'center' },

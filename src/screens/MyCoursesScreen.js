@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, StatusBar, Modal, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, Modal, Alert, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import apiClient from '../api/apiClient';
 import { getCache, setCache } from '../utils/cacheManager';
 
@@ -77,9 +78,9 @@ export default function MyCoursesScreen({ navigation }) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.centered}>
+      <View style={styles.centered}>
         <Text style={styles.loadingText}>Loading your programs...</Text>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -94,6 +95,7 @@ export default function MyCoursesScreen({ navigation }) {
       </View>
 
       <FlatList
+        style={{ backgroundColor: '#F8FAFC' }}
         showsVerticalScrollIndicator={false}
         data={courses}
         keyExtractor={(item) => item.id}
@@ -203,8 +205,8 @@ export default function MyCoursesScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  container: { flex: 1, backgroundColor: '#fff' },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
   header: { padding: 20, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
   backBtn: { marginRight: 15 },
   backText: { fontSize: 16, color: '#6366F1', fontWeight: '700' },

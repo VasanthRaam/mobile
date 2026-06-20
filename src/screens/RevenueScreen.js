@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, StyleSheet, FlatList, TouchableOpacity, 
+import {
+  View, Text, StyleSheet, FlatList, TouchableOpacity,
   TextInput, Alert, ScrollView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,13 +9,14 @@ import { getCache, setCache } from '../utils/cacheManager';
 
 export default function RevenueScreen() {
   const [activeTab, setActiveTab] = useState('Dashboard'); // 'Dashboard', 'Income', 'Expenses'
-  
+  const [activeIncomeSubTab, setActiveIncomeSubTab] = useState('Record Income'); // 'Record Income', 'Fee Details'
+
   // Dashboard Data
   const [dashboardData, setDashboardData] = useState(getCache('revenue_dashboard') || null);
-  
+
   // Income Data
-  const [incomes, setIncomes] = useState(getCache('revenue_income') || []);
-  
+  const [incomes, setIncomes] = useState(getCache('revenue_income_combined') || []);
+
   // Expense Data
   const [expenses, setExpenses] = useState(getCache('revenue_expenses') || []);
   const [expAmount, setExpAmount] = useState('');
@@ -24,39 +25,30 @@ export default function RevenueScreen() {
   const [expDate, setExpDate] = useState(new Date().toISOString().split('T')[0]);
   const [addingExp, setAddingExp] = useState(false);
 
-  // Accordion state for Income tab
-  const [courseBatchTree, setCourseBatchTree] = useState(getCache('revenue_courses_batches') || []);
+  const [incAmount, setIncAmount] = useState('');
+  const [incCategory, setIncCategory] = useState('Course Fee'); // Default
+  const [incDesc, setIncDesc] = useState('');
+  const [incDate, setIncDate] = useState(new Date().toISOString().split('T')[0]);
+  const [addingInc, setAddingInc] = useState(false);
+
+  // Fee Details Data
+  const [fees, setFees] = useState(getCache('fees_list') || []);
+  const [coursesWithBatches, setCoursesWithBatches] = useState(getCache('courses_with_batches') || []);
+  const [selectedCourseId, setSelectedCourseId] = useState('all');
+  const [selectedBatchId, setSelectedBatchId] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all'); // 'all', 'paid', 'pending'
+
   const [loading, setLoading] = useState(
     activeTab === 'Dashboard' ? !getCache('revenue_dashboard') :
-    activeTab === 'Income' ? (!getCache('revenue_income') || !getCache('revenue_courses_batches')) :
-    !getCache('revenue_expenses')
+      activeTab === 'Income' ? !(getCache('revenue_income_combined') && getCache('fees_list') && getCache('courses_with_batches')) :
+        !getCache('revenue_expenses')
   );
-  const [expandedCourses, setExpandedCourses] = useState({});
-  const [expandedBatches, setExpandedBatches] = useState({});
-
-  const fetchCoursesAndBatches = async () => {
-    try {
-      const res = await apiClient.get('/auth/courses-batches');
-      setCourseBatchTree(res.data);
-      setCache('revenue_courses_batches', res.data);
-    } catch (err) {
-      console.error('Failed to fetch courses & batches:', err);
-    }
-  };
-
-  const toggleCourseExpand = (courseId) => {
-    setExpandedCourses(prev => ({ ...prev, [courseId]: !prev[courseId] }));
-  };
-
-  const toggleBatchExpand = (batchId) => {
-    setExpandedBatches(prev => ({ ...prev, [batchId]: !prev[batchId] }));
-  };
 
   useEffect(() => {
-    const hasCache = 
+    const hasCache =
       activeTab === 'Dashboard' ? getCache('revenue_dashboard') :
-      activeTab === 'Income' ? (getCache('revenue_income') && getCache('revenue_courses_batches')) :
-      getCache('revenue_expenses');
+        activeTab === 'Income' ? (getCache('revenue_income_combined') && getCache('fees_list') && getCache('courses_with_batches')) :
+          getCache('revenue_expenses');
     setLoading(!hasCache);
     fetchData();
   }, [activeTab]);
@@ -68,11 +60,36 @@ export default function RevenueScreen() {
         setDashboardData(res.data);
         setCache('revenue_dashboard', res.data);
       } else if (activeTab === 'Income') {
-        const res = await apiClient.get('/fees/');
-        const filtered = res.data.filter(f => f.status === 'paid');
-        setIncomes(filtered);
-        setCache('revenue_income', filtered);
-        await fetchCoursesAndBatches();
+        const feesRes = await apiClient.get('/fees/');
+        const cbRes = await apiClient.get('/auth/courses-batches');
+        const manualRes = await apiClient.get('/revenue/incomes');
+
+        setFees(feesRes.data);
+        setCache('fees_list', feesRes.data);
+        setCoursesWithBatches(cbRes.data);
+        setCache('courses_with_batches', cbRes.data);
+
+        const filteredFees = feesRes.data.filter(f => f.status === 'paid').map(f => ({
+          id: f.id,
+          type: 'fee',
+          amount: f.amount,
+          title: f.user ? f.user.full_name : 'Unknown Student',
+          subtitle: `Fee Payment • ${f.paid_at ? f.paid_at.substring(0, 10) : ''}`,
+          date: f.paid_at || f.created_at,
+        }));
+
+        const manualIncomes = manualRes.data.map(i => ({
+          id: i.id,
+          type: 'manual',
+          amount: i.amount,
+          title: i.category + (i.description ? ` - ${i.description}` : ''),
+          subtitle: `Manual Income • ${i.income_date}`,
+          date: i.income_date,
+        }));
+
+        const combined = [...filteredFees, ...manualIncomes].sort((a, b) => new Date(b.date) - new Date(a.date));
+        setIncomes(combined);
+        setCache('revenue_income_combined', combined);
       } else if (activeTab === 'Expenses') {
         const res = await apiClient.get('/revenue/expenses');
         setExpenses(res.data);
@@ -111,9 +128,34 @@ export default function RevenueScreen() {
     }
   };
 
+  const handleAddIncome = async () => {
+    if (!incAmount || !incCategory || !incDate) {
+      Alert.alert('Error', 'Please fill required fields (Amount, Category, Date)');
+      return;
+    }
+    setAddingInc(true);
+    try {
+      await apiClient.post('/revenue/incomes', {
+        amount: parseFloat(incAmount),
+        category: incCategory,
+        description: incDesc,
+        income_date: incDate
+      });
+      Alert.alert('Success', 'Income recorded!');
+      setIncAmount('');
+      setIncDesc('');
+      fetchData(); // refresh incomes
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'Failed to record income');
+    } finally {
+      setAddingInc(false);
+    }
+  };
+
   const renderDashboard = () => {
     if (!dashboardData) return null;
-    
+
     // Find max value for monthly chart scaling
     let maxMonthlyVal = 0;
     dashboardData.monthly_data.forEach(d => {
@@ -151,7 +193,7 @@ export default function RevenueScreen() {
               {dashboardData.monthly_data.map((item, idx) => {
                 const incHeight = maxMonthlyVal > 0 ? (item.income / maxMonthlyVal) * 100 : 0;
                 const expHeight = maxMonthlyVal > 0 ? (item.expense / maxMonthlyVal) * 100 : 0;
-                
+
                 return (
                   <View key={idx} style={styles.chartCol}>
                     <View style={styles.barsWrap}>
@@ -167,8 +209,8 @@ export default function RevenueScreen() {
             </ScrollView>
           )}
           <View style={styles.legend}>
-            <View style={styles.legendItem}><View style={[styles.dot, styles.incBar]}/><Text style={styles.legendText}>Income</Text></View>
-            <View style={styles.legendItem}><View style={[styles.dot, styles.expBar]}/><Text style={styles.legendText}>Expense</Text></View>
+            <View style={styles.legendItem}><View style={[styles.dot, styles.incBar]} /><Text style={styles.legendText}>Income</Text></View>
+            <View style={styles.legendItem}><View style={[styles.dot, styles.expBar]} /><Text style={styles.legendText}>Expense</Text></View>
           </View>
         </View>
 
@@ -211,149 +253,95 @@ export default function RevenueScreen() {
     );
   };
 
-  const renderIncomeTab = () => {
-    // Group the incomes (paid fees)
-    const groupedIncomes = {}; // { courseId: { batchId: [incomes] } }
-    const unassignedIncomes = [];
+  const renderIncomeTab = () => (
+    <View style={{ flex: 1 }}>
+      {/* Sub Tabs */}
+      <View style={styles.subTabContainer}>
+        {['Record Income', 'Fee Details'].map(subTab => (
+          <TouchableOpacity
+            key={subTab}
+            style={[styles.subTabBtn, activeIncomeSubTab === subTab && styles.subTabBtnActive]}
+            onPress={() => setActiveIncomeSubTab(subTab)}
+          >
+            <Text style={[styles.subTabText, activeIncomeSubTab === subTab && styles.subTabTextActive]}>{subTab}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
-    incomes.forEach(inc => {
-      if (inc.course_id && inc.batch_id) {
-        if (!groupedIncomes[inc.course_id]) {
-          groupedIncomes[inc.course_id] = {};
-        }
-        if (!groupedIncomes[inc.course_id][inc.batch_id]) {
-          groupedIncomes[inc.course_id][inc.batch_id] = [];
-        }
-        groupedIncomes[inc.course_id][inc.batch_id].push(inc);
-      } else {
-        unassignedIncomes.push(inc);
-      }
-    });
+      {activeIncomeSubTab === 'Record Income' ? (
+        <View style={{ flex: 1 }}>
+          <View style={styles.addExpCard}>
+            <Text style={styles.formTitle}>Record New Income</Text>
 
-    const unassignedTotal = unassignedIncomes.reduce((acc, curr) => acc + curr.amount, 0);
-
-    return (
-      <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
-        {courseBatchTree.map(course => {
-          const isCourseExpanded = expandedCourses[course.id] !== false;
-          const courseIncomes = incomes.filter(inc => inc.course_id === course.id);
-          const courseTotal = courseIncomes.reduce((acc, curr) => acc + curr.amount, 0);
-
-          return (
-            <View key={course.id} style={styles.courseAccordionBlock}>
-              <TouchableOpacity 
-                style={[styles.courseAccordionHeader, isCourseExpanded && styles.courseAccordionHeaderActive]}
-                onPress={() => toggleCourseExpand(course.id)}
-                activeOpacity={0.8}
-              >
-                <View style={styles.headerTitleRow}>
-                  <Text style={styles.courseTitleText}>📚 {course.name}</Text>
-                  <View style={styles.badgeContainer}>
-                    <Text style={styles.badgeText}>₹{courseTotal.toFixed(1)}</Text>
-                  </View>
-                </View>
-                <Text style={styles.expandIcon}>{isCourseExpanded ? '▲' : '▼'}</Text>
-              </TouchableOpacity>
-              
-              {isCourseExpanded && (
-                <View style={styles.courseAccordionBody}>
-                  {course.batches.map(batch => {
-                    const isBatchExpanded = expandedBatches[batch.id] !== false;
-                    const batchIncomes = (groupedIncomes[course.id] && groupedIncomes[course.id][batch.id]) || [];
-                    const batchTotal = batchIncomes.reduce((acc, curr) => acc + curr.amount, 0);
-
-                    return (
-                      <View key={batch.id} style={styles.batchAccordionBlock}>
-                        <TouchableOpacity 
-                          style={[styles.batchAccordionHeader, isBatchExpanded && styles.batchAccordionHeaderActive]}
-                          onPress={() => toggleBatchExpand(batch.id)}
-                          activeOpacity={0.8}
-                        >
-                          <View style={styles.headerTitleRow}>
-                            <Text style={styles.batchTitleText}>👥 {batch.name}</Text>
-                            <View style={[styles.badgeContainer, { backgroundColor: '#F1F5F9' }]}>
-                              <Text style={[styles.badgeText, { color: '#64748B' }]}>₹{batchTotal.toFixed(1)}</Text>
-                            </View>
-                          </View>
-                          <Text style={styles.expandIcon}>{isBatchExpanded ? '▲' : '▼'}</Text>
-                        </TouchableOpacity>
-                        
-                        {isBatchExpanded && (
-                          <View style={styles.batchAccordionBody}>
-                            {batchIncomes.map(item => (
-                              <View key={item.id} style={styles.recordCard}>
-                                <View style={styles.recLeft}>
-                                  <Text style={styles.recTitle}>{item.user ? item.user.full_name : 'Unknown Student'}</Text>
-                                  <Text style={styles.recSub}>Fee Payment • {item.paid_at ? item.paid_at.substring(0,10) : ''}</Text>
-                                </View>
-                                <Text style={[styles.recAmt, {color: '#10B981'}]}>+₹{Number(item.amount).toFixed(1)}</Text>
-                              </View>
-                            ))}
-                            {batchIncomes.length === 0 && (
-                              <Text style={styles.accordionEmptyText}>No income records for this batch.</Text>
-                            )}
-                          </View>
-                        )}
-                      </View>
-                    );
-                  })}
-                  {course.batches.length === 0 && (
-                    <Text style={styles.accordionEmptyText}>No batches available for this course.</Text>
-                  )}
-                </View>
-              )}
+            <View style={styles.categoryRow}>
+              {['Course Fee', 'Event', 'Donation', 'Other'].map(cat => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[styles.catChip, incCategory === cat && styles.catChipActive, { backgroundColor: incCategory === cat ? '#10B981' : '#F1F5F9', borderColor: incCategory === cat ? '#10B981' : '#E2E8F0' }]}
+                  onPress={() => setIncCategory(cat)}
+                >
+                  <Text style={[styles.catChipText, incCategory === cat && styles.catChipTextActive]}>{cat}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
-          );
-        })}
 
-        {unassignedIncomes.length > 0 && (
-          <View style={styles.courseAccordionBlock}>
-            <TouchableOpacity 
-              style={[styles.courseAccordionHeader, expandedCourses['unassigned'] !== false && styles.courseAccordionHeaderActive]}
-              onPress={() => toggleCourseExpand('unassigned')}
-              activeOpacity={0.8}
-            >
-              <View style={styles.headerTitleRow}>
-                <Text style={styles.courseTitleText}>💳 Direct / Unassigned Income</Text>
-                <View style={[styles.badgeContainer, { backgroundColor: '#FEE2E2' }]}>
-                  <Text style={[styles.badgeText, { color: '#EF4444' }]}>₹{unassignedTotal.toFixed(1)}</Text>
-                </View>
-              </View>
-              <Text style={styles.expandIcon}>{expandedCourses['unassigned'] !== false ? '▲' : '▼'}</Text>
+            <View style={styles.inputRow}>
+              <TextInput
+                style={[styles.input, { flex: 1, marginRight: 8 }]}
+                placeholder="Amount"
+                keyboardType="numeric"
+                value={incAmount}
+                onChangeText={setIncAmount}
+              />
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="Date (YYYY-MM-DD)"
+                value={incDate}
+                onChangeText={setIncDate}
+              />
+            </View>
+            <TextInput
+              style={styles.input}
+              placeholder="Description (Optional)"
+              value={incDesc}
+              onChangeText={setIncDesc}
+            />
+            <TouchableOpacity style={styles.primaryBtn} onPress={handleAddIncome} disabled={addingInc}>
+              <Text style={styles.primaryBtnText}>{addingInc ? 'Adding...' : 'Add Income'}</Text>
             </TouchableOpacity>
-            
-            {expandedCourses['unassigned'] !== false && (
-              <View style={styles.courseAccordionBody}>
-                {unassignedIncomes.map(item => (
-                  <View key={item.id} style={styles.recordCard}>
-                    <View style={styles.recLeft}>
-                      <Text style={styles.recTitle}>{item.user ? item.user.full_name : 'Unknown Student'}</Text>
-                      <Text style={styles.recSub}>Fee Payment • {item.paid_at ? item.paid_at.substring(0,10) : ''}</Text>
-                    </View>
-                    <Text style={[styles.recAmt, {color: '#10B981'}]}>+₹{Number(item.amount).toFixed(1)}</Text>
-                  </View>
-                ))}
+          </View>
+
+          <FlatList
+            data={incomes}
+            keyExtractor={item => item.id}
+            contentContainerStyle={styles.listContent}
+            ListEmptyComponent={<Text style={styles.emptyText}>No income records.</Text>}
+            renderItem={({ item }) => (
+              <View style={styles.recordCard}>
+                <View style={styles.recLeft}>
+                  <Text style={styles.recTitle}>{item.title}</Text>
+                  <Text style={styles.recSub}>{item.subtitle}</Text>
+                </View>
+                <Text style={[styles.recAmt, { color: '#10B981' }]}>+₹{item.amount}</Text>
               </View>
             )}
-          </View>
-        )}
-
-        {incomes.length === 0 && (
-          <Text style={styles.emptyText}>No income records.</Text>
-        )}
-      </ScrollView>
-    );
-  };
+          />
+        </View>
+      ) : (
+        renderFeeDetailsTab()
+      )}
+    </View>
+  );
 
   const renderExpensesTab = () => (
-    <View style={{flex: 1}}>
+    <View style={{ flex: 1 }}>
       <View style={styles.addExpCard}>
         <Text style={styles.formTitle}>Record New Expense</Text>
-        
+
         <View style={styles.categoryRow}>
           {['Salary', 'Maintenance', 'Other'].map(cat => (
-            <TouchableOpacity 
-              key={cat} 
+            <TouchableOpacity
+              key={cat}
               style={[styles.catChip, expCategory === cat && styles.catChipActive]}
               onPress={() => setExpCategory(cat)}
             >
@@ -363,23 +351,23 @@ export default function RevenueScreen() {
         </View>
 
         <View style={styles.inputRow}>
-          <TextInput 
-            style={[styles.input, {flex: 1, marginRight: 8}]} 
-            placeholder="Amount" 
+          <TextInput
+            style={[styles.input, { flex: 1, marginRight: 8 }]}
+            placeholder="Amount"
             keyboardType="numeric"
             value={expAmount}
             onChangeText={setExpAmount}
           />
-          <TextInput 
-            style={[styles.input, {flex: 1}]} 
-            placeholder="Date (YYYY-MM-DD)" 
+          <TextInput
+            style={[styles.input, { flex: 1 }]}
+            placeholder="Date (YYYY-MM-DD)"
             value={expDate}
             onChangeText={setExpDate}
           />
         </View>
-        <TextInput 
-          style={styles.input} 
-          placeholder="Description (Optional)" 
+        <TextInput
+          style={styles.input}
+          placeholder="Description (Optional)"
           value={expDesc}
           onChangeText={setExpDesc}
         />
@@ -388,31 +376,252 @@ export default function RevenueScreen() {
         </TouchableOpacity>
       </View>
 
-      <FlatList 
+      <FlatList
         data={expenses}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={<Text style={styles.emptyText}>No expense records.</Text>}
-        renderItem={({item}) => (
+        renderItem={({ item }) => (
           <View style={styles.recordCard}>
             <View style={styles.recLeft}>
               <Text style={styles.recTitle}>{item.category} {item.description ? `- ${item.description}` : ''}</Text>
               <Text style={styles.recSub}>{item.expense_date}</Text>
             </View>
-            <Text style={[styles.recAmt, {color: '#EF4444'}]}>-₹{item.amount}</Text>
+            <Text style={[styles.recAmt, { color: '#EF4444' }]}>-₹{item.amount}</Text>
           </View>
         )}
       />
     </View>
   );
 
+  const handleSelectCourseFilter = (courseId) => {
+    setSelectedCourseId(courseId);
+    setSelectedBatchId('all');
+  };
+
+  const filteredFeeDetails = React.useMemo(() => {
+    return fees.filter(f => {
+      // 1. Course Filter
+      if (selectedCourseId !== 'all') {
+        if (selectedCourseId === 'unassigned') {
+          if (f.course_id || f.batch_id) return false;
+        } else {
+          if (f.course_id !== selectedCourseId) return false;
+        }
+      }
+      
+      // 2. Batch Filter
+      if (selectedBatchId !== 'all') {
+        if (f.batch_id !== selectedBatchId) return false;
+      }
+      
+      // 3. Status Filter
+      if (selectedStatus !== 'all') {
+        if (f.status !== selectedStatus) return false;
+      }
+      
+      return true;
+    });
+  }, [fees, selectedCourseId, selectedBatchId, selectedStatus]);
+
+  const feeStats = React.useMemo(() => {
+    const paidList = filteredFeeDetails.filter(f => f.status === 'paid');
+    const pendingList = filteredFeeDetails.filter(f => f.status !== 'paid');
+    const totalPaid = paidList.reduce((acc, curr) => acc + curr.amount, 0);
+    const totalPending = pendingList.reduce((acc, curr) => acc + curr.amount, 0);
+    const totalCount = filteredFeeDetails.length;
+    const paidCount = paidList.length;
+    const rate = totalCount > 0 ? Math.round((paidCount / totalCount) * 100) : 0;
+    
+    return { totalPaid, totalPending, rate };
+  }, [filteredFeeDetails]);
+
+  const availableBatchesForFilter = React.useMemo(() => {
+    if (selectedCourseId === 'all' || selectedCourseId === 'unassigned') return [];
+    const course = coursesWithBatches.find(c => c.id === selectedCourseId);
+    return course ? course.batches : [];
+  }, [coursesWithBatches, selectedCourseId]);
+
+  const renderFeeDetailsTab = () => {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+        {/* Summary Card */}
+        <View style={styles.statsCardFee}>
+          <View style={styles.statsRowFee}>
+            <View style={styles.statColFee}>
+              <Text style={styles.statLabelFee}>Collected</Text>
+              <Text style={[styles.statValFee, { color: '#10B981' }]}>₹{feeStats.totalPaid}</Text>
+            </View>
+            <View style={styles.statColDividerFee} />
+            <View style={styles.statColFee}>
+              <Text style={styles.statLabelFee}>Pending</Text>
+              <Text style={[styles.statValFee, { color: '#EF4444' }]}>₹{feeStats.totalPending}</Text>
+            </View>
+            <View style={styles.statColDividerFee} />
+            <View style={styles.statColFee}>
+              <Text style={styles.statLabelFee}>Collection Rate</Text>
+              <Text style={[styles.statValFee, { color: '#6366F1' }]}>{feeStats.rate}%</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Filter Section Card */}
+        <View style={styles.filterCardFee}>
+          {/* Course filter chips */}
+          <Text style={styles.filterGroupTitleFee}>Course</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScrollFee}>
+            <TouchableOpacity 
+              style={[styles.chipFee, selectedCourseId === 'all' && styles.chipActiveFee]}
+              onPress={() => handleSelectCourseFilter('all')}
+            >
+              <Text style={[styles.chipTextFee, selectedCourseId === 'all' && styles.chipTextActiveFee]}>All</Text>
+            </TouchableOpacity>
+            {coursesWithBatches.map(course => (
+              <TouchableOpacity 
+                key={course.id}
+                style={[styles.chipFee, selectedCourseId === course.id && styles.chipActiveFee]}
+                onPress={() => handleSelectCourseFilter(course.id)}
+              >
+                <Text style={[styles.chipTextFee, selectedCourseId === course.id && styles.chipTextActiveFee]}>{course.name}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity 
+              style={[styles.chipFee, selectedCourseId === 'unassigned' && styles.chipActiveFee]}
+              onPress={() => handleSelectCourseFilter('unassigned')}
+            >
+              <Text style={[styles.chipTextFee, selectedCourseId === 'unassigned' && styles.chipTextActiveFee]}>Direct / Unassigned</Text>
+            </TouchableOpacity>
+          </ScrollView>
+
+          {/* Batch filter chips (visible only if course selected has batches) */}
+          {availableBatchesForFilter.length > 0 && (
+            <>
+              <Text style={[styles.filterGroupTitleFee, { marginTop: 12 }]}>Batch</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScrollFee}>
+                <TouchableOpacity 
+                  style={[styles.chipFee, selectedBatchId === 'all' && styles.chipActiveFee]}
+                  onPress={() => setSelectedBatchId('all')}
+                >
+                  <Text style={[styles.chipTextFee, selectedBatchId === 'all' && styles.chipTextActiveFee]}>All Batches</Text>
+                </TouchableOpacity>
+                {availableBatchesForFilter.map(batch => (
+                  <TouchableOpacity 
+                    key={batch.id}
+                    style={[styles.chipFee, selectedBatchId === batch.id && styles.chipActiveFee]}
+                    onPress={() => setSelectedBatchId(batch.id)}
+                  >
+                    <Text style={[styles.chipTextFee, selectedBatchId === batch.id && styles.chipTextActiveFee]}>{batch.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </>
+          )}
+
+          {/* Status Segmented Filter */}
+          <View style={styles.statusRowContainerFee}>
+            {['all', 'paid', 'pending'].map(status => (
+              <TouchableOpacity
+                key={status}
+                style={[
+                  styles.statusSegmentFee, 
+                  selectedStatus === status && styles.statusSegmentActiveFee,
+                  status === 'paid' && selectedStatus === 'paid' && { backgroundColor: '#10B981', borderColor: '#10B981' },
+                  status === 'pending' && selectedStatus === 'pending' && { backgroundColor: '#F59E0B', borderColor: '#F59E0B' }
+                ]}
+                onPress={() => setSelectedStatus(status)}
+              >
+                <Text style={[
+                  styles.statusSegmentTextFee, 
+                  selectedStatus === status && styles.statusSegmentTextActiveFee
+                ]}>
+                  {status === 'all' ? 'All Status' : status.toUpperCase()}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Table/Data List */}
+        <View style={styles.tableCardFee}>
+          {/* Table Header Row */}
+          <View style={styles.tableHeaderFee}>
+            <Text style={[styles.thTextFee, { flex: 2 }]}>STUDENT</Text>
+            <Text style={[styles.thTextFee, { flex: 1.8 }]}>COURSE/BATCH</Text>
+            <Text style={[styles.thTextFee, { flex: 1.2, textAlign: 'right' }]}>AMOUNT</Text>
+            <Text style={[styles.thTextFee, { flex: 1.2, textAlign: 'center' }]}>STATUS</Text>
+          </View>
+
+          <FlatList
+            data={filteredFeeDetails}
+            keyExtractor={item => item.id}
+            contentContainerStyle={{ paddingBottom: 20 }}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={styles.emptyContainerFee}>
+                <Text style={styles.emptyTextFee}>No matching fee records found.</Text>
+              </View>
+            }
+            renderItem={({ item }) => {
+              const studentName = item.user?.full_name || 'Unknown Student';
+              const studentInitials = studentName.substring(0, 2).toUpperCase();
+              const courseName = item.course?.name || 'Direct';
+              const batchName = item.batch?.name || 'Unassigned';
+              const isPaid = item.status === 'paid';
+              
+              return (
+                <View style={styles.tableRowFee}>
+                  {/* Student info column */}
+                  <View style={[styles.tdFee, { flex: 2, flexDirection: 'row', alignItems: 'center' }]}>
+                    <View style={styles.avatarMiniFee}>
+                      <Text style={styles.avatarMiniTextFee}>{studentInitials}</Text>
+                    </View>
+                    <View style={{ marginLeft: 8, flex: 1 }}>
+                      <Text style={styles.studentNameFee} numberOfLines={1}>{studentName}</Text>
+                      <Text style={styles.studentEmailFee} numberOfLines={1}>{item.user?.email || ''}</Text>
+                    </View>
+                  </View>
+
+                  {/* Course/Batch info column */}
+                  <View style={[styles.tdFee, { flex: 1.8, justifyContent: 'center' }]}>
+                    <Text style={styles.courseNameFee} numberOfLines={1}>{courseName}</Text>
+                    <Text style={styles.batchNameFee} numberOfLines={1}>{batchName}</Text>
+                  </View>
+
+                  {/* Amount column */}
+                  <View style={[styles.tdFee, { flex: 1.2, justifyContent: 'center', alignItems: 'flex-end' }]}>
+                    <Text style={styles.amountFee}>₹{item.amount}</Text>
+                  </View>
+
+                  {/* Status column */}
+                  <View style={[styles.tdFee, { flex: 1.2, justifyContent: 'center', alignItems: 'center' }]}>
+                    <View style={[
+                      styles.statusPillFee, 
+                      isPaid ? styles.statusPillPaidFee : styles.statusPillPendingFee
+                    ]}>
+                      <Text style={[
+                        styles.statusPillTextFee, 
+                        isPaid ? styles.statusPillTextPaidFee : styles.statusPillTextPendingFee
+                      ]}>
+                        {isPaid ? 'PAID' : 'PENDING'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              );
+            }}
+          />
+        </View>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Custom Tabs */}
       <View style={styles.tabContainer}>
         {['Dashboard', 'Income', 'Expenses'].map(tab => (
-          <TouchableOpacity 
-            key={tab} 
+          <TouchableOpacity
+            key={tab}
             style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
             onPress={() => setActiveTab(tab)}
           >
@@ -823,5 +1032,262 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontStyle: 'italic',
     paddingVertical: 12,
+  },
+  statsCardFee: {
+    backgroundColor: '#fff',
+    margin: 16,
+    marginBottom: 8,
+    padding: 16,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  statsRowFee: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  statColFee: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statLabelFee: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  statValFee: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  statColDividerFee: {
+    width: 1,
+    height: 32,
+    backgroundColor: '#E2E8F0',
+  },
+  filterCardFee: {
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 16,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  filterGroupTitleFee: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  chipScrollFee: {
+    flexDirection: 'row',
+    marginBottom: 4,
+  },
+  chipFee: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  chipActiveFee: {
+    backgroundColor: '#4F46E5',
+    borderColor: '#4F46E5',
+  },
+  chipTextFee: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  chipTextActiveFee: {
+    color: '#fff',
+  },
+  statusRowContainerFee: {
+    flexDirection: 'row',
+    marginTop: 12,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    padding: 2,
+    gap: 2,
+  },
+  statusSegmentFee: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  statusSegmentActiveFee: {
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  statusSegmentTextFee: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  statusSegmentTextActiveFee: {
+    color: '#1E293B',
+  },
+  tableCardFee: {
+    flex: 1,
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  tableHeaderFee: {
+    flexDirection: 'row',
+    backgroundColor: '#F8FAFC',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  thTextFee: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#64748B',
+    letterSpacing: 0.5,
+  },
+  tableRowFee: {
+    flexDirection: 'row',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    alignItems: 'center',
+  },
+  tdFee: {
+    paddingVertical: 2,
+  },
+  avatarMiniFee: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarMiniTextFee: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#4F46E5',
+  },
+  studentNameFee: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  studentEmailFee: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  courseNameFee: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  batchNameFee: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  amountFee: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  statusPillFee: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    minWidth: 65,
+    alignItems: 'center',
+  },
+  statusPillPaidFee: {
+    backgroundColor: '#ECFDF5',
+  },
+  statusPillPendingFee: {
+    backgroundColor: '#FFFBEB',
+  },
+  statusPillTextFee: {
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  statusPillTextPaidFee: {
+    color: '#10B981',
+  },
+  statusPillTextPendingFee: {
+    color: '#F59E0B',
+  },
+  emptyContainerFee: {
+    padding: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyTextFee: {
+    fontSize: 13,
+    color: '#64748B',
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
+  subTabContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#EEF2FF',
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
+    borderRadius: 12,
+    padding: 4,
+  },
+  subTabBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  subTabBtnActive: {
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  subTabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  subTabTextActive: {
+    color: '#4F46E5',
+    fontWeight: '700',
   },
 });

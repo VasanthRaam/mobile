@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, Switch, TouchableOpacity, Alert, SafeAreaView, ScrollView, Dimensions, Platform, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Switch, TouchableOpacity, Alert, ScrollView, Dimensions, Platform, Modal, TextInput } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import apiClient from '../api/apiClient';
 import { useAuthStore } from '../store/useAuthStore';
 import { getCache, setCache } from '../utils/cacheManager';
@@ -262,9 +263,9 @@ export default function AttendanceScreen({ navigation }) {
 
   if (loading && (isViewMode ? attendanceRecords.length === 0 : courses.length === 0)) {
     return (
-      <SafeAreaView style={styles.centered}>
+      <View style={styles.centered}>
         <Text style={styles.loadingText}>Loading attendance data...</Text>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -462,6 +463,7 @@ export default function AttendanceScreen({ navigation }) {
         )}
         
         <ScrollView 
+          style={{ backgroundColor: '#F8FAFC' }}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
@@ -630,6 +632,7 @@ export default function AttendanceScreen({ navigation }) {
         </View>
       ) : students.length > 0 ? (
         <FlatList
+          style={{ backgroundColor: '#F8FAFC' }}
           data={students}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
@@ -686,8 +689,8 @@ export default function AttendanceScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  container: { flex: 1, backgroundColor: '#fff' },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
   header: { padding: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
   title: { fontSize: 24, fontWeight: '900', color: '#1E293B' },
   subtitle: { fontSize: 14, color: '#64748B', marginTop: 4 },
@@ -704,7 +707,7 @@ const styles = StyleSheet.create({
   studentItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', padding: 16, borderRadius: 16, marginBottom: 12, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5 },
   studentName: { fontSize: 16, fontWeight: '700', color: '#1E293B' },
   statusText: { fontSize: 13, color: '#64748B', marginTop: 2 },
-  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
   emptyText: { fontSize: 15, color: '#64748B' },
   footer: { padding: 20, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E2E8F0' },
   submitBtn: { backgroundColor: '#6366F1', height: 52, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },

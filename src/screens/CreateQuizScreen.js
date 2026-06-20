@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, TextInput, 
-  TouchableOpacity, ScrollView, Alert, 
-  SafeAreaView 
+  TouchableOpacity, ScrollView, Alert 
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import apiClient from '../api/apiClient';
 import { getCache, setCache } from '../utils/cacheManager';
 
@@ -251,7 +251,7 @@ export default function CreateQuizScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#fff',
   },
   centered: {
     flex: 1,
@@ -289,6 +289,7 @@ const styles = StyleSheet.create({
   form: {
     flex: 1,
     padding: 20,
+    backgroundColor: '#F8F9FA',
   },
   label: {
     fontSize: 16,

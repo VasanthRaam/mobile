@@ -39,32 +39,13 @@ export default function FeesScreen() {
   const [creatingFee, setCreatingFee] = useState(false);
 
   // Filter state
-  const [filterCourseId, setFilterCourseId] = useState(null);
-  const [filterBatchId, setFilterBatchId] = useState(null);
-  const [filterBatches, setFilterBatches] = useState([]);
+  const [selectedFeeStatusTab, setSelectedFeeStatusTab] = useState('pending'); // 'pending' or 'paid'
 
   useEffect(() => {
     fetchFees();
     fetchCourses();
     fetchAdminUpi();
   }, [role]);
-
-  const handleFilterCourseSelect = async (courseId) => {
-    setFilterCourseId(courseId);
-    setFilterBatchId(null);
-    setFilterBatches([]);
-    if (courseId && courseId !== 'unassigned') {
-      try {
-        const res = await apiClient.get(`/batches/?course_id=${courseId}`);
-        setFilterBatches(res.data);
-        if (res.data.length > 0) {
-          setFilterBatchId(res.data[0].id);
-        }
-      } catch (err) {
-        console.error('Failed to fetch batches for filter:', err);
-      }
-    }
-  };
 
   const fetchFees = async () => {
     try {
@@ -95,9 +76,6 @@ export default function FeesScreen() {
       const res = await apiClient.get('/courses/');
       setCourses(res.data);
       setCache('courses', res.data);
-      if (res.data.length > 0 && !filterCourseId) {
-        handleFilterCourseSelect(res.data[0].id);
-      }
     } catch (err) {
       console.error(err);
     }
@@ -482,20 +460,12 @@ export default function FeesScreen() {
     );
   };
 
-  const courseFilterOptions = React.useMemo(() => {
-    const opts = [...courses];
-    if (fees.some(f => !f.course_id || !f.batch_id)) {
-      opts.push({ id: 'unassigned', name: 'Direct / Unassigned' });
-    }
-    return opts;
-  }, [courses, fees]);
-
   const filteredFees = React.useMemo(() => {
-    if (filterCourseId === 'unassigned') {
-      return fees.filter(f => !f.course_id || !f.batch_id);
+    if (selectedFeeStatusTab === 'paid') {
+      return fees.filter(f => f.status === 'paid');
     }
-    return fees.filter(f => f.course_id === filterCourseId && f.batch_id === filterBatchId);
-  }, [fees, filterCourseId, filterBatchId]);
+    return fees.filter(f => f.status !== 'paid');
+  }, [fees, selectedFeeStatusTab]);
 
   const totalPaid = fees.filter(f => f.status === 'paid').reduce((acc, curr) => acc + curr.amount, 0);
   const totalPending = fees.filter(f => f.status !== 'paid').reduce((acc, curr) => acc + curr.amount, 0);
@@ -505,9 +475,6 @@ export default function FeesScreen() {
     fetchFees();
     fetchCourses();
     fetchAdminUpi();
-    if (filterCourseId) {
-      handleFilterCourseSelect(filterCourseId);
-    }
   };
 
   return (
@@ -541,49 +508,25 @@ export default function FeesScreen() {
           {role === 'student' || role === 'parent' ? 'My Fees' : 'Fee Records'}
         </Text>
 
-        {/* Course Filter Selection */}
-        <View style={styles.filterSection}>
-          <Text style={styles.filterLabel}>Select Course:</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
-            {courseFilterOptions.map(course => (
-              <TouchableOpacity 
-                key={course.id}
-                style={[styles.filterChip, filterCourseId === course.id && styles.filterChipActive]}
-                onPress={() => handleFilterCourseSelect(course.id)}
-              >
-                <Text style={[styles.filterChipText, filterCourseId === course.id && styles.filterChipTextActive]}>
-                  {course.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-            {courseFilterOptions.length === 0 && !loading && (
-              <Text style={styles.noDataText}>No courses available</Text>
-            )}
-          </ScrollView>
+        {/* Fee Status Tabs */}
+        <View style={styles.feeTabsContainer}>
+          <TouchableOpacity
+            style={[styles.feeTabBtn, selectedFeeStatusTab === 'pending' && styles.feeTabBtnActivePending]}
+            onPress={() => setSelectedFeeStatusTab('pending')}
+          >
+            <Text style={[styles.feeTabText, selectedFeeStatusTab === 'pending' && styles.feeTabTextActivePending]}>
+              Pending ({fees.filter(f => f.status !== 'paid').length})
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.feeTabBtn, selectedFeeStatusTab === 'paid' && styles.feeTabBtnActivePaid]}
+            onPress={() => setSelectedFeeStatusTab('paid')}
+          >
+            <Text style={[styles.feeTabText, selectedFeeStatusTab === 'paid' && styles.feeTabTextActivePaid]}>
+              Paid ({fees.filter(f => f.status === 'paid').length})
+            </Text>
+          </TouchableOpacity>
         </View>
-
-        {/* Batch Filter Selection */}
-        {filterCourseId && filterCourseId !== 'unassigned' && (
-          <View style={styles.filterSection}>
-            <Text style={styles.filterLabel}>Select Batch:</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
-              {filterBatches.map(batch => (
-                <TouchableOpacity 
-                  key={batch.id}
-                  style={[styles.filterChip, filterBatchId === batch.id && styles.filterChipActive]}
-                  onPress={() => setFilterBatchId(batch.id)}
-                >
-                  <Text style={[styles.filterChipText, filterBatchId === batch.id && styles.filterChipTextActive]}>
-                    {batch.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-              {filterBatches.length === 0 && !loading && (
-                <Text style={styles.noDataText}>No batches available</Text>
-              )}
-            </ScrollView>
-          </View>
-        )}
 
         {/* Fees list matching selection */}
         {loading ? (
@@ -592,7 +535,7 @@ export default function FeesScreen() {
           <View style={styles.feesList}>
             {filteredFees.map(fee => renderFeeItem({ item: fee }))}
             {filteredFees.length === 0 && (
-              <Text style={styles.emptyText}>No fee records found for this selection.</Text>
+              <Text style={styles.emptyText}>No fee records found.</Text>
             )}
           </View>
         )}
@@ -877,37 +820,50 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     marginTop: 20,
   },
-  filterSection: {
+  feeTabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    padding: 4,
     marginBottom: 16,
+    gap: 4,
   },
-  filterLabel: {
-    fontSize: 14,
+  feeTabBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  feeTabBtnActivePending: {
+    backgroundColor: '#FFF',
+    borderColor: '#FCA5A5',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  feeTabBtnActivePaid: {
+    backgroundColor: '#FFF',
+    borderColor: '#6EE7B7',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  feeTabText: {
+    fontSize: 13,
     fontWeight: '700',
     color: '#64748B',
-    marginBottom: 8,
-    textTransform: 'uppercase',
   },
-  filterChip: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+  feeTabTextActivePending: {
+    color: '#DC2626',
   },
-  filterChipActive: {
-    backgroundColor: '#4F46E5',
-    borderColor: '#4F46E5',
-  },
-  filterChipText: {
-    fontSize: 13,
-    color: '#475569',
-    fontWeight: '500',
-  },
-  filterChipTextActive: {
-    color: '#ffffff',
-    fontWeight: '600',
+  feeTabTextActivePaid: {
+    color: '#059669',
   },
   feesList: {
     marginTop: 8,
