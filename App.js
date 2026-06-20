@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Text } from 'react-native';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useAuthStore } from './src/store/useAuthStore';
 import * as Notifications from 'expo-notifications';

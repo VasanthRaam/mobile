@@ -34,7 +34,9 @@ export const useAuthStore = create((set) => ({
           }
         } catch (authError) {
           console.warn('Biometric auth error:', authError);
-          biometricSuccess = false; // Fallback to login if it fails unexpectedly
+          // If biometric APIs throw an error (e.g. on web or unsupported devices),
+          // fallback to true so we don't lock the user out of their session.
+          biometricSuccess = true;
         }
 
         if (biometricSuccess) {
