@@ -11,6 +11,8 @@ import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 import MobileLoginScreen from '../screens/MobileLoginScreen';
 import MobileOTPVerifyScreen from '../screens/MobileOTPVerifyScreen';
 import ProfileSelectionScreen from '../screens/ProfileSelectionScreen';
+import UnlockScreen from '../screens/UnlockScreen';
+import EmailLoginScreen from '../screens/EmailLoginScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import AttendanceScreen from '../screens/AttendanceScreen';
 import QuizListScreen from '../screens/QuizListScreen';
@@ -35,14 +37,19 @@ export const navigationRef = createNavigationContainerRef();
 
 export default function AppNavigator() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const requiresUnlock = useAuthStore((state) => state.requiresUnlock);
 
   return (
     <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {!isAuthenticated ? (
+        {requiresUnlock ? (
+          // ── Unlock Stack ───────────────────────────────────────────
+          <Stack.Screen name="Unlock" component={UnlockScreen} />
+        ) : !isAuthenticated ? (
           // ── Unauthenticated Stack ──────────────────────────────────
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="EmailLogin" component={EmailLoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
             <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
             <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />

@@ -7,6 +7,7 @@ export const useAuthStore = create((set) => ({
   user: null,
   token: null,
   isAuthenticated: false,
+  requiresUnlock: false,
   isLoading: true, // Used to show a splash screen while checking secure storage
 
   // Call this function when the app starts to restore the session
@@ -21,7 +22,7 @@ export const useAuthStore = create((set) => ({
       if (token) {
         // If biometrics are not explicitly enabled, bypass and restore session directly
         if (biometricsEnabled !== 'true') {
-          set({ token, user, isAuthenticated: true, isLoading: false });
+          set({ token, user, isAuthenticated: true, requiresUnlock: false, isLoading: false });
           return;
         }
 
@@ -51,17 +52,17 @@ export const useAuthStore = create((set) => ({
         }
 
         if (biometricSuccess) {
-          set({ token, user, isAuthenticated: true, isLoading: false });
+          set({ token, user, isAuthenticated: true, requiresUnlock: false, isLoading: false });
         } else {
           // Failed biometric (e.g. canceled). Do not wipe token, just don't authenticate for this session
           // so they can choose to try again or log in via other means.
-          set({ isAuthenticated: false, isLoading: false });
+          set({ isAuthenticated: false, requiresUnlock: true, isLoading: false, user, token });
         }
       } else {
-        set({ token: null, user: null, isAuthenticated: false, isLoading: false });
+        set({ token: null, user: null, isAuthenticated: false, requiresUnlock: false, isLoading: false });
       }
     } catch (e) {
-      set({ token: null, user: null, isAuthenticated: false, isLoading: false });
+      set({ token: null, user: null, isAuthenticated: false, requiresUnlock: false, isLoading: false });
     }
   },
 

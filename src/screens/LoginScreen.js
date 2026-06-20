@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
+  View, Text, TouchableOpacity,
   StyleSheet, Alert, SafeAreaView,
-  Dimensions, KeyboardAvoidingView, Platform, Image
+  Dimensions, Platform, Image
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
@@ -15,9 +15,6 @@ WebBrowser.maybeCompleteAuthSession();
 const { width } = Dimensions.get('window');
 
 export default function LoginScreen({ navigation }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const login = useAuthStore((state) => state.login);
 
@@ -140,39 +137,12 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please enter both email and password');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const response = await apiClient.post('/auth/login', {
-        email,
-        password,
-      });
-
-      const { access_token, user: userData } = response.data;
-      await login(access_token, userData);
-
-    } catch (error) {
-      console.error(error);
-      Alert.alert('Login Failed', error.response?.data?.detail || 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.bgDecor1} />
       <View style={styles.bgDecor2} />
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-      >
+      <View style={styles.content}>
         <View style={styles.headerSection}>
           <View style={styles.logoCircle}>
             <Image 
@@ -188,89 +158,49 @@ export default function LoginScreen({ navigation }) {
         <View style={styles.formCard}>
           <Text style={styles.formTitle}>Sign In</Text>
 
-          <View style={styles.inputWrapper}>
-            <Text style={styles.inputLabel}>Email Address</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="abcxyz@gmail.com"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              placeholderTextColor="#94A3B8"
-            />
-          </View>
-
-          <View style={styles.inputWrapper}>
-            <Text style={styles.inputLabel}>Password</Text>
-            <View style={styles.passwordContainer}>
-              <TextInput
-                style={styles.passwordInput}
-                placeholder="••••••••"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                placeholderTextColor="#94A3B8"
-              />
-              <TouchableOpacity 
-                style={styles.eyeButton} 
-                onPress={() => setShowPassword(!showPassword)}
-              >
-                <Text style={styles.eyeText}>{showPassword ? 'Hide' : 'Show'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
           <TouchableOpacity
-            style={[styles.loginBtn, loading && styles.disabledBtn]}
-            onPress={handleLogin}
-            disabled={loading}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.loginBtnText}>{loading ? 'Signing in...' : 'Continue to Dashboard'}</Text>
-          </TouchableOpacity>
-
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          <TouchableOpacity
-            style={styles.googleBtn}
+            style={styles.authBtn}
             onPress={handleGoogleLogin}
+            disabled={loading}
             activeOpacity={0.7}
           >
             <Image 
               source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' }} 
-              style={styles.googleIcon} 
+              style={styles.btnIcon} 
             />
-            <Text style={styles.googleBtnText}>Continue with Google</Text>
+            <Text style={styles.authBtnText}>Continue with Google</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.googleBtn, { marginTop: 12, backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}
+            style={styles.authBtn}
             onPress={() => navigation.navigate('MobileLogin')}
             activeOpacity={0.7}
           >
-            <Text style={{ fontSize: 20, marginRight: 12 }}>📱</Text>
-            <Text style={[styles.googleBtnText, { color: '#166534' }]}>Continue with Mobile</Text>
+            <Text style={styles.emojiIcon}>📱</Text>
+            <Text style={styles.authBtnText}>Continue with Mobile</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.authBtn}
+            onPress={() => navigation.navigate('EmailLogin')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.emojiIcon}>✉️</Text>
+            <Text style={styles.authBtnText}>Continue with Email</Text>
           </TouchableOpacity>
 
           <View style={styles.linkRow}>
-            <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
-              <Text style={styles.forgotText}>Forgot Password?</Text>
-            </TouchableOpacity>
+            <Text style={styles.footerText}>New to BuddyBloom?</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={styles.registerLinkText}>Create Account →</Text>
+              <Text style={styles.registerLinkText}>Create Account</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Version 1.0.0 • Vasanth Academy</Text>
+          <Text style={styles.footerVersion}>Version 1.0.0 • Vasanth Academy</Text>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -280,7 +210,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
-  keyboardView: {
+  content: {
     flex: 1,
     justifyContent: 'center',
     padding: 24,
@@ -352,106 +282,9 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#1E293B',
     marginBottom: 24,
+    textAlign: 'center',
   },
-  inputWrapper: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#475569',
-    marginBottom: 8,
-    marginLeft: 4,
-  },
-  input: {
-    height: 56,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 16,
-    paddingHorizontal: 20,
-    fontSize: 16,
-    color: '#1E293B',
-  },
-  passwordContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 16,
-    height: 56,
-  },
-  passwordInput: {
-    flex: 1,
-    height: '100%',
-    paddingHorizontal: 20,
-    fontSize: 16,
-    color: '#1E293B',
-  },
-  eyeButton: {
-    paddingHorizontal: 15,
-    justifyContent: 'center',
-  },
-  eyeText: {
-    color: '#6366F1',
-    fontWeight: '700',
-    fontSize: 12,
-  },
-  loginBtn: {
-    backgroundColor: '#2563EB',
-    height: 60,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 10,
-    shadowColor: '#2563EB',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 15,
-    elevation: 8,
-  },
-  disabledBtn: {
-    backgroundColor: '#94A3B8',
-  },
-  loginBtnText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  forgotText: {
-    color: '#64748B',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  linkRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  registerLinkText: {
-    color: '#6366F1',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E2E8F0',
-  },
-  dividerText: {
-    marginHorizontal: 12,
-    color: '#94A3B8',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  googleBtn: {
+  authBtn: {
     flexDirection: 'row',
     backgroundColor: '#fff',
     height: 56,
@@ -460,22 +293,44 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    marginBottom: 16,
   },
-  googleIcon: {
+  btnIcon: {
     width: 20,
     height: 20,
     marginRight: 12,
   },
-  googleBtnText: {
+  emojiIcon: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+  authBtnText: {
     color: '#1E293B',
     fontSize: 16,
     fontWeight: '700',
+  },
+  linkRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  footerText: {
+    color: '#64748B',
+    fontWeight: '500',
+    fontSize: 14,
+    marginRight: 6,
+  },
+  registerLinkText: {
+    color: '#6366F1',
+    fontWeight: '700',
+    fontSize: 14,
   },
   footer: {
     marginTop: 40,
     alignItems: 'center',
   },
-  footerText: {
+  footerVersion: {
     fontSize: 12,
     color: '#94A3B8',
     fontWeight: '600',
