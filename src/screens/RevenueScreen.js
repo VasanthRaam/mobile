@@ -46,106 +46,75 @@ export default function RevenueScreen() {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [studentStats, setStudentStats] = useState(null);
 
-  const fetchStudentDetails = async (item) => {
-    setLoadingDetails(true);
-    setStudentStats(null);
+  // ─── Reconcile / Stale-While-Revalidate pattern ───────────────────────────
+  // Phase 0 (instant): open modal immediately with data we already have from
+  //   the fee row (name, course, batch, billing totals from local fees array).
+  // Phase 1 (background): single API call to /students/summary/{user_id}
+  //   which runs attendance + quiz queries IN PARALLEL server-side.
+  // Phase 2 (reconcile): when the response arrives, update only the stats
+  //   section — the rest of the card never flickers.
+  const fetchStudentDetails = (item) => {
+    const userId = item.user_id || item.user?.id;
+
+    // ── Phase 0: compute everything we already know locally ───────────────
+    const totalPaid = fees
+      .filter(f => f.user_id === userId && f.status === 'paid')
+      .reduce((sum, f) => sum + f.amount, 0);
+
+    const totalPending = fees
+      .filter(f => f.user_id === userId && f.status !== 'paid')
+      .reduce((sum, f) => sum + f.amount, 0);
+
+    const optimisticStats = {
+      // Billing is computed locally — always instant, never needs a fetch
+      totalPaid,
+      totalPending,
+      email: item.user?.email || 'N/A',
+      phone: item.user?.phone || 'N/A',
+      // Stats that need the backend — start as null (shimmer will show)
+      attendanceRate: null,
+      progressVal: null,
+      quizCount: null,
+      joinedDate: item.user?.created_at || item.created_at || null,
+    };
+
+    // Open the modal instantly with what we have
+    setStudentStats(optimisticStats);
     setSelectedStudentDetail(item);
     setIsDetailModalVisible(true);
-    
-    const userId = item.user_id || item.user?.id;
-    if (!userId) {
-      setStudentStats({
-        attendanceRate: 100,
-        progressVal: 100,
-        quizCount: 0,
-        joinedDate: item.created_at || new Date().toISOString(),
-        totalPaid: item.amount,
-        totalPending: 0,
-        phone: 'N/A',
-        email: 'N/A'
+    setLoadingDetails(false); // modal is open, data is shown — no blocking spinner
+
+    if (!userId) return; // no further fetching possible
+
+    // ── Phase 1: background fetch — single round-trip to new summary endpoint
+    setLoadingDetails(true); // re-enable just for the stats skeleton
+    apiClient.get(`/students/summary/${userId}`)
+      .then(res => {
+        const data = res.data;
+        // ── Phase 2: reconcile — merge backend stats into existing card ───
+        setStudentStats(prev => ({
+          ...prev, // keep the local billing/contact data we showed instantly
+          attendanceRate: data.attendance?.rate ?? prev.attendanceRate ?? 92,
+          progressVal: data.quiz?.avg_pct ?? prev.progressVal ?? 85,
+          quizCount: data.quiz?.count ?? 0,
+          joinedDate: data.joined_date ?? prev.joinedDate,
+        }));
+      })
+      .catch(err => {
+        console.log('[StudentSummary] background fetch failed, keeping optimistic data:', err?.message);
+        // On failure, fill in sensible fallbacks so the card stays useful
+        setStudentStats(prev => ({
+          ...prev,
+          attendanceRate: prev.attendanceRate ?? 92,
+          progressVal: prev.progressVal ?? 85,
+          quizCount: prev.quizCount ?? 0,
+        }));
+      })
+      .finally(() => {
+        setLoadingDetails(false);
       });
-      setLoadingDetails(false);
-      return;
-    }
-
-    try {
-      const studentsRes = await apiClient.get('/students/');
-      const studentProfile = (studentsRes.data || []).find(s => s.user_id === userId);
-      
-      let attendanceRate = 92;
-      let progressVal = 85;
-      let quizCount = 0;
-      let joinedDate = item.user?.created_at || item.created_at || new Date().toISOString();
-
-      if (studentProfile) {
-        joinedDate = studentProfile.created_at;
-        
-        try {
-          const attRes = await apiClient.get(`/attendance/?student_id=${studentProfile.id}`);
-          const records = attRes.data || [];
-          if (records.length > 0) {
-            const present = records.filter(r => r.status === 'present').length;
-            attendanceRate = Math.round((present / records.length) * 100);
-          }
-        } catch (attErr) {
-          console.log('Error fetching attendance for detail modal:', attErr);
-        }
-
-        try {
-          const quizRes = await apiClient.get('/quizzes/results/all');
-          const myAttempts = (quizRes.data || []).filter(a => a.student_id === studentProfile.id);
-          if (myAttempts.length > 0) {
-            const sumScores = myAttempts.reduce((acc, curr) => acc + (curr.total_score / (curr.max_score || 1)), 0);
-            progressVal = Math.round((sumScores / myAttempts.length) * 100);
-            quizCount = myAttempts.length;
-          }
-        } catch (quizErr) {
-          console.log('Error fetching quiz attempts for detail modal:', quizErr);
-        }
-      }
-
-      const totalPaid = fees
-        .filter(f => f.user_id === userId && f.status === 'paid')
-        .reduce((sum, curr) => sum + curr.amount, 0);
-
-      const totalPending = fees
-        .filter(f => f.user_id === userId && f.status !== 'paid')
-        .reduce((sum, curr) => sum + curr.amount, 0);
-
-      setStudentStats({
-        attendanceRate,
-        progressVal,
-        quizCount,
-        joinedDate,
-        totalPaid,
-        totalPending,
-        phone: item.user?.phone || 'N/A',
-        email: item.user?.email || 'N/A'
-      });
-    } catch (err) {
-      console.error(err);
-      const totalPaid = fees
-        .filter(f => f.user_id === userId && f.status === 'paid')
-        .reduce((sum, curr) => sum + curr.amount, 0);
-
-      const totalPending = fees
-        .filter(f => f.user_id === userId && f.status !== 'paid')
-        .reduce((sum, curr) => sum + curr.amount, 0);
-
-      setStudentStats({
-        attendanceRate: 90,
-        progressVal: 85,
-        quizCount: 0,
-        joinedDate: item.user?.created_at || item.created_at || new Date().toISOString(),
-        totalPaid,
-        totalPending,
-        phone: item.user?.phone || 'N/A',
-        email: item.user?.email || 'N/A'
-      });
-    } finally {
-      setLoadingDetails(false);
-    }
   };
+
 
   const renderDetailModal = () => {
     if (!selectedStudentDetail) return null;
@@ -179,13 +148,9 @@ export default function RevenueScreen() {
               <Text style={styles.modalCloseText}>✕</Text>
             </TouchableOpacity>
 
-            {loadingDetails ? (
-              <View style={styles.modalLoaderContainer}>
-                <ActivityIndicator size="large" color="#4F46E5" />
-                <Text style={styles.modalLoaderText}>Fetching student details...</Text>
-              </View>
-            ) : (
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
+            {/* Reconcile pattern: modal is ALWAYS shown immediately.
+                loadingDetails=true means only the stats section is still being fetched. */}
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
                 {/* Header Profile Section */}
                 <View style={styles.modalHeaderSec}>
                   <View style={styles.modalAvatarLarge}>
@@ -242,7 +207,16 @@ export default function RevenueScreen() {
                 {/* Performance Metrics */}
                 <View style={styles.modalSectionCard}>
                   <Text style={styles.modalSectionTitle}>📈 Academic Stats</Text>
-                  
+
+                  {loadingDetails ? (
+                    /* Skeleton shimmer while background fetch is in progress */
+                    <View style={styles.statsSkeletonContainer}>
+                      <View style={styles.statsSkeleton} />
+                      <View style={[styles.statsSkeleton, { width: '70%', marginTop: 10 }]} />
+                      <View style={[styles.statsSkeleton, { width: '85%', marginTop: 10 }]} />
+                    </View>
+                  ) : (
+                    <>
                   {/* Attendance Rate */}
                   <View style={{ marginBottom: 12 }}>
                     <View style={styles.metricHeader}>
@@ -267,6 +241,8 @@ export default function RevenueScreen() {
                       <Text style={styles.quizSubtext}>Based on {studentStats.quizCount} quiz attempts</Text>
                     )}
                   </View>
+                  </>
+                  )}
                 </View>
 
                 {/* Contact Information */}
@@ -284,8 +260,7 @@ export default function RevenueScreen() {
                   </View>
                 </View>
               </ScrollView>
-            )}
-          </TouchableOpacity>
+            </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
     );
@@ -2067,4 +2042,17 @@ const styles = StyleSheet.create({
     color: '#475569',
     flex: 1,
   },
+  // ── Skeleton shimmer for reconcile pattern ────────────────────────────────
+  statsSkeletonContainer: {
+    paddingVertical: 8,
+  },
+  statsSkeleton: {
+    height: 12,
+    width: '100%',
+    borderRadius: 6,
+    backgroundColor: '#E2E8F0',
+    opacity: 0.7,
+  },
 });
+
+
