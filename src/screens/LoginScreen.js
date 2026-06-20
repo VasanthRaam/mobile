@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity,
   StyleSheet, Alert, SafeAreaView,
-  Dimensions, Platform, Image
+  Dimensions, Platform, Image, Animated
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
 import { supabase } from '../utils/supabase';
 import { useAuthStore } from '../store/useAuthStore';
-import apiClient from '../api/apiClient';
+import apiClient, { warmupBackend } from '../api/apiClient';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -16,6 +16,8 @@ const { width } = Dimensions.get('window');
 
 export default function LoginScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
+  const [serverStatus, setServerStatus] = useState('connecting'); // 'connecting' | 'cold' | 'ready'
+  const bannerOpacity = useRef(new Animated.Value(1)).current;
   const login = useAuthStore((state) => state.login);
 
   // Web-specific OAuth hash listener
@@ -33,6 +35,42 @@ export default function LoginScreen({ navigation }) {
       }
     }
   }, []);
+
+  // ── Backend Warmup ─────────────────────────────────────────────────────────
+  // Silently pings the backend as soon as the login screen mounts so the
+  // free-tier Render server wakes up before the user actually tries to log in.
+  useEffect(() => {
+    let isMounted = true;
+    const runWarmup = async () => {
+      const result = await warmupBackend();
+      if (!isMounted) return;
+      if (result.coldStart) {
+        setServerStatus('cold');
+        // Server is cold — keep banner visible, it'll hide once server is ready
+        // Re-ping after the cold-start delay
+        setTimeout(async () => {
+          if (!isMounted) return;
+          await warmupBackend();
+          if (isMounted) fadeBannerOut();
+        }, 12000);
+      } else {
+        fadeBannerOut();
+      }
+    };
+
+    const fadeBannerOut = () => {
+      setServerStatus('ready');
+      Animated.timing(bannerOpacity, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      }).start();
+    };
+
+    runWarmup();
+    return () => { isMounted = false; };
+  }, []);
+
 
   const handleGoogleCallback = async (access_token) => {
     setLoading(true);
@@ -200,6 +238,22 @@ export default function LoginScreen({ navigation }) {
         <View style={styles.footer}>
           <Text style={styles.footerVersion}>Version 1.0.0 • Vasanth Academy</Text>
         </View>
+
+        {/* ── Server Status Banner ── */}
+        {serverStatus !== 'ready' && (
+          <Animated.View style={[styles.serverBanner, { opacity: bannerOpacity },
+            serverStatus === 'cold' && styles.serverBannerCold
+          ]}>
+            <Text style={styles.serverBannerDot}>
+              {serverStatus === 'cold' ? '🔄' : '🟡'}
+            </Text>
+            <Text style={styles.serverBannerText}>
+              {serverStatus === 'cold'
+                ? 'Server is starting up, this may take a moment…'
+                : 'Connecting to server…'}
+            </Text>
+          </Animated.View>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -334,5 +388,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#94A3B8',
     fontWeight: '600',
-  }
+  },
+  serverBanner: {
+    position: 'absolute',
+    bottom: 12,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 0.25)',
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  serverBannerCold: {
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  serverBannerDot: {
+    fontSize: 14,
+  },
+  serverBannerText: {
+    fontSize: 12,
+    color: '#475569',
+    fontWeight: '500',
+    flex: 1,
+  },
 });
