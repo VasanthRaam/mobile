@@ -42,6 +42,57 @@ export default function DashboardScreen({ navigation }) {
     }, [])
   );
 
+  useEffect(() => {
+    const checkBiometricsPrompt = async () => {
+      try {
+        const { getBiometricsPrompted, saveBiometricsPrompted, saveBiometricsEnabled } = require('../utils/secureStore');
+        const LocalAuthentication = require('expo-local-authentication');
+
+        const hasHardware = await LocalAuthentication.hasHardwareAsync();
+        const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+        if (hasHardware && isEnrolled) {
+          const alreadyPrompted = await getBiometricsPrompted();
+          if (alreadyPrompted !== 'true') {
+            Alert.alert(
+              'Enable Biometric Login',
+              'Would you like to use Face ID or Touch ID for faster login next time?',
+              [
+                {
+                  text: 'No, thanks',
+                  onPress: async () => {
+                    await saveBiometricsPrompted(true);
+                    await saveBiometricsEnabled(false);
+                  },
+                  style: 'cancel',
+                },
+                {
+                  text: 'Enable',
+                  onPress: async () => {
+                    const result = await LocalAuthentication.authenticateAsync({
+                      promptMessage: 'Confirm identity to enable Biometric Login',
+                    });
+                    await saveBiometricsPrompted(true);
+                    if (result.success) {
+                      await saveBiometricsEnabled(true);
+                      Alert.alert('Success', 'Biometric login enabled successfully!');
+                    } else {
+                      await saveBiometricsEnabled(false);
+                    }
+                  },
+                },
+              ],
+              { cancelable: false }
+            );
+          }
+        }
+      } catch (err) {
+        console.warn('Error checking biometrics prompt:', err);
+      }
+    };
+    checkBiometricsPrompt();
+  }, []);
+
   const fetchStats = async () => {
     try {
       const response = await apiClient.get('/dashboard/stats');

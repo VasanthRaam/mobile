@@ -59,7 +59,7 @@ export default function ProfileSelectionScreen({ route, navigation }) {
           <Text style={styles.profileRole}>{item.role.charAt(0).toUpperCase() + item.role.slice(1)}</Text>
           <Text style={styles.profileEmail}>{item.email}</Text>
         </View>
-        <Ionicons name="chevron-forward" size={24} color={isLoading ? "#94A3B8" : "#166534"} />
+        <Ionicons name="chevron-forward" size={24} color={isLoading ? "#94A3B8" : "#2563EB"} />
       </TouchableOpacity>
     );
   };
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#166534',
+    backgroundColor: '#2563EB',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
   profileRole: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#059669',
+    color: '#4F46E5',
     marginBottom: 2,
   },
   profileEmail: {

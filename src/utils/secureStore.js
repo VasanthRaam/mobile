@@ -100,3 +100,58 @@ export const deleteUser = async () => {
     console.error('Error deleting user', error);
   }
 };
+
+const BIOMETRICS_ENABLED_KEY = 'buddybloom_biometrics_enabled';
+const BIOMETRICS_PROMPTED_KEY = 'buddybloom_biometrics_prompted';
+
+export const saveBiometricsEnabled = async (enabled) => {
+  try {
+    const val = String(enabled);
+    if (Platform.OS === 'web') {
+      localStorage.setItem(BIOMETRICS_ENABLED_KEY, val);
+    } else {
+      await SecureStore.setItemAsync(BIOMETRICS_ENABLED_KEY, val);
+    }
+  } catch (error) {
+    console.error('Error saving biometrics enabled preference', error);
+  }
+};
+
+export const getBiometricsEnabled = async () => {
+  try {
+    if (Platform.OS === 'web') {
+      return localStorage.getItem(BIOMETRICS_ENABLED_KEY);
+    } else {
+      return await SecureStore.getItemAsync(BIOMETRICS_ENABLED_KEY);
+    }
+  } catch (error) {
+    console.error('Error getting biometrics enabled preference', error);
+    return null;
+  }
+};
+
+export const saveBiometricsPrompted = async (prompted) => {
+  try {
+    const val = String(prompted);
+    if (Platform.OS === 'web') {
+      localStorage.setItem(BIOMETRICS_PROMPTED_KEY, val);
+    } else {
+      await SecureStore.setItemAsync(BIOMETRICS_PROMPTED_KEY, val);
+    }
+  } catch (error) {
+    console.error('Error saving biometrics prompted preference', error);
+  }
+};
+
+export const getBiometricsPrompted = async () => {
+  try {
+    if (Platform.OS === 'web') {
+      return localStorage.getItem(BIOMETRICS_PROMPTED_KEY);
+    } else {
+      return await SecureStore.getItemAsync(BIOMETRICS_PROMPTED_KEY);
+    }
+  } catch (error) {
+    console.error('Error getting biometrics prompted preference', error);
+    return null;
+  }
+};

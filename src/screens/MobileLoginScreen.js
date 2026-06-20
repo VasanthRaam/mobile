@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, Alert, SafeAreaView, KeyboardAvoidingView, Platform
+  StyleSheet, Alert, SafeAreaView, KeyboardAvoidingView, Platform, Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import apiClient from '../api/apiClient';
@@ -40,6 +40,18 @@ export default function MobileLoginScreen({ navigation }) {
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color="#1E293B" />
         </TouchableOpacity>
+
+        <View style={styles.headerSection}>
+          <View style={styles.logoCircle}>
+            <Image 
+              source={require('../../assets/icon.png')} 
+              style={styles.logoImage} 
+              resizeMode="contain"
+            />
+          </View>
+          <Text style={styles.title}>BuddyBloom</Text>
+          <Text style={styles.subtitle}>Nurturing Minds, Together.</Text>
+        </View>
 
         <View style={styles.formCard}>
           <Text style={styles.formTitle}>Mobile Login</Text>
@@ -120,6 +132,40 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 5,
   },
+  headerSection: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  logoCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 15,
+    elevation: 10,
+    marginBottom: 20,
+  },
+  logoImage: {
+    width: '65%',
+    height: '65%',
+  },
+  title: {
+    fontSize: 36,
+    fontWeight: '900',
+    color: '#1E293B',
+    letterSpacing: -1,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#64748B',
+    marginTop: 8,
+    fontWeight: '500',
+  },
   formCard: {
     backgroundColor: '#fff',
     borderRadius: 32,
@@ -131,15 +177,15 @@ const styles = StyleSheet.create({
     elevation: 20,
   },
   formTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '800',
     color: '#1E293B',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   formSubtitle: {
     fontSize: 14,
     color: '#64748B',
-    marginBottom: 32,
+    marginBottom: 24,
     lineHeight: 20,
   },
   inputWrapper: {
@@ -163,12 +209,12 @@ const styles = StyleSheet.create({
     color: '#1E293B',
   },
   actionBtn: {
-    backgroundColor: '#166534',
+    backgroundColor: '#2563EB',
     height: 60,
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#166534',
+    shadowColor: '#2563EB',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
     shadowRadius: 15,

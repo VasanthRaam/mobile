@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { saveToken, deleteToken, getToken, saveUser, getUser, deleteUser } from '../utils/secureStore';
+import { saveToken, deleteToken, getToken, saveUser, getUser, deleteUser, getBiometricsEnabled } from '../utils/secureStore';
 import { supabase } from '../utils/supabase';
 import * as LocalAuthentication from 'expo-local-authentication';
 
@@ -12,9 +12,20 @@ export const useAuthStore = create((set) => ({
   // Call this function when the app starts to restore the session
   restoreSession: async () => {
     try {
-      const [token, user] = await Promise.all([getToken(), getUser()]);
+      const [token, user, biometricsEnabled] = await Promise.all([
+        getToken(),
+        getUser(),
+        getBiometricsEnabled()
+      ]);
+
       if (token) {
-        // Token exists, now prompt for Biometrics if available
+        // If biometrics are not explicitly enabled, bypass and restore session directly
+        if (biometricsEnabled !== 'true') {
+          set({ token, user, isAuthenticated: true, isLoading: false });
+          return;
+        }
+
+        // Token exists and biometrics are enabled, now prompt for Biometrics
         let biometricSuccess = false;
         try {
           const hasHardware = await LocalAuthentication.hasHardwareAsync();
@@ -42,9 +53,9 @@ export const useAuthStore = create((set) => ({
         if (biometricSuccess) {
           set({ token, user, isAuthenticated: true, isLoading: false });
         } else {
-          // Failed biometric (e.g. canceled). Wipe session or just don't authenticate.
-          // For security, if they cancel, we keep them logged out for this session.
-          set({ token: null, user: null, isAuthenticated: false, isLoading: false });
+          // Failed biometric (e.g. canceled). Do not wipe token, just don't authenticate for this session
+          // so they can choose to try again or log in via other means.
+          set({ isAuthenticated: false, isLoading: false });
         }
       } else {
         set({ token: null, user: null, isAuthenticated: false, isLoading: false });
