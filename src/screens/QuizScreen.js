@@ -6,10 +6,12 @@ import {
 } from 'react-native';
 import apiClient from '../api/apiClient';
 import { getCache, setCache } from '../utils/cacheManager';
+import { useThemeStore } from '../store/useThemeStore';
 
 const { width } = Dimensions.get('window');
 
 export default function QuizScreen({ route, navigation }) {
+  const { theme, isDark } = useThemeStore();
   const { quizId, quizTitle } = route.params;
 
   const cachedQuiz = getCache('quiz_detail_' + quizId);
@@ -112,26 +114,26 @@ export default function QuizScreen({ route, navigation }) {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.loadingText}>Loading Fun Quiz...</Text>
+      <View style={[styles.centered, { backgroundColor: theme.bg }]}>
+        <Text style={[styles.loadingText, { color: theme.text }]}>Loading Fun Quiz...</Text>
       </View>
     );
   }
 
   if (isFinished && results) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.resultContainer}>
-          <Text style={styles.congratsText}>🎉 Great Job! 🎉</Text>
-          <View style={styles.scoreCard}>
-            <Text style={styles.scoreLabel}>Your Score</Text>
-            <Text style={styles.scoreValue}>{results.total_score} / {results.max_score}</Text>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+        <View style={[styles.resultContainer, { backgroundColor: theme.bg }]}>
+          <Text style={[styles.congratsText, { color: theme.accent }]}>🎉 Great Job! 🎉</Text>
+          <View style={[styles.scoreCard, { backgroundColor: theme.card }]}>
+            <Text style={[styles.scoreLabel, { color: theme.subText }]}>Your Score</Text>
+            <Text style={[styles.scoreValue, { color: theme.text }]}>{results.total_score} / {results.max_score}</Text>
           </View>
           <TouchableOpacity 
-            style={styles.finishButton}
+            style={[styles.finishButton, { backgroundColor: theme.accent }]}
             onPress={() => navigation.navigate('Dashboard')}
           >
-            <Text style={styles.finishButtonText}>Back to Dashboard</Text>
+            <Text style={[styles.finishButtonText, { color: '#fff' }]}>Back to Dashboard</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -142,29 +144,30 @@ export default function QuizScreen({ route, navigation }) {
   const isLastQuestion = currentQuestionIndex === quiz.questions.length - 1;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+      <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.headerBack}>← Quit</Text>
+          <Text style={[styles.headerBack, { color: theme.danger }]}>← Quit</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{quizTitle}</Text>
-        <View style={styles.timerBadge}>
-          <Text style={styles.timerText}>⏳ {formatTime(timeLeft)}</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>{quizTitle}</Text>
+        <View style={[styles.timerBadge, { backgroundColor: theme.warningLight, borderColor: theme.warning }]}>
+          <Text style={[styles.timerText, { color: theme.warning }]}>⏳ {formatTime(timeLeft)}</Text>
         </View>
       </View>
 
-      <View style={styles.progressContainer}>
+      <View style={[styles.progressContainer, { backgroundColor: theme.chipBg }]}>
         <View 
           style={[
             styles.progressBar, 
+            { backgroundColor: theme.success },
             { width: `${((currentQuestionIndex + 1) / quiz.questions.length) * 100}%` }
           ]} 
         />
       </View>
 
       <View style={styles.quizContent}>
-        <Text style={styles.questionNumber}>Question {currentQuestionIndex + 1} of {quiz.questions.length}</Text>
-        <Text style={styles.questionText}>{currentQuestion.question_text}</Text>
+        <Text style={[styles.questionNumber, { color: theme.subText }]}>Question {currentQuestionIndex + 1} of {quiz.questions.length}</Text>
+        <Text style={[styles.questionText, { color: theme.text }]}>{currentQuestion.question_text}</Text>
 
         <FlatList
           showsVerticalScrollIndicator={false}
@@ -174,20 +177,32 @@ export default function QuizScreen({ route, navigation }) {
             const isSelected = selectedAnswers[currentQuestion.id] === item.id;
             const isRevealed = revealedAnswers[currentQuestion.id];
             
-            let backgroundColor = '#fff';
-            let borderColor = '#E0E0E0';
+            let backgroundColor = theme.card;
+            let borderColor = theme.border;
+            let textColor = theme.text;
+            let dotColor = 'transparent';
+            let dotBorderColor = theme.border;
             
             if (isRevealed) {
               if (item.is_correct) {
-                backgroundColor = '#D1FAE5'; // Light green
-                borderColor = '#10B981';
+                backgroundColor = theme.successLight;
+                borderColor = theme.success;
+                textColor = isDark ? '#2ecc71' : '#059669';
+                dotColor = theme.success;
+                dotBorderColor = theme.success;
               } else if (isSelected && !item.is_correct) {
-                backgroundColor = '#FEE2E2'; // Light red
-                borderColor = '#EF4444';
+                backgroundColor = theme.dangerLight;
+                borderColor = theme.danger;
+                textColor = isDark ? '#e74c3c' : '#DC2626';
+                dotColor = theme.danger;
+                dotBorderColor = theme.danger;
               }
             } else if (isSelected) {
-              backgroundColor = '#E3F2FD';
-              borderColor = '#007AFF';
+              backgroundColor = theme.accentLight;
+              borderColor = theme.accent;
+              textColor = theme.accent;
+              dotColor = theme.accent;
+              dotBorderColor = theme.accent;
             }
 
             return (
@@ -198,9 +213,9 @@ export default function QuizScreen({ route, navigation }) {
               >
                 <View style={[
                   styles.optionDot,
-                  isSelected && { backgroundColor: isRevealed ? (item.is_correct ? '#10B981' : '#EF4444') : '#007AFF', borderColor: isRevealed ? (item.is_correct ? '#10B981' : '#EF4444') : '#007AFF' }
+                  { backgroundColor: dotColor, borderColor: dotBorderColor }
                 ]} />
-                <Text style={[styles.optionText, isSelected && { color: isRevealed ? (item.is_correct ? '#059669' : '#DC2626') : '#007AFF' }]}>
+                <Text style={[styles.optionText, { color: textColor }]}>
                   {item.option_text}
                 </Text>
               </TouchableOpacity>
@@ -210,19 +225,19 @@ export default function QuizScreen({ route, navigation }) {
         />
       </View>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
         {currentQuestionIndex > 0 ? (
           <TouchableOpacity 
-            style={styles.navButton}
+            style={[styles.navButton, { backgroundColor: theme.chipBg }]}
             onPress={() => setCurrentQuestionIndex(prev => prev - 1)}
           >
-            <Text style={styles.navButtonText}>Previous</Text>
+            <Text style={[styles.navButtonText, { color: theme.text }]}>Previous</Text>
           </TouchableOpacity>
         ) : <View style={{ width: 100 }} />}
 
         {isLastQuestion ? (
           <TouchableOpacity 
-            style={[styles.submitButton, submitting && { opacity: 0.7 }]}
+            style={[styles.submitButton, { backgroundColor: theme.success }, submitting && { opacity: 0.7 }]}
             onPress={handleSubmit}
             disabled={submitting}
           >
@@ -230,10 +245,10 @@ export default function QuizScreen({ route, navigation }) {
           </TouchableOpacity>
         ) : (
           <TouchableOpacity 
-            style={styles.navButton}
+            style={[styles.navButton, { backgroundColor: theme.chipBg }]}
             onPress={() => setCurrentQuestionIndex(prev => prev + 1)}
           >
-            <Text style={styles.navButtonText}>Next</Text>
+            <Text style={[styles.navButtonText, { color: theme.text }]}>Next</Text>
           </TouchableOpacity>
         )}
       </View>

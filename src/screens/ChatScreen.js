@@ -13,6 +13,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import apiClient from '../api/apiClient';
 import { getCache, setCache } from '../utils/cacheManager';
+import { useThemeStore } from '../store/useThemeStore';
 
 /**
  * @typedef {Object} Message
@@ -22,6 +23,7 @@ import { getCache, setCache } from '../utils/cacheManager';
  */
 
 const ChatScreen = ({ navigation }) => {
+  const { theme, isDark } = useThemeStore();
   const [messages, setMessages] = useState(getCache('chat_history') || [
     { id: 'initial-msg', text: 'Namaste! I am the Academy AI Teacher. How can I help you today?', isUser: false }
   ]);
@@ -112,11 +114,15 @@ const ChatScreen = ({ navigation }) => {
     ]}>
       <View style={[
         styles.messageBubble,
-        item.isUser ? styles.messageBubbleUser : styles.messageBubbleBot
+        item.isUser 
+          ? [styles.messageBubbleUser, { backgroundColor: theme.accent }] 
+          : [styles.messageBubbleBot, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]
       ]}>
         <Text style={[
           styles.messageText,
-          item.isUser ? styles.messageTextUser : styles.messageTextBot
+          item.isUser 
+            ? [styles.messageTextUser, { color: '#ffffff' }] 
+            : [styles.messageTextBot, { color: theme.text }]
         ]}>
           {item.text}
         </Text>
@@ -125,7 +131,7 @@ const ChatScreen = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
       <KeyboardAvoidingView 
         style={styles.keyboardView} 
         behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
@@ -136,28 +142,32 @@ const ChatScreen = ({ navigation }) => {
           data={messages}
           keyExtractor={(item) => item.id}
           renderItem={renderMessage}
-          contentContainerStyle={styles.chatList}
+          contentContainerStyle={[styles.chatList, { backgroundColor: theme.bg }]}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
           onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
         />
 
         {isLoading && (
           <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>AI Teacher is typing...</Text>
+            <Text style={[styles.loadingText, { color: theme.subText }]}>AI Teacher is typing...</Text>
           </View>
         )}
 
-        <View style={styles.inputContainer}>
+        <View style={[styles.inputContainer, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
           <TextInput
-            style={styles.textInput}
+            style={[styles.textInput, { backgroundColor: theme.inputBg, color: theme.text }]}
             value={inputText}
             onChangeText={setInputText}
             placeholder="Type your message..."
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={theme.muted}
             multiline
           />
           <TouchableOpacity 
-            style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]} 
+            style={[
+              styles.sendButton, 
+              { backgroundColor: theme.accent },
+              (!inputText.trim() || isLoading) && { backgroundColor: theme.muted }
+            ]} 
             onPress={sendMessage}
             disabled={!inputText.trim() || isLoading}
           >

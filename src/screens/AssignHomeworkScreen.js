@@ -7,8 +7,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import apiClient from '../api/apiClient';
 import { getCache, setCache } from '../utils/cacheManager';
+import { useThemeStore } from '../store/useThemeStore';
 
 export default function AssignHomeworkScreen({ navigation }) {
+  const { theme, isDark } = useThemeStore();
   const [courses, setCourses] = useState(getCache('courses') || []);
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const [batches, setBatches] = useState([]);
@@ -127,107 +129,158 @@ export default function AssignHomeworkScreen({ navigation }) {
 
   if (loading && courses.length === 0) {
     return (
-      <View style={styles.center}>
-        <Text style={{ color: '#64748B', fontWeight: '600' }}>Loading courses...</Text>
+      <View style={[styles.center, { backgroundColor: theme.bg }]}>
+        <Text style={{ color: theme.text, fontWeight: '600' }}>Loading courses...</Text>
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={styles.backIcon}>×</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+      <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+        <TouchableOpacity style={[styles.backBtn, { backgroundColor: theme.chipBg }]} onPress={() => navigation.goBack()}>
+          <Text style={[styles.backIcon, { color: theme.danger }]}>×</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Assign Homework 📚</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Assign Homework 📚</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView 
+        style={{ backgroundColor: theme.bg }}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.label}>1. Select Course</Text>
+        <Text style={[styles.label, { color: theme.text }]}>1. Select Course</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
-          {courses.map(course => (
-            <TouchableOpacity 
-              key={course.id}
-              style={[styles.batchItem, selectedCourseId === course.id && styles.batchItemSelected]}
-              onPress={() => setSelectedCourseId(course.id)}
-            >
-              <Text style={[styles.batchText, selectedCourseId === course.id && styles.batchTextSelected]}>
-                {course.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-          {courses.length === 0 && <Text style={styles.noDataText}>No courses available</Text>}
+          {courses.map(course => {
+            const isSelected = selectedCourseId === course.id;
+            return (
+              <TouchableOpacity 
+                key={course.id}
+                style={[
+                  styles.batchItem, 
+                  { backgroundColor: theme.card, borderColor: theme.border },
+                  isSelected && { backgroundColor: theme.accent, borderColor: theme.accent }
+                ]}
+                onPress={() => setSelectedCourseId(course.id)}
+              >
+                <Text style={[
+                  styles.batchText, 
+                  { color: theme.subText },
+                  isSelected && { color: '#fff' }
+                ]}>
+                  {course.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+          {courses.length === 0 && <Text style={[styles.noDataText, { color: theme.muted }]}>No courses available</Text>}
         </ScrollView>
 
-        <Text style={styles.label}>2. Select Batch</Text>
+        <Text style={[styles.label, { color: theme.text }]}>2. Select Batch</Text>
         <View style={styles.batchList}>
-          {batches.map(batch => (
-            <TouchableOpacity 
-              key={batch.id} 
-              style={[styles.batchItem, selectedBatchId === batch.id && styles.batchItemSelected]}
-              onPress={() => setSelectedBatchId(batch.id)}
-            >
-              <Text style={[styles.batchText, selectedBatchId === batch.id && styles.batchTextSelected]}>
-                {batch.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-          {batches.length === 0 && <Text style={styles.noDataText}>No batches available</Text>}
+          {batches.map(batch => {
+            const isSelected = selectedBatchId === batch.id;
+            return (
+              <TouchableOpacity 
+                key={batch.id} 
+                style={[
+                  styles.batchItem, 
+                  { backgroundColor: theme.card, borderColor: theme.border },
+                  isSelected && { backgroundColor: theme.accent, borderColor: theme.accent }
+                ]}
+                onPress={() => setSelectedBatchId(batch.id)}
+              >
+                <Text style={[
+                  styles.batchText, 
+                  { color: theme.subText },
+                  isSelected && { color: '#fff' }
+                ]}>
+                  {batch.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+          {batches.length === 0 && <Text style={[styles.noDataText, { color: theme.muted }]}>No batches available</Text>}
         </View>
 
-        <Text style={styles.label}>3. Assign To</Text>
+        <Text style={[styles.label, { color: theme.text }]}>3. Assign To</Text>
         <View style={styles.targetRow}>
           <TouchableOpacity 
-            style={[styles.targetBtn, targetType === 'batch' && styles.targetBtnActive]}
+            style={[
+              styles.targetBtn, 
+              { backgroundColor: theme.card, borderColor: theme.border },
+              targetType === 'batch' && { backgroundColor: theme.accentLight, borderColor: theme.accent }
+            ]}
             onPress={() => setTargetType('batch')}
           >
-            <Text style={[styles.targetBtnText, targetType === 'batch' && styles.targetBtnTextActive]}>Full Batch</Text>
+            <Text style={[
+              styles.targetBtnText, 
+              { color: theme.subText },
+              targetType === 'batch' && { color: theme.accent }
+            ]}>Full Batch</Text>
           </TouchableOpacity>
           <TouchableOpacity 
-            style={[styles.targetBtn, targetType === 'student' && styles.targetBtnActive]}
+            style={[
+              styles.targetBtn, 
+              { backgroundColor: theme.card, borderColor: theme.border },
+              targetType === 'student' && { backgroundColor: theme.accentLight, borderColor: theme.accent }
+            ]}
             onPress={() => setTargetType('student')}
           >
-            <Text style={[styles.targetBtnText, targetType === 'student' && styles.targetBtnTextActive]}>Specific Student</Text>
+            <Text style={[
+              styles.targetBtnText, 
+              { color: theme.subText },
+              targetType === 'student' && { color: theme.accent }
+            ]}>Specific Student</Text>
           </TouchableOpacity>
         </View>
 
         {targetType === 'student' && (
           <View style={styles.studentSection}>
-            <Text style={styles.label}>Select Student</Text>
+            <Text style={[styles.label, { color: theme.text }]}>Select Student</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.studentList}>
-              {students.map(student => (
-                <TouchableOpacity 
-                  key={student.id} 
-                  style={[styles.studentCard, selectedStudentId === student.user_id && styles.studentCardActive]}
-                  onPress={() => setSelectedStudentId(student.user_id)}
-                >
-                  <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>{student.first_name[0]}</Text>
-                  </View>
-                  <Text style={[styles.studentNameText, selectedStudentId === student.user_id && styles.studentNameTextActive]}>
-                    {student.first_name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              {students.map(student => {
+                const isSelected = selectedStudentId === student.user_id;
+                return (
+                  <TouchableOpacity 
+                    key={student.id} 
+                    style={styles.studentCard}
+                    onPress={() => setSelectedStudentId(student.user_id)}
+                  >
+                    <View style={[
+                      styles.avatar, 
+                      { backgroundColor: theme.accentLight, borderColor: isSelected ? theme.accent : 'transparent', borderWidth: 3 }
+                    ]}>
+                      <Text style={[styles.avatarText, { color: theme.accent }]}>{student.first_name[0]}</Text>
+                    </View>
+                    <Text style={[
+                      styles.studentNameText, 
+                      { color: theme.subText },
+                      isSelected && { color: theme.text, fontWeight: '800' }
+                    ]}>
+                      {student.first_name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           </View>
         )}
 
-        <Text style={styles.label}>{targetType === 'batch' ? '4.' : '5.'} Homework Details</Text>
+        <Text style={[styles.label, { color: theme.text }]}>{targetType === 'batch' ? '4.' : '5.'} Homework Details</Text>
         <TextInput 
-          style={styles.input}
+          style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
           placeholder="Homework Title"
+          placeholderTextColor={theme.muted}
           value={title}
           onChangeText={setTitle}
         />
 
         <TextInput 
-          style={[styles.input, styles.textArea, { marginTop: 12 }]}
+          style={[styles.input, styles.textArea, { marginTop: 12, backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
           placeholder="Instructions..."
+          placeholderTextColor={theme.muted}
           multiline
           numberOfLines={4}
           value={description}
@@ -235,7 +288,7 @@ export default function AssignHomeworkScreen({ navigation }) {
         />
 
         <TouchableOpacity 
-          style={[styles.submitBtn, submitting && { opacity: 0.7 }]}
+          style={[styles.submitBtn, { backgroundColor: theme.accent }, submitting && { opacity: 0.7 }]}
           onPress={handleCreate}
           disabled={submitting}
         >

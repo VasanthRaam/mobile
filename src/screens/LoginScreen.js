@@ -9,12 +9,14 @@ import { makeRedirectUri } from 'expo-auth-session';
 import { supabase } from '../utils/supabase';
 import { useAuthStore } from '../store/useAuthStore';
 import apiClient, { warmupBackend } from '../api/apiClient';
+import { useThemeStore } from '../store/useThemeStore';
 
 WebBrowser.maybeCompleteAuthSession();
 
 const { width } = Dimensions.get('window');
 
 export default function LoginScreen({ navigation }) {
+  const { theme, isDark } = useThemeStore();
   const [loading, setLoading] = useState(false);
   const [serverStatus, setServerStatus] = useState('connecting'); // 'connecting' | 'cold' | 'ready'
   const bannerOpacity = useRef(new Animated.Value(1)).current;
@@ -176,28 +178,28 @@ export default function LoginScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.bgDecor1} />
-      <View style={styles.bgDecor2} />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+      <View style={[styles.bgDecor1, { backgroundColor: isDark ? theme.accentLight : '#EEF2FF' }]} />
+      <View style={[styles.bgDecor2, { backgroundColor: isDark ? theme.successLight : '#F0FDF4' }]} />
 
-      <View style={styles.content}>
+      <View style={[styles.content, { backgroundColor: 'transparent' }]}>
         <View style={styles.headerSection}>
-          <View style={styles.logoCircle}>
+          <View style={[styles.logoCircle, { backgroundColor: theme.card }]}>
             <Image 
               source={require('../../assets/icon.png')} 
               style={styles.logoImage} 
               resizeMode="contain"
             />
           </View>
-          <Text style={styles.title}>BuddyBloom</Text>
-          <Text style={styles.subtitle}>Nurturing Minds, Together.</Text>
+          <Text style={[styles.title, { color: theme.text }]}>BuddyBloom</Text>
+          <Text style={[styles.subtitle, { color: theme.subText }]}>Nurturing Minds, Together.</Text>
         </View>
 
-        <View style={styles.formCard}>
-          <Text style={styles.formTitle}>Sign In</Text>
+        <View style={[styles.formCard, { backgroundColor: theme.card, shadowColor: 'transparent', elevation: 0, borderWidth: 1, borderColor: theme.border }]}>
+          <Text style={[styles.formTitle, { color: theme.text }]}>Sign In</Text>
 
           <TouchableOpacity
-            style={styles.authBtn}
+            style={[styles.authBtn, { backgroundColor: theme.chipBg, borderColor: theme.border }]}
             onPress={handleGoogleLogin}
             disabled={loading}
             activeOpacity={0.7}
@@ -206,48 +208,50 @@ export default function LoginScreen({ navigation }) {
               source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' }} 
               style={styles.btnIcon} 
             />
-            <Text style={styles.authBtnText}>Continue with Google</Text>
+            <Text style={[styles.authBtnText, { color: theme.text }]}>Continue with Google</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.authBtn}
+            style={[styles.authBtn, { backgroundColor: theme.chipBg, borderColor: theme.border }]}
             onPress={() => navigation.navigate('MobileLogin')}
             activeOpacity={0.7}
           >
             <Text style={styles.emojiIcon}>📱</Text>
-            <Text style={styles.authBtnText}>Continue with Mobile</Text>
+            <Text style={[styles.authBtnText, { color: theme.text }]}>Continue with Mobile</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.authBtn}
+            style={[styles.authBtn, { backgroundColor: theme.chipBg, borderColor: theme.border }]}
             onPress={() => navigation.navigate('EmailLogin')}
             activeOpacity={0.7}
           >
             <Text style={styles.emojiIcon}>✉️</Text>
-            <Text style={styles.authBtnText}>Continue with Email</Text>
+            <Text style={[styles.authBtnText, { color: theme.text }]}>Continue with Email</Text>
           </TouchableOpacity>
 
           <View style={styles.linkRow}>
-            <Text style={styles.footerText}>New to BuddyBloom?</Text>
+            <Text style={[styles.footerText, { color: theme.subText }]}>New to BuddyBloom?</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={styles.registerLinkText}>Create Account</Text>
+              <Text style={[styles.registerLinkText, { color: theme.accent }]}>Create Account</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerVersion}>Version 1.0.0 • Vasanth Academy</Text>
+          <Text style={[styles.footerVersion, { color: theme.muted }]}>Version 1.0.0 • Vasanth Academy</Text>
         </View>
 
         {/* ── Server Status Banner ── */}
         {serverStatus !== 'ready' && (
-          <Animated.View style={[styles.serverBanner, { opacity: bannerOpacity },
-            serverStatus === 'cold' && styles.serverBannerCold
+          <Animated.View style={[
+            styles.serverBanner, 
+            { opacity: bannerOpacity, backgroundColor: isDark ? theme.accentLight : 'rgba(99, 102, 241, 0.1)', borderColor: theme.border },
+            serverStatus === 'cold' && [styles.serverBannerCold, { backgroundColor: isDark ? theme.warningLight : 'rgba(245, 158, 11, 0.1)', borderColor: theme.border }]
           ]}>
             <Text style={styles.serverBannerDot}>
               {serverStatus === 'cold' ? '🔄' : '🟡'}
             </Text>
-            <Text style={styles.serverBannerText}>
+            <Text style={[styles.serverBannerText, { color: theme.subText }]}>
               {serverStatus === 'cold'
                 ? 'Server is starting up, this may take a moment…'
                 : 'Connecting to server…'}

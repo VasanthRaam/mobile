@@ -5,8 +5,10 @@ import {
 } from 'react-native';
 import apiClient from '../api/apiClient';
 import { getCache, setCache } from '../utils/cacheManager';
+import { useThemeStore } from '../store/useThemeStore';
 
 export default function SubmissionDetailScreen({ route, navigation }) {
+  const { theme, isDark } = useThemeStore();
   const { attemptId } = route.params;
   const [details, setDetails] = useState(getCache('submission_detail_' + attemptId) || null);
   const [loading, setLoading] = useState(!getCache('submission_detail_' + attemptId));
@@ -31,26 +33,26 @@ export default function SubmissionDetailScreen({ route, navigation }) {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.loadingText}>Analyzing results...</Text>
+      <View style={[styles.centered, { backgroundColor: theme.bg }]}>
+        <Text style={[styles.loadingText, { color: theme.text }]}>Analyzing results...</Text>
       </View>
     );
   }
 
   if (error) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+        <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.backText}>← Back</Text>
+            <Text style={[styles.backText, { color: theme.accent }]}>← Back</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Error</Text>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Error</Text>
           <View style={{ width: 50 }} />
         </View>
-        <View style={styles.errorContainer}>
+        <View style={[styles.errorContainer, { backgroundColor: theme.bg }]}>
           <Text style={styles.errorEmoji}>⚠️</Text>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={fetchDetails}>
+          <Text style={[styles.errorText, { color: theme.text }]}>{error}</Text>
+          <TouchableOpacity style={[styles.retryBtn, { backgroundColor: theme.accent }]} onPress={fetchDetails}>
             <Text style={styles.retryText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -59,21 +61,21 @@ export default function SubmissionDetailScreen({ route, navigation }) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={styles.backBtnIcon}>←</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+      <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+        <TouchableOpacity style={[styles.backBtn, { backgroundColor: theme.chipBg }]} onPress={() => navigation.goBack()}>
+          <Text style={[styles.backBtnIcon, { color: theme.text }]}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Review Submission</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Review Submission</Text>
         <View style={{ width: 44 }} />
       </View>
 
-      <View style={styles.summaryCard}>
-        <Text style={styles.summaryTitle}>{details.quiz_title}</Text>
-        <Text style={styles.studentName}>{details.student_name}</Text>
-        <View style={styles.scoreRow}>
-          <Text style={styles.scoreLabel}>Final Score:</Text>
-          <Text style={styles.scoreValue}>{details.total_score} / {details.max_score}</Text>
+      <View style={[styles.summaryCard, { backgroundColor: theme.card }]}>
+        <Text style={[styles.summaryTitle, { color: theme.text }]}>{details.quiz_title}</Text>
+        <Text style={[styles.studentName, { color: theme.accent }]}>{details.student_name}</Text>
+        <View style={[styles.scoreRow, { borderTopColor: theme.border }]}>
+          <Text style={[styles.scoreLabel, { color: theme.text }]}>Final Score:</Text>
+          <Text style={[styles.scoreValue, { color: theme.success }]}>{details.total_score} / {details.max_score}</Text>
         </View>
       </View>
 
@@ -82,25 +84,29 @@ export default function SubmissionDetailScreen({ route, navigation }) {
         data={details.answers}
         keyExtractor={(item, index) => index.toString()}
         renderItem={({ item }) => (
-          <View style={[styles.answerCard, item.is_correct ? styles.correctCard : styles.wrongCard]}>
-            <Text style={styles.questionText}>{item.question_text}</Text>
+          <View style={[
+            styles.answerCard, 
+            { backgroundColor: theme.card },
+            item.is_correct ? { borderLeftColor: theme.success } : { borderLeftColor: theme.danger }
+          ]}>
+            <Text style={[styles.questionText, { color: theme.text }]}>{item.question_text}</Text>
             
             <View style={styles.infoRow}>
-              <Text style={styles.label}>Selected:</Text>
-              <Text style={[styles.value, item.is_correct ? styles.correctText : styles.wrongText]}>
+              <Text style={[styles.label, { color: theme.subText }]}>Selected:</Text>
+              <Text style={[styles.value, item.is_correct ? { color: theme.success } : { color: theme.danger }]}>
                 {item.selected_option_text}
               </Text>
             </View>
 
             {!item.is_correct && (
               <View style={styles.infoRow}>
-                <Text style={styles.label}>Correct Answer:</Text>
-                <Text style={[styles.value, styles.correctText]}>{item.correct_option_text}</Text>
+                <Text style={[styles.label, { color: theme.subText }]}>Correct Answer:</Text>
+                <Text style={[styles.value, { color: theme.success }]}>{item.correct_option_text}</Text>
               </View>
             )}
 
-            <View style={styles.pointsBadge}>
-              <Text style={styles.pointsText}>
+            <View style={[styles.pointsBadge, { backgroundColor: theme.chipBg }]}>
+              <Text style={[styles.pointsText, { color: theme.text }]}>
                 {item.points_earned} / {item.max_points} pts
               </Text>
             </View>

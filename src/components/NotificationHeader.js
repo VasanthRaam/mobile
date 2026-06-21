@@ -1,14 +1,16 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, Alert, Platform } from 'react-native';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../store/useAuthStore';
+import { useThemeStore } from '../store/useThemeStore';
 
 export default function NotificationHeader() {
   const { notifications, unreadCount, fetchNotifications, markAsRead } = useNotificationStore();
   const [showModal, setShowModal] = React.useState(false);
   const navigation = useNavigation();
   const logout = useAuthStore((state) => state.logout);
+  const { isDark, theme, toggleDark } = useThemeStore();
 
   useEffect(() => {
     fetchNotifications();
@@ -44,6 +46,15 @@ export default function NotificationHeader() {
 
   return (
     <View style={styles.headerActions}>
+      {/* Dark/Light mode toggle */}
+      <TouchableOpacity 
+        onPress={toggleDark} 
+        style={[styles.themeButton, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.themeEmoji}>{isDark ? '☀️' : '🌙'}</Text>
+      </TouchableOpacity>
+
       <TouchableOpacity onPress={() => setShowModal(true)} style={styles.bellButton}>
         <Text style={styles.bellEmoji}>🔔</Text>
         {unreadCount > 0 && (
@@ -55,24 +66,22 @@ export default function NotificationHeader() {
 
       <TouchableOpacity 
         onPress={() => {
-          import('react-native').then(({ Platform }) => {
-            if (Platform.OS === 'web') {
-              if (window.confirm("Are you sure you want to logout?")) {
-                logout();
-              }
-            } else {
-              Alert.alert(
-                "Logout",
-                "Are you sure you want to logout?",
-                [
-                  { text: "Cancel", style: "cancel" },
-                  { text: "Logout", onPress: () => setTimeout(logout, 150), style: 'destructive' }
-                ]
-              );
+          if (Platform.OS === 'web') {
+            if (window.confirm("Are you sure you want to logout?")) {
+              logout();
             }
-          });
+          } else {
+            Alert.alert(
+              "Logout",
+              "Are you sure you want to logout?",
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Logout", onPress: () => logout(), style: 'destructive' }
+              ]
+            );
+          }
         }} 
-        style={styles.logoutButton}
+        style={[styles.logoutButton, { backgroundColor: isDark ? '#4c1d24' : '#FFF1F2' }]}
       >
         <Text style={styles.logoutEmoji}>🚪</Text>
       </TouchableOpacity>
@@ -88,23 +97,27 @@ export default function NotificationHeader() {
           activeOpacity={1} 
           onPress={() => setShowModal(false)}
         >
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Notifications</Text>
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Notifications</Text>
             <FlatList
               data={notifications}
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => (
                 <TouchableOpacity 
-                  style={[styles.notificationItem, !item.is_read && styles.unreadItem]}
+                  style={[
+                    styles.notificationItem, 
+                    { borderBottomColor: theme.border },
+                    !item.is_read && [styles.unreadItem, { backgroundColor: isDark ? '#1a2333' : '#F0F8FF' }]
+                  ]}
                   onPress={() => handleNotificationPress(item)}
                 >
-                  <Text style={styles.notifTitle}>{item.title}</Text>
-                  <Text style={styles.notifMessage}>{item.message}</Text>
-                  <Text style={styles.notifTime}>{new Date(item.created_at).toLocaleTimeString()}</Text>
+                  <Text style={[styles.notifTitle, { color: theme.text }]}>{item.title}</Text>
+                  <Text style={[styles.notifMessage, { color: theme.subText }]}>{item.message}</Text>
+                  <Text style={[styles.notifTime, { color: theme.muted }]}>{new Date(item.created_at).toLocaleTimeString()}</Text>
                 </TouchableOpacity>
               )}
               ListEmptyComponent={
-                <Text style={styles.emptyText}>No notifications yet.</Text>
+                <Text style={[styles.emptyText, { color: theme.subText }]}>No notifications yet.</Text>
               }
             />
           </View>
@@ -119,6 +132,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginRight: 10,
+  },
+  themeButton: {
+    padding: 8,
+    borderRadius: 12,
+    marginRight: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  themeEmoji: {
+    fontSize: 18,
   },
   bellButton: {
     padding: 8,

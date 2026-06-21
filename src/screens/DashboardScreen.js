@@ -7,6 +7,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuthStore } from '../store/useAuthStore';
+import { useThemeStore } from '../store/useThemeStore';
 import NotificationBar from '../components/NotificationBar';
 import apiClient from '../api/apiClient';
 import ChatFAB from '../components/ChatFAB';
@@ -17,6 +18,7 @@ const { width } = Dimensions.get('window');
 export default function DashboardScreen({ navigation }) {
   const { user } = useAuthStore();
   const role = user?.role;
+  const { theme, isDark } = useThemeStore();
 
   const [stats, setStats] = useState(getCache('dashboard_stats'));
   const [loading, setLoading] = useState(!getCache('dashboard_stats'));
@@ -112,7 +114,7 @@ export default function DashboardScreen({ navigation }) {
   const renderCard = (title, icon, color, onPress, subtitle) => (
     <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
       <TouchableOpacity 
-        style={[styles.card, { borderLeftColor: color }]} 
+        style={[styles.card, { borderLeftColor: color, backgroundColor: theme.card }]} 
         onPress={onPress}
         activeOpacity={0.7}
       >
@@ -120,61 +122,61 @@ export default function DashboardScreen({ navigation }) {
           <Text style={styles.cardIcon}>{icon}</Text>
         </View>
         <View style={styles.cardContent}>
-          <Text style={styles.cardTitle}>{title}</Text>
-          <Text style={styles.cardSubtitle}>{subtitle}</Text>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>{title}</Text>
+          <Text style={[styles.cardSubtitle, { color: theme.subText }]}>{subtitle}</Text>
         </View>
-        <Text style={styles.chevron}>→</Text>
+        <Text style={[styles.chevron, { color: theme.muted }]}>→</Text>
       </TouchableOpacity>
     </Animated.View>
   );
 
   const renderAdminStats = () => (
-    <View style={styles.statsContainer}>
+    <View style={[styles.statsContainer, { backgroundColor: theme.card }]}>
       <View style={styles.statBox}>
-        <Text style={styles.statVal}>₹{stats?.admin?.total_revenue || 0}</Text>
-        <Text style={styles.statLab}>Revenue</Text>
+        <Text style={[styles.statVal, { color: theme.text }]}>₹{stats?.admin?.total_revenue || 0}</Text>
+        <Text style={[styles.statLab, { color: theme.subText }]}>Revenue</Text>
       </View>
-      <View style={[styles.statBox, styles.statBoxMid]}>
-        <Text style={[styles.statVal, { color: '#EF4444' }]}>₹{stats?.admin?.pending_fees || 0}</Text>
-        <Text style={styles.statLab}>Pending</Text>
+      <View style={[styles.statBox, styles.statBoxMid, { borderColor: theme.border }]}>
+        <Text style={[styles.statVal, { color: theme.danger }]}>₹{stats?.admin?.pending_fees || 0}</Text>
+        <Text style={[styles.statLab, { color: theme.subText }]}>Pending</Text>
       </View>
       <View style={styles.statBox}>
-        <Text style={styles.statVal}>{stats?.admin?.total_students || 0}</Text>
-        <Text style={styles.statLab}>Students</Text>
+        <Text style={[styles.statVal, { color: theme.text }]}>{stats?.admin?.total_students || 0}</Text>
+        <Text style={[styles.statLab, { color: theme.subText }]}>Students</Text>
       </View>
     </View>
   );
 
   const renderTeacherStats = () => (
-    <View style={styles.statsContainer}>
+    <View style={[styles.statsContainer, { backgroundColor: theme.card }]}>
       <View style={styles.statBox}>
-        <Text style={styles.statVal}>{stats?.teacher?.avg_performance || 0}%</Text>
-        <Text style={styles.statLab}>Avg Perf</Text>
+        <Text style={[styles.statVal, { color: theme.text }]}>{stats?.teacher?.avg_performance || 0}%</Text>
+        <Text style={[styles.statLab, { color: theme.subText }]}>Avg Perf</Text>
       </View>
-      <View style={[styles.statBox, styles.statBoxMid]}>
-        <Text style={styles.statVal}>{stats?.teacher?.active_batches || 0}</Text>
-        <Text style={styles.statLab}>Batches</Text>
+      <View style={[styles.statBox, styles.statBoxMid, { borderColor: theme.border }]}>
+        <Text style={[styles.statVal, { color: theme.text }]}>{stats?.teacher?.active_batches || 0}</Text>
+        <Text style={[styles.statLab, { color: theme.subText }]}>Batches</Text>
       </View>
       <View style={styles.statBox}>
-        <Text style={styles.statVal}>{stats?.teacher?.pending_homeworks || 0}</Text>
-        <Text style={styles.statLab}>HW Posts</Text>
+        <Text style={[styles.statVal, { color: theme.text }]}>{stats?.teacher?.pending_homeworks || 0}</Text>
+        <Text style={[styles.statLab, { color: theme.subText }]}>HW Posts</Text>
       </View>
     </View>
   );
 
   const renderGenericStats = () => (
-    <View style={styles.statsContainer}>
+    <View style={[styles.statsContainer, { backgroundColor: theme.card }]}>
       <View style={styles.statBox}>
-        <Text style={styles.statVal}>{stats?.student?.avg_quiz_score || 0}%</Text>
-        <Text style={styles.statLab}>Avg Score</Text>
+        <Text style={[styles.statVal, { color: theme.text }]}>{stats?.student?.avg_quiz_score || 0}%</Text>
+        <Text style={[styles.statLab, { color: theme.subText }]}>Avg Score</Text>
       </View>
-      <View style={[styles.statBox, styles.statBoxMid]}>
-        <Text style={styles.statVal}>{stats?.student?.completed_quizzes || 0}</Text>
-        <Text style={styles.statLab}>Quizzes</Text>
+      <View style={[styles.statBox, styles.statBoxMid, { borderColor: theme.border }]}>
+        <Text style={[styles.statVal, { color: theme.text }]}>{stats?.student?.completed_quizzes || 0}</Text>
+        <Text style={[styles.statLab, { color: theme.subText }]}>Quizzes</Text>
       </View>
       <View style={styles.statBox}>
-        <Text style={styles.statVal}>{stats?.student?.attendance_rate || 0}%</Text>
-        <Text style={styles.statLab}>Attendance</Text>
+        <Text style={[styles.statVal, { color: theme.text }]}>{stats?.student?.attendance_rate || 0}%</Text>
+        <Text style={[styles.statLab, { color: theme.subText }]}>Attendance</Text>
       </View>
     </View>
   );
@@ -182,9 +184,9 @@ export default function DashboardScreen({ navigation }) {
   const logout = useAuthStore(state => state.logout);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.bgDecor1} />
-      <View style={styles.bgDecor2} />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+      <View style={[styles.bgDecor1, { backgroundColor: isDark ? theme.accentLight : '#E0E7FF' }]} />
+      <View style={[styles.bgDecor2, { backgroundColor: isDark ? theme.successLight : '#F0FDF4' }]} />
       
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
@@ -192,19 +194,19 @@ export default function DashboardScreen({ navigation }) {
       >
         <View style={styles.header}>
           <View>
-            <Text style={styles.welcomeText}>Academy Hub</Text>
-            <Text style={styles.nameText}>{user?.full_name || 'Teacher'} 👋</Text>
+            <Text style={[styles.welcomeText, { color: theme.subText }]}>Academy Hub</Text>
+            <Text style={[styles.nameText, { color: theme.text }]}>{user?.full_name || 'Teacher'} 👋</Text>
           </View>
-          <View style={styles.roleBadgeHeader}>
-            <Text style={styles.roleBadgeText}>{role?.toUpperCase()}</Text>
+          <View style={[styles.roleBadgeHeader, { backgroundColor: theme.accentLight, borderColor: theme.border }]}>
+            <Text style={[styles.roleBadgeText, { color: theme.accent }]}>{role?.toUpperCase()}</Text>
           </View>
         </View>
 
         <NotificationBar />
 
         {loading && !stats ? (
-          <View style={[styles.statsContainer, { justifyContent: 'center' }]}>
-            <Text style={{ color: '#64748B', fontWeight: '600' }}>Loading stats...</Text>
+          <View style={[styles.statsContainer, { justifyContent: 'center', backgroundColor: theme.card }]}>
+            <Text style={{ color: theme.subText, fontWeight: '600' }}>Loading stats...</Text>
           </View>
         ) : (
           role === 'admin' ? renderAdminStats() : 
@@ -214,20 +216,20 @@ export default function DashboardScreen({ navigation }) {
 
         {role === 'teacher' && (
           <>
-            <View style={styles.perfSection}>
+            <View style={[styles.perfSection, { backgroundColor: theme.card }]}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Weekly Engagement 📊</Text>
-                <Text style={styles.viewAllText}>Live View</Text>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>Weekly Engagement 📊</Text>
+                <Text style={[styles.viewAllText, { color: theme.accent }]}>Live View</Text>
               </View>
               
               <View style={styles.chartContainer}>
                 <View style={styles.chartYAxis}>
-                  <Text style={styles.yAxisText}>100%</Text>
-                  <Text style={styles.yAxisText}>50%</Text>
-                  <Text style={styles.yAxisText}>0%</Text>
+                  <Text style={[styles.yAxisText, { color: theme.subText }]}>100%</Text>
+                  <Text style={[styles.yAxisText, { color: theme.subText }]}>50%</Text>
+                  <Text style={[styles.yAxisText, { color: theme.subText }]}>0%</Text>
                 </View>
                 
-                <View style={styles.chartContent}>
+                <View style={[styles.chartContent, { borderColor: theme.border }]}>
                   {[
                     { day: 'Mon', val: 65, color: '#6366F1' },
                     { day: 'Tue', val: 82, color: '#8B5CF6' },
@@ -237,27 +239,27 @@ export default function DashboardScreen({ navigation }) {
                   ].map((item, idx) => (
                     <View key={idx} style={styles.barWrapper}>
                       <View style={[styles.barValue, { bottom: `${item.val}%` }]}>
-                        <Text style={styles.barValueText}>{item.val}%</Text>
+                        <Text style={[styles.barValueText, { color: theme.muted }]}>{item.val}%</Text>
                       </View>
                       <View style={[styles.bar, { height: `${item.val}%`, backgroundColor: item.color }]}>
                         <View style={styles.barHighlight} />
                       </View>
-                      <Text style={styles.barLabel}>{item.day}</Text>
+                      <Text style={[styles.barLabel, { color: theme.subText }]}>{item.day}</Text>
                     </View>
                   ))}
                 </View>
               </View>
               
-              <View style={styles.legend}>
+              <View style={[styles.legend, { borderTopColor: theme.border }]}>
                 <View style={styles.legendItem}>
                   <View style={[styles.dot, { backgroundColor: '#6366F1' }]} />
-                  <Text style={styles.legendText}>Avg Performance</Text>
+                  <Text style={[styles.legendText, { color: theme.subText }]}>Avg Performance</Text>
                 </View>
-                <Text style={styles.chartNote}>* Based on recent quiz attempts</Text>
+                <Text style={[styles.chartNote, { color: theme.muted }]}>* Based on recent quiz attempts</Text>
               </View>
             </View>
 
-            <Text style={styles.sectionTitle}>Daily Operations 📋</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Daily Operations 📋</Text>
             <View style={styles.grid}>
               {renderCard(
                 'Mark Attendance', '✅', '#6366F1', 
@@ -276,7 +278,7 @@ export default function DashboardScreen({ navigation }) {
               )}
             </View>
 
-            <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Assessments & Tracking 📈</Text>
+            <Text style={[styles.sectionTitle, { marginTop: 24, color: theme.text }]}>Assessments & Tracking 📈</Text>
             <View style={styles.grid}>
               {renderCard(
                 'Create Quiz', '➕', '#10B981', 
@@ -300,7 +302,7 @@ export default function DashboardScreen({ navigation }) {
 
         {(role === 'student' || role === 'parent' || role === 'admin') && (
           <>
-            <Text style={styles.sectionTitle}>Quick Access</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Quick Access</Text>
             <View style={styles.grid}>
               {renderCard(
                 'Attendance', '📅', '#4F46E5', 

@@ -6,7 +6,10 @@ import {
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useAuthStore } from '../store/useAuthStore';
 
+import { useThemeStore } from '../store/useThemeStore';
+
 export default function UnlockScreen() {
+  const { theme, isDark } = useThemeStore();
   const [loading, setLoading] = useState(false);
   const user = useAuthStore((state) => state.user);
   const restoreSession = useAuthStore((state) => state.restoreSession);
@@ -46,31 +49,31 @@ export default function UnlockScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.bgDecor1} />
-      <View style={styles.bgDecor2} />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+      <View style={[styles.bgDecor1, { backgroundColor: isDark ? theme.accentLight : '#EEF2FF' }]} />
+      <View style={[styles.bgDecor2, { backgroundColor: isDark ? theme.successLight : '#F0FDF4' }]} />
 
       <View style={styles.content}>
         <View style={styles.headerSection}>
-          <View style={styles.logoCircle}>
+          <View style={[styles.logoCircle, { backgroundColor: theme.card }]}>
             <Image 
               source={require('../../assets/icon.png')} 
               style={styles.logoImage} 
               resizeMode="contain"
             />
           </View>
-          <Text style={styles.title}>Welcome Back</Text>
-          {user?.full_name && <Text style={styles.subtitle}>{user.full_name}</Text>}
+          <Text style={[styles.title, { color: theme.text }]}>Welcome Back</Text>
+          {user?.full_name && <Text style={[styles.subtitle, { color: theme.subText }]}>{user.full_name}</Text>}
         </View>
 
-        <View style={styles.formCard}>
-          <Text style={styles.formTitle}>App Locked</Text>
-          <Text style={styles.formSubtitle}>
+        <View style={[styles.formCard, { backgroundColor: theme.card }]}>
+          <Text style={[styles.formTitle, { color: theme.text }]}>App Locked</Text>
+          <Text style={[styles.formSubtitle, { color: theme.subText }]}>
             Please authenticate to continue using BuddyBloom.
           </Text>
 
           <TouchableOpacity
-            style={[styles.actionBtn, loading && styles.disabledBtn]}
+            style={[styles.actionBtn, { backgroundColor: theme.accent }, loading && styles.disabledBtn]}
             onPress={handleUnlock}
             disabled={loading}
             activeOpacity={0.8}
@@ -81,11 +84,11 @@ export default function UnlockScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.secondaryBtn}
+            style={[styles.secondaryBtn, { backgroundColor: theme.chipBg, borderColor: theme.border }]}
             onPress={handleLogout}
             activeOpacity={0.8}
           >
-            <Text style={styles.secondaryBtnText}>Login with a different account</Text>
+            <Text style={[styles.secondaryBtnText, { color: theme.text }]}>Login with a different account</Text>
           </TouchableOpacity>
         </View>
       </View>

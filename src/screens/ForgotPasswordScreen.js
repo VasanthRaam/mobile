@@ -6,9 +6,12 @@ import {
 } from 'react-native';
 import apiClient from '../api/apiClient';
 
+import { useThemeStore } from '../store/useThemeStore';
+
 const { width } = Dimensions.get('window');
 
 export default function ForgotPasswordScreen({ navigation }) {
+  const { theme, isDark } = useThemeStore();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -32,47 +35,47 @@ export default function ForgotPasswordScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.bgDecor1} />
-      <View style={styles.bgDecor2} />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+      <View style={[styles.bgDecor1, { backgroundColor: isDark ? theme.accentLight : '#EEF2FF' }]} />
+      <View style={[styles.bgDecor2, { backgroundColor: isDark ? theme.successLight : '#F0FDF4' }]} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>← Back to Login</Text>
+          <Text style={[styles.backText, { color: theme.accent }]}>← Back to Login</Text>
         </TouchableOpacity>
 
         <View style={styles.headerSection}>
-          <View style={styles.logoCircle}>
+          <View style={[styles.logoCircle, { backgroundColor: theme.card }]}>
             <Image 
               source={require('../../assets/icon.png')} 
               style={styles.logoImage} 
               resizeMode="contain"
             />
           </View>
-          <Text style={styles.title}>Forgot Password</Text>
-          <Text style={styles.subtitle}>Enter your email to receive a reset code.</Text>
+          <Text style={[styles.title, { color: theme.text }]}>Forgot Password</Text>
+          <Text style={[styles.subtitle, { color: theme.subText }]}>Enter your email to receive a reset code.</Text>
         </View>
 
-        <View style={styles.formCard}>
+        <View style={[styles.formCard, { backgroundColor: theme.card }]}>
           <View style={styles.inputWrapper}>
-            <Text style={styles.inputLabel}>Email Address</Text>
+            <Text style={[styles.inputLabel, { color: theme.text }]}>Email Address</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
               placeholder="abcxyz@gmail.com"
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
               keyboardType="email-address"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={theme.muted}
               editable={!loading}
             />
           </View>
 
           <TouchableOpacity
-            style={[styles.actionBtn, loading && styles.disabledBtn]}
+            style={[styles.actionBtn, { backgroundColor: theme.accent }, loading && styles.disabledBtn]}
             onPress={handleSendOTP}
             disabled={loading}
             activeOpacity={0.8}

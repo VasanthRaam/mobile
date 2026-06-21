@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, Switch, TouchableOpacity, Alert, Scro
 import { SafeAreaView } from 'react-native-safe-area-context';
 import apiClient from '../api/apiClient';
 import { useAuthStore } from '../store/useAuthStore';
+import { useThemeStore } from '../store/useThemeStore';
 import { getCache, setCache } from '../utils/cacheManager';
 
 const { width } = Dimensions.get('window');
@@ -10,6 +11,7 @@ const { width } = Dimensions.get('window');
 export default function AttendanceScreen({ navigation }) {
   const { user } = useAuthStore();
   const role = user?.role;
+  const { theme, isDark } = useThemeStore();
 
   const [students, setStudents] = useState([]);
   const [courses, setCourses] = useState(getCache('courses') || []);
@@ -263,8 +265,8 @@ export default function AttendanceScreen({ navigation }) {
 
   if (loading && (isViewMode ? attendanceRecords.length === 0 : courses.length === 0)) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.loadingText}>Loading attendance data...</Text>
+      <View style={[styles.centered, { backgroundColor: theme.bg }]}>
+        <Text style={[styles.loadingText, { color: theme.text }]}>Loading attendance data...</Text>
       </View>
     );
   }
@@ -293,21 +295,21 @@ export default function AttendanceScreen({ navigation }) {
       for (let i = 1; i <= daysInMonth; i++) days.push(i);
 
       return (
-        <View style={styles.calendarContainer}>
+        <View style={[styles.calendarContainer, { backgroundColor: theme.card }]}>
           <View style={styles.calendarHeader}>
-            <TouchableOpacity onPress={() => changeMonth(-1)} style={styles.arrowBtn}>
-              <Text style={styles.arrowText}>←</Text>
+            <TouchableOpacity onPress={() => changeMonth(-1)} style={[styles.arrowBtn, { backgroundColor: theme.chipBg }]}>
+              <Text style={[styles.arrowText, { color: theme.accent }]}>←</Text>
             </TouchableOpacity>
-            <Text style={styles.monthTitle}>
+            <Text style={[styles.monthTitle, { color: theme.text }]}>
               {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][displayMonth]} {displayYear}
             </Text>
-            <TouchableOpacity onPress={() => changeMonth(1)} style={styles.arrowBtn}>
-              <Text style={styles.arrowText}>→</Text>
+            <TouchableOpacity onPress={() => changeMonth(1)} style={[styles.arrowBtn, { backgroundColor: theme.chipBg }]}>
+              <Text style={[styles.arrowText, { color: theme.accent }]}>→</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.weekDays}>
             {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, index) => (
-              <Text key={`weekday-${index}`} style={styles.weekDayText}>{d}</Text>
+              <Text key={`weekday-${index}`} style={[styles.weekDayText, { color: theme.subText }]}>{d}</Text>
             ))}
           </View>
           <View style={styles.daysGrid}>
@@ -341,24 +343,25 @@ export default function AttendanceScreen({ navigation }) {
                 ]}>
                   <Text style={[
                     styles.dayText,
-                    (status || isAcademyHoliday) && styles.statusDayText
+                    { color: theme.text },
+                    (status || isAcademyHoliday) && [styles.statusDayText, { color: theme.text }]
                   ]}>{day}</Text>
                 </View>
               );
             })}
           </View>
-          <View style={styles.legend}>
+          <View style={[styles.legend, { borderTopColor: theme.border }]}>
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
-              <Text style={styles.legendText}>Present</Text>
+              <Text style={[styles.legendText, { color: theme.subText }]}>Present</Text>
             </View>
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
-              <Text style={styles.legendText}>Absent</Text>
+              <Text style={[styles.legendText, { color: theme.subText }]}>Absent</Text>
             </View>
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: '#A855F7' }]} />
-              <Text style={styles.legendText}>Holiday</Text>
+              <Text style={[styles.legendText, { color: theme.subText }]}>Holiday</Text>
             </View>
           </View>
         </View>
@@ -396,21 +399,21 @@ export default function AttendanceScreen({ navigation }) {
       };
 
       return (
-        <View style={styles.pickerCalendarContainer}>
+        <View style={[styles.pickerCalendarContainer, { backgroundColor: theme.bg, borderColor: theme.border }]}>
           <View style={styles.pickerCalendarHeader}>
-            <TouchableOpacity onPress={() => changeLeaveMonth(-1)} style={styles.pickerArrowBtn}>
-              <Text style={styles.pickerArrowText}>←</Text>
+            <TouchableOpacity onPress={() => changeLeaveMonth(-1)} style={[styles.pickerArrowBtn, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <Text style={[styles.pickerArrowText, { color: theme.text }]}>←</Text>
             </TouchableOpacity>
-            <Text style={styles.pickerMonthTitle}>
+            <Text style={[styles.pickerMonthTitle, { color: theme.text }]}>
               {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][displayMonth]} {displayYear}
             </Text>
-            <TouchableOpacity onPress={() => changeLeaveMonth(1)} style={styles.pickerArrowBtn}>
-              <Text style={styles.pickerArrowText}>→</Text>
+            <TouchableOpacity onPress={() => changeLeaveMonth(1)} style={[styles.pickerArrowBtn, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <Text style={[styles.pickerArrowText, { color: theme.text }]}>→</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.pickerWeekDays}>
             {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, index) => (
-              <Text key={`picker-weekday-${index}`} style={styles.pickerWeekDayText}>{d}</Text>
+              <Text key={`picker-weekday-${index}`} style={[styles.pickerWeekDayText, { color: theme.subText }]}>{d}</Text>
             ))}
           </View>
           <View style={styles.pickerDaysGrid}>
@@ -423,15 +426,15 @@ export default function AttendanceScreen({ navigation }) {
               const isSelectedEnd = dateStr === leaveEndDate;
               const isInRange = leaveStartDate && leaveEndDate && dateStr > leaveStartDate && dateStr < leaveEndDate;
               
-              let dayBoxStyle = styles.pickerDayBox;
-              let dayTextStyle = styles.pickerDayText;
+              let dayBoxStyle = [styles.pickerDayBox, { backgroundColor: 'transparent' }];
+              let dayTextStyle = [styles.pickerDayText, { color: theme.text }];
               
               if (isSelectedStart || isSelectedEnd) {
-                dayBoxStyle = [styles.pickerDayBox, styles.pickerSelectedDay];
-                dayTextStyle = [styles.pickerDayText, styles.pickerSelectedDayText];
+                dayBoxStyle = [styles.pickerDayBox, { backgroundColor: theme.accent }];
+                dayTextStyle = [styles.pickerDayText, { color: '#fff', fontWeight: '800' }];
               } else if (isInRange) {
-                dayBoxStyle = [styles.pickerDayBox, styles.pickerInRangeDay];
-                dayTextStyle = [styles.pickerDayText, styles.pickerInRangeDayText];
+                dayBoxStyle = [styles.pickerDayBox, { backgroundColor: theme.accentLight }];
+                dayTextStyle = [styles.pickerDayText, { color: theme.accent, fontWeight: '700' }];
               }
               
               return (
@@ -450,10 +453,10 @@ export default function AttendanceScreen({ navigation }) {
     };
 
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
         <View style={styles.header}>
-          <Text style={styles.title}>Attendance Insights</Text>
-          <Text style={styles.subtitle}>Track your learning consistency 📈</Text>
+          <Text style={[styles.title, { color: theme.text }]}>Attendance Insights</Text>
+          <Text style={[styles.subtitle, { color: theme.subText }]}>Track your learning consistency 📈</Text>
         </View>
 
         {statusMsg.text !== '' && (
@@ -463,61 +466,61 @@ export default function AttendanceScreen({ navigation }) {
         )}
         
         <ScrollView 
-          style={{ backgroundColor: '#F8FAFC' }}
+          style={{ backgroundColor: theme.bg }}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
           {renderCalendar()}
           
-          <View style={styles.statsSection}>
-            <Text style={styles.sectionTitle}>Recent Logs</Text>
+          <View style={[styles.statsSection, { backgroundColor: theme.bg }]}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Logs</Text>
             {attendanceRecords.length > 0 ? (
               attendanceRecords.slice(0, 5).map(item => (
-                <View key={item.id} style={styles.recordItem}>
-                  <Text style={styles.recordDate}>{item.date}</Text>
-                  <View style={[styles.statusBadge, { backgroundColor: item.status === 'present' ? '#F0FDF4' : '#FEF2F2' }]}>
-                    <Text style={[styles.recordStatus, { color: item.status === 'present' ? '#10B981' : '#EF4444' }]}>
+                <View key={item.id} style={[styles.recordItem, { backgroundColor: theme.card }]}>
+                  <Text style={[styles.recordDate, { color: theme.text }]}>{item.date}</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: item.status === 'present' ? theme.successLight : theme.dangerLight }]}>
+                    <Text style={[styles.recordStatus, { color: item.status === 'present' ? theme.success : theme.danger }]}>
                       {item.status.toUpperCase()}
                     </Text>
                   </View>
                 </View>
               ))
             ) : (
-              <Text style={styles.emptyText}>No recent records found.</Text>
+              <Text style={[styles.emptyText, { color: theme.subText }]}>No recent records found.</Text>
             )}
           </View>
         </ScrollView>
         
         {/* Floating Action Button for Leave Requests */}
-        <TouchableOpacity style={styles.fab} onPress={() => setLeaveModalVisible(true)}>
+        <TouchableOpacity style={[styles.fab, { backgroundColor: theme.chipBg, borderColor: theme.border }]} onPress={() => setLeaveModalVisible(true)}>
           <Text style={styles.fabIcon}>🏖️</Text>
         </TouchableOpacity>
 
         <Modal visible={leaveModalVisible} animationType="slide" transparent={true} onRequestClose={() => setLeaveModalVisible(false)}>
           <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Request Leave</Text>
+            <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>Request Leave</Text>
               
               <ScrollView showsVerticalScrollIndicator={false}>
-                <View style={styles.dateRangeDisplay}>
+                <View style={[styles.dateRangeDisplay, { backgroundColor: theme.bg, borderColor: theme.border }]}>
                   <View style={styles.dateRangeBox}>
-                    <Text style={styles.dateRangeLabel}>START DATE</Text>
-                    <Text style={styles.dateRangeValue}>{leaveStartDate || 'Select below'}</Text>
+                    <Text style={[styles.dateRangeLabel, { color: theme.subText }]}>START DATE</Text>
+                    <Text style={[styles.dateRangeValue, { color: theme.text }]}>{leaveStartDate || 'Select below'}</Text>
                   </View>
-                  <Text style={styles.dateRangeArrow}>➔</Text>
+                  <Text style={[styles.dateRangeArrow, { color: theme.subText }]}>➔</Text>
                   <View style={styles.dateRangeBox}>
-                    <Text style={styles.dateRangeLabel}>END DATE</Text>
-                    <Text style={styles.dateRangeValue}>{leaveEndDate || 'Select below'}</Text>
+                    <Text style={[styles.dateRangeLabel, { color: theme.subText }]}>END DATE</Text>
+                    <Text style={[styles.dateRangeValue, { color: theme.text }]}>{leaveEndDate || 'Select below'}</Text>
                   </View>
                 </View>
 
                 {renderLeaveCalendar()}
 
-                <Text style={styles.inputLabel}>Reason</Text>
+                <Text style={[styles.inputLabel, { color: theme.text }]}>Reason</Text>
                 <TextInput 
-                  style={[styles.modalInput, { height: 80, textAlignVertical: 'top', marginBottom: 10 }]} 
+                  style={[styles.modalInput, { height: 80, textAlignVertical: 'top', marginBottom: 10, backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]} 
                   placeholder="Why do you need a leave?" 
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor={theme.muted}
                   multiline
                   value={leaveReason}
                   onChangeText={setLeaveReason}
@@ -525,8 +528,8 @@ export default function AttendanceScreen({ navigation }) {
               </ScrollView>
 
               <View style={styles.modalActions}>
-                <TouchableOpacity style={styles.modalCancel} onPress={() => setLeaveModalVisible(false)}>
-                  <Text style={styles.modalCancelText}>Cancel</Text>
+                <TouchableOpacity style={[styles.modalCancel, { backgroundColor: theme.chipBg }]} onPress={() => setLeaveModalVisible(false)}>
+                  <Text style={[styles.modalCancelText, { color: theme.text }]}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={[styles.modalSubmit, submittingLeave && styles.disabledBtn]} 
@@ -546,10 +549,10 @@ export default function AttendanceScreen({ navigation }) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Attendance Management</Text>
-        <Text style={styles.subtitle}>Select a date to manage records</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+      <View style={[styles.header, { backgroundColor: theme.card, borderBottomWidth: 1, borderBottomColor: theme.border }]}>
+        <Text style={[styles.title, { color: theme.text }]}>Attendance Management</Text>
+        <Text style={[styles.subtitle, { color: theme.subText }]}>Select a date to manage records</Text>
       </View>
 
       {statusMsg.text !== '' && (
@@ -558,7 +561,7 @@ export default function AttendanceScreen({ navigation }) {
         </View>
       )}
 
-      <View style={styles.dateSelection}>
+      <View style={[styles.dateSelection, { backgroundColor: theme.card, borderBottomWidth: 1, borderBottomColor: theme.border }]}>
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false} 
@@ -573,11 +576,11 @@ export default function AttendanceScreen({ navigation }) {
             return (
               <TouchableOpacity 
                 key={dStr} 
-                style={[styles.dateChip, isSelected && styles.dateChipActive]}
+                style={[styles.dateChip, { backgroundColor: theme.chipBg, borderColor: theme.border }, isSelected && [styles.dateChipActive, { backgroundColor: theme.accent, borderColor: theme.accent }]]}
                 onPress={() => setSelectedDate(dStr)}
               >
-                <Text style={[styles.dateChipDay, isSelected && styles.dateChipTextActive]}>{d.getDate()}</Text>
-                <Text style={[styles.dateChipMonth, isSelected && styles.dateChipTextActive]}>
+                <Text style={[styles.dateChipDay, { color: theme.text }, isSelected && styles.dateChipTextActive]}>{d.getDate()}</Text>
+                <Text style={[styles.dateChipMonth, { color: theme.subText }, isSelected && styles.dateChipTextActive]}>
                   {d.toLocaleString('default', { month: 'short' })}
                 </Text>
               </TouchableOpacity>
@@ -586,62 +589,76 @@ export default function AttendanceScreen({ navigation }) {
         </ScrollView>
       </View>
 
-      <View style={styles.filters}>
-        <Text style={styles.filterLabel}>Course:</Text>
+          <View style={[styles.filters, { backgroundColor: theme.card }]}>
+        <Text style={[styles.filterLabel, { color: theme.text }]}>Course:</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
-          {courses.map(course => (
-            <TouchableOpacity 
-              key={course.id}
-              style={[styles.chip, selectedCourseId === course.id && styles.chipActive]}
-              onPress={() => {
-                setSelectedCourseId(course.id);
-                fetchBatches(course.id);
-              }}
-            >
-              <Text style={[styles.chipText, selectedCourseId === course.id && styles.chipTextActive]}>{course.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        <Text style={styles.filterLabel}>Batch:</Text>
-        {fetchingBatches && batches.length === 0 ? (
-          <Text style={styles.emptyFilterText}>Loading batches...</Text>
-        ) : batches.length > 0 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
-            {batches.map(batch => (
+          {courses.map(course => {
+            const isSelected = selectedCourseId === course.id;
+            return (
               <TouchableOpacity 
-                key={batch.id}
-                style={[styles.chip, selectedBatchId === batch.id && styles.chipActive]}
+                key={course.id}
+                style={[
+                  styles.chip, 
+                  { backgroundColor: theme.chipBg, borderColor: theme.border },
+                  isSelected && { backgroundColor: theme.accent, borderColor: theme.accent }
+                ]}
                 onPress={() => {
-                  setSelectedBatchId(batch.id);
-                  fetchStudentsToMark(batch.id);
+                  setSelectedCourseId(course.id);
+                  fetchBatches(course.id);
                 }}
               >
-                <Text style={[styles.chipText, selectedBatchId === batch.id && styles.chipTextActive]}>{batch.name}</Text>
+                <Text style={[styles.chipText, { color: theme.subText }, isSelected && { color: '#fff' }]}>{course.name}</Text>
               </TouchableOpacity>
-            ))}
+            );
+          })}
+        </ScrollView>
+
+        <Text style={[styles.filterLabel, { color: theme.text }]}>Batch:</Text>
+        {fetchingBatches && batches.length === 0 ? (
+          <Text style={[styles.emptyFilterText, { color: theme.muted }]}>Loading batches...</Text>
+        ) : batches.length > 0 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+            {batches.map(batch => {
+              const isSelected = selectedBatchId === batch.id;
+              return (
+                <TouchableOpacity 
+                  key={batch.id}
+                  style={[
+                    styles.chip, 
+                    { backgroundColor: theme.chipBg, borderColor: theme.border },
+                    isSelected && { backgroundColor: theme.accent, borderColor: theme.accent }
+                  ]}
+                  onPress={() => {
+                    setSelectedBatchId(batch.id);
+                    fetchStudentsToMark(batch.id);
+                  }}
+                >
+                  <Text style={[styles.chipText, { color: theme.subText }, isSelected && { color: '#fff' }]}>{batch.name}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         ) : (
-          <Text style={styles.emptyFilterText}>No batches for this course.</Text>
+          <Text style={[styles.emptyFilterText, { color: theme.muted }]}>No batches for this course.</Text>
         )}
       </View>
 
       {fetchingStudents && students.length === 0 ? (
-        <View style={styles.centered}>
-          <Text style={styles.loadingText}>Fetching students...</Text>
+        <View style={[styles.centered, { backgroundColor: theme.bg }]}>
+          <Text style={[styles.loadingText, { color: theme.text }]}>Fetching students...</Text>
         </View>
       ) : students.length > 0 ? (
         <FlatList
-          style={{ backgroundColor: '#F8FAFC' }}
+          style={{ backgroundColor: theme.bg }}
           data={students}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
-            <View style={styles.studentItem}>
+            <View style={[styles.studentItem, { backgroundColor: theme.card, borderColor: theme.border }]}>
               <View>
-                <Text style={styles.studentName}>{item.first_name} {item.last_name}</Text>
-                <Text style={styles.statusText}>{attendance[item.id] ? 'Present' : 'Absent'}</Text>
+                <Text style={[styles.studentName, { color: theme.text }]}>{item.first_name} {item.last_name}</Text>
+                <Text style={[styles.statusText, { color: theme.subText }]}>{attendance[item.id] ? 'Present' : 'Absent'}</Text>
               </View>
               <Switch
                 value={attendance[item.id]}
@@ -652,13 +669,13 @@ export default function AttendanceScreen({ navigation }) {
           )}
         />
       ) : (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>Select a batch to see students.</Text>
+        <View style={[styles.emptyState, { backgroundColor: theme.bg }]}>
+          <Text style={[styles.emptyText, { color: theme.subText }]}>Select a batch to see students.</Text>
         </View>
       )}
 
       {students.length > 0 && !isHoliday && (
-        <View style={styles.footer}>
+        <View style={[styles.footer, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
           <TouchableOpacity 
             style={[styles.submitBtn, submitting && styles.disabledBtn]} 
             onPress={handleSubmitAttendance}
@@ -672,13 +689,21 @@ export default function AttendanceScreen({ navigation }) {
       )}
 
       {isAdmin && (
-        <View style={[styles.footer, { paddingTop: 0 }]}>
+        <View style={[styles.footer, { paddingTop: 0, backgroundColor: theme.card, borderTopColor: theme.border }]}>
           <TouchableOpacity 
-            style={[styles.holidayBtn, isHoliday && styles.holidayBtnActive]} 
+            style={[
+              styles.holidayBtn, 
+              { borderColor: theme.accent },
+              isHoliday && { backgroundColor: theme.accent, borderColor: theme.accent }
+            ]} 
             onPress={handleMarkHoliday}
             disabled={submitting}
           >
-            <Text style={[styles.holidayBtnText, isHoliday && styles.holidayBtnTextActive]}>
+            <Text style={[
+              styles.holidayBtnText, 
+              { color: theme.accent },
+              isHoliday && { color: '#fff' }
+            ]}>
               {isHoliday ? '🔔 Academy Holiday (Remove)' : '🔔 Mark as Academy Holiday'}
             </Text>
           </TouchableOpacity>

@@ -6,8 +6,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import apiClient from '../api/apiClient';
 import { getCache, setCache } from '../utils/cacheManager';
+import { useThemeStore } from '../store/useThemeStore';
 
 export default function CreateQuizScreen({ navigation }) {
+  const { theme, isDark } = useThemeStore();
   const cachedCourses = getCache('courses') || [];
   const [courses, setCourses] = useState(cachedCourses);
   const [loading, setLoading] = useState(cachedCourses.length === 0);
@@ -119,77 +121,85 @@ export default function CreateQuizScreen({ navigation }) {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <Text style={{ fontSize: 16, color: '#64748B' }}>Loading courses...</Text>
+      <View style={[styles.centered, { backgroundColor: theme.bg }]}>
+        <Text style={{ fontSize: 16, color: theme.text }}>Loading courses...</Text>
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={styles.backBtnIcon}>×</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+      <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+        <TouchableOpacity style={[styles.backBtn, { backgroundColor: theme.chipBg }]} onPress={() => navigation.goBack()}>
+          <Text style={[styles.backBtnIcon, { color: theme.danger }]}>×</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>New Quiz</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>New Quiz</Text>
         <View style={{ width: 44 }} />
       </View>
 
-      <ScrollView style={styles.form} showsVerticalScrollIndicator={false}>
-        <Text style={styles.label}>Quiz Title</Text>
+      <ScrollView style={[styles.form, { backgroundColor: theme.bg }]} showsVerticalScrollIndicator={false}>
+        <Text style={[styles.label, { color: theme.text }]}>Quiz Title</Text>
         <TextInput 
-          style={styles.input}
+          style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
           placeholder="e.g. Science Fun Quiz"
+          placeholderTextColor={theme.muted}
           value={title}
           onChangeText={setTitle}
         />
 
-        <Text style={styles.label}>Description</Text>
+        <Text style={[styles.label, { color: theme.text }]}>Description</Text>
         <TextInput 
-          style={[styles.input, { height: 80 }]}
+          style={[styles.input, { height: 80, backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
           placeholder="What is this quiz about?"
+          placeholderTextColor={theme.muted}
           value={description}
           onChangeText={setDescription}
           multiline
         />
 
-        <Text style={styles.label}>Select Course</Text>
+        <Text style={[styles.label, { color: theme.text }]}>Select Course</Text>
         <View style={styles.courseList}>
-          {courses.map(course => (
-            <TouchableOpacity 
-              key={course.id}
-              style={[
-                styles.courseBadge,
-                selectedCourseId === course.id && styles.courseBadgeSelected
-              ]}
-              onPress={() => setSelectedCourseId(course.id)}
-            >
-              <Text style={[
-                styles.courseBadgeText,
-                selectedCourseId === course.id && styles.courseBadgeTextSelected
-              ]}>
-                {course.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {courses.map(course => {
+            const isSelected = selectedCourseId === course.id;
+            return (
+              <TouchableOpacity 
+                key={course.id}
+                style={[
+                  styles.courseBadge,
+                  { backgroundColor: theme.chipBg },
+                  isSelected && { backgroundColor: theme.accent }
+                ]}
+                onPress={() => setSelectedCourseId(course.id)}
+              >
+                <Text style={[
+                  styles.courseBadgeText,
+                  { color: theme.subText },
+                  isSelected && { color: '#fff' }
+                ]}>
+                  {course.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
         {questions.map((q, qIndex) => (
-          <View key={qIndex} style={styles.questionCard}>
+          <View key={qIndex} style={[styles.questionCard, { backgroundColor: theme.card, shadowColor: 'transparent', borderWidth: 1, borderColor: theme.border, elevation: 0 }]}>
             <View style={styles.qHeader}>
-              <Text style={styles.qTitle}>Question {qIndex + 1}</Text>
+              <Text style={[styles.qTitle, { color: theme.accent }]}>Question {qIndex + 1}</Text>
               {questions.length > 1 && (
                 <TouchableOpacity onPress={() => handleRemoveQuestion(qIndex)}>
-                  <Text style={styles.removeText}>Remove</Text>
+                  <Text style={[styles.removeText, { color: theme.danger }]}>Remove</Text>
                 </TouchableOpacity>
               )}
             </View>
 
             <TextInput 
-              style={styles.input}
+              style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
               placeholder="Question text"
+              placeholderTextColor={theme.muted}
               value={q.question_text}
               onChangeText={(text) => {
                 const newQs = [...questions];
@@ -198,16 +208,17 @@ export default function CreateQuizScreen({ navigation }) {
               }}
             />
 
-            <Text style={styles.subLabel}>Options (Select the correct one)</Text>
+            <Text style={[styles.subLabel, { color: theme.subText }]}>Options (Select the correct one)</Text>
             {q.options.map((opt, oIndex) => (
               <View key={oIndex} style={styles.optionRow}>
                 <TouchableOpacity 
-                  style={[styles.radio, opt.is_correct && styles.radioSelected]}
+                  style={[styles.radio, { borderColor: theme.accent }, opt.is_correct && { backgroundColor: theme.accent }]}
                   onPress={() => handleToggleCorrect(qIndex, oIndex)}
                 />
                 <TextInput 
-                  style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                  style={[styles.input, { flex: 1, marginBottom: 0, backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
                   placeholder={`Option ${oIndex + 1}`}
+                  placeholderTextColor={theme.muted}
                   value={opt.option_text}
                   onChangeText={(text) => handleUpdateOption(qIndex, oIndex, text)}
                 />
@@ -218,24 +229,24 @@ export default function CreateQuizScreen({ navigation }) {
               style={styles.addOptionBtn}
               onPress={() => handleAddOption(qIndex)}
             >
-              <Text style={styles.addOptionText}>+ Add Option</Text>
+              <Text style={[styles.addOptionText, { color: theme.accent }]}>+ Add Option</Text>
             </TouchableOpacity>
           </View>
         ))}
 
         <TouchableOpacity 
-          style={styles.addQuestionBtn}
+          style={[styles.addQuestionBtn, { backgroundColor: theme.successLight, borderColor: theme.success }]}
           onPress={handleAddQuestion}
         >
-          <Text style={styles.addQuestionText}>+ Add Another Question</Text>
+          <Text style={[styles.addQuestionText, { color: theme.success }]}>+ Add Another Question</Text>
         </TouchableOpacity>
 
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
         <TouchableOpacity 
-          style={[styles.submitButton, submitting && { opacity: 0.7 }]}
+          style={[styles.submitButton, { backgroundColor: theme.accent }, submitting && { opacity: 0.7 }]}
           onPress={handleCreateQuiz}
           disabled={submitting}
         >

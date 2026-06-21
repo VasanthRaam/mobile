@@ -6,10 +6,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import apiClient from '../api/apiClient';
 import { getCache, setCache } from '../utils/cacheManager';
+import { useThemeStore } from '../store/useThemeStore';
 
 export default function RevenueScreen() {
   const [activeTab, setActiveTab] = useState('Dashboard'); // 'Dashboard', 'Income', 'Expenses'
   const [activeIncomeSubTab, setActiveIncomeSubTab] = useState('Record Income'); // 'Record Income', 'Fee Details'
+  
+  // Global theme — shared across all screens via useThemeStore
+  const { theme, isDark, toggleDark } = useThemeStore();
 
   // Dashboard Data
   const [dashboardData, setDashboardData] = useState(getCache('revenue_dashboard') || null);
@@ -118,12 +122,12 @@ export default function RevenueScreen() {
 
   const renderDetailModal = () => {
     if (!selectedStudentDetail) return null;
-    
+
     const studentName = selectedStudentDetail.user?.full_name || 'Unknown Student';
     const studentInitials = studentName.substring(0, 2).toUpperCase();
     const courseName = selectedStudentDetail.course?.name || 'Direct';
     const batchName = selectedStudentDetail.batch?.name || 'Unassigned';
-    
+
     return (
       <Modal
         animationType="fade"
@@ -131,136 +135,136 @@ export default function RevenueScreen() {
         visible={isDetailModalVisible}
         onRequestClose={() => setIsDetailModalVisible(false)}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setIsDetailModalVisible(false)}
         >
-          <TouchableOpacity 
-            style={styles.modalCard}
+          <TouchableOpacity
+            style={[styles.modalCard, { backgroundColor: theme.card }]}
             activeOpacity={1}
           >
             {/* Close Button */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.modalCloseBtn}
               onPress={() => setIsDetailModalVisible(false)}
             >
-              <Text style={styles.modalCloseText}>✕</Text>
+              <Text style={[styles.modalCloseText, { color: theme.subText }]}>✕</Text>
             </TouchableOpacity>
 
             {/* Reconcile pattern: modal is ALWAYS shown immediately.
                 loadingDetails=true means only the stats section is still being fetched. */}
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
-                {/* Header Profile Section */}
-                <View style={styles.modalHeaderSec}>
-                  <View style={styles.modalAvatarLarge}>
-                    <Text style={styles.modalAvatarText}>{studentInitials}</Text>
+            <ScrollView style={{ flexShrink: 1, width: '100%', marginTop: 20 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
+              {/* Header Profile Section */}
+              <View style={styles.modalHeaderSec}>
+                <View style={[styles.modalAvatarLarge, { backgroundColor: theme.accentLight }]}>
+                  <Text style={[styles.modalAvatarText, { color: theme.accent }]}>{studentInitials}</Text>
+                </View>
+                <Text style={[styles.modalStudentName, { color: theme.text }]} numberOfLines={1}>{studentName}</Text>
+                <View style={styles.modalRoleBadge}>
+                  <Text style={styles.modalRoleText}>STUDENT</Text>
+                </View>
+              </View>
+
+              {/* Academic Profile */}
+              <View style={[styles.modalSectionCard, { backgroundColor: theme.bg }]}>
+                <Text style={[styles.modalSectionTitle, { color: theme.text }]}>📚 Course Details</Text>
+                <View style={styles.modalGrid}>
+                  <View style={styles.modalGridCol}>
+                    <Text style={[styles.modalMetaLabel, { color: theme.subText }]}>Course</Text>
+                    <Text style={[styles.modalMetaValue, { color: theme.text }]} numberOfLines={1}>{courseName}</Text>
                   </View>
-                  <Text style={styles.modalStudentName} numberOfLines={1}>{studentName}</Text>
-                  <View style={styles.modalRoleBadge}>
-                    <Text style={styles.modalRoleText}>STUDENT</Text>
+                  <View style={styles.modalGridCol}>
+                    <Text style={[styles.modalMetaLabel, { color: theme.subText }]}>Batch</Text>
+                    <Text style={[styles.modalMetaValue, { color: theme.text }]} numberOfLines={1}>{batchName}</Text>
                   </View>
                 </View>
-
-                {/* Academic Profile */}
-                <View style={styles.modalSectionCard}>
-                  <Text style={styles.modalSectionTitle}>📚 Course Details</Text>
-                  <View style={styles.modalGrid}>
-                    <View style={styles.modalGridCol}>
-                      <Text style={styles.modalMetaLabel}>Course</Text>
-                      <Text style={styles.modalMetaValue} numberOfLines={1}>{courseName}</Text>
-                    </View>
-                    <View style={styles.modalGridCol}>
-                      <Text style={styles.modalMetaLabel}>Batch</Text>
-                      <Text style={styles.modalMetaValue} numberOfLines={1}>{batchName}</Text>
-                    </View>
-                  </View>
-                  <View style={[styles.modalGrid, { marginTop: 12 }]}>
-                    <View style={styles.modalGridCol}>
-                      <Text style={styles.modalMetaLabel}>Joined Date</Text>
-                      <Text style={styles.modalMetaValue}>
-                        {studentStats?.joinedDate ? studentStats.joinedDate.substring(0, 10) : 'N/A'}
-                      </Text>
-                    </View>
+                <View style={[styles.modalGrid, { marginTop: 12 }]}>
+                  <View style={styles.modalGridCol}>
+                    <Text style={[styles.modalMetaLabel, { color: theme.subText }]}>Joined Date</Text>
+                    <Text style={[styles.modalMetaValue, { color: theme.text }]}>
+                      {studentStats?.joinedDate ? studentStats.joinedDate.substring(0, 10) : 'N/A'}
+                    </Text>
                   </View>
                 </View>
+              </View>
 
-                {/* Financial Summary */}
-                <View style={styles.modalSectionCard}>
-                  <Text style={styles.modalSectionTitle}>💳 Fees & Billing</Text>
-                  <View style={styles.modalGrid}>
-                    <View style={styles.modalGridCol}>
-                      <Text style={styles.modalMetaLabel}>Total Paid</Text>
-                      <Text style={[styles.modalMetaValue, { color: '#10B981', fontWeight: '800' }]}>
-                        ₹{studentStats?.totalPaid || 0}
-                      </Text>
-                    </View>
-                    <View style={styles.modalGridCol}>
-                      <Text style={styles.modalMetaLabel}>Pending Reminders</Text>
-                      <Text style={[styles.modalMetaValue, { color: '#EF4444', fontWeight: '800' }]}>
-                        ₹{studentStats?.totalPending || 0}
-                      </Text>
-                    </View>
+              {/* Financial Summary */}
+              <View style={[styles.modalSectionCard, { backgroundColor: theme.bg }]}>
+                <Text style={[styles.modalSectionTitle, { color: theme.text }]}>💳 Fees & Billing</Text>
+                <View style={styles.modalGrid}>
+                  <View style={styles.modalGridCol}>
+                    <Text style={[styles.modalMetaLabel, { color: theme.subText }]}>Total Paid</Text>
+                    <Text style={[styles.modalMetaValue, { color: theme.success, fontWeight: '800' }]}>
+                      ₹{studentStats?.totalPaid || 0}
+                    </Text>
+                  </View>
+                  <View style={styles.modalGridCol}>
+                    <Text style={[styles.modalMetaLabel, { color: theme.subText }]}>Pending Reminders</Text>
+                    <Text style={[styles.modalMetaValue, { color: theme.danger, fontWeight: '800' }]}>
+                      ₹{studentStats?.totalPending || 0}
+                    </Text>
                   </View>
                 </View>
+              </View>
 
-                {/* Performance Metrics */}
-                <View style={styles.modalSectionCard}>
-                  <Text style={styles.modalSectionTitle}>📈 Academic Stats</Text>
+              {/* Performance Metrics */}
+              <View style={[styles.modalSectionCard, { backgroundColor: theme.bg }]}>
+                <Text style={[styles.modalSectionTitle, { color: theme.text }]}>📈 Academic Stats</Text>
 
-                  {loadingDetails ? (
-                    /* Skeleton shimmer while background fetch is in progress */
-                    <View style={styles.statsSkeletonContainer}>
-                      <View style={styles.statsSkeleton} />
-                      <View style={[styles.statsSkeleton, { width: '70%', marginTop: 10 }]} />
-                      <View style={[styles.statsSkeleton, { width: '85%', marginTop: 10 }]} />
-                    </View>
-                  ) : (
-                    <>
-                  {/* Attendance Rate */}
-                  <View style={{ marginBottom: 12 }}>
-                    <View style={styles.metricHeader}>
-                      <Text style={styles.metricLabel}>Attendance Rate</Text>
-                      <Text style={styles.metricValue}>{studentStats?.attendanceRate || 0}%</Text>
-                    </View>
-                    <View style={styles.progressBarTrack}>
-                      <View style={[styles.progressBarFill, { width: `${studentStats?.attendanceRate || 0}%`, backgroundColor: '#10B981' }]} />
-                    </View>
+                {loadingDetails ? (
+                  /* Skeleton shimmer while background fetch is in progress */
+                  <View style={styles.statsSkeletonContainer}>
+                    <View style={[styles.statsSkeleton, { backgroundColor: theme.border }]} />
+                    <View style={[styles.statsSkeleton, { width: '70%', marginTop: 10, backgroundColor: theme.border }]} />
+                    <View style={[styles.statsSkeleton, { width: '85%', marginTop: 10, backgroundColor: theme.border }]} />
                   </View>
+                ) : (
+                  <>
+                    {/* Attendance Rate */}
+                    <View style={{ marginBottom: 12 }}>
+                      <View style={styles.metricHeader}>
+                        <Text style={[styles.metricLabel, { color: theme.subText }]}>Attendance Rate</Text>
+                        <Text style={[styles.metricValue, { color: theme.text }]}>{studentStats?.attendanceRate || 0}%</Text>
+                      </View>
+                      <View style={[styles.progressBarTrack, { backgroundColor: theme.border }]}>
+                        <View style={[styles.progressBarFill, { width: `${studentStats?.attendanceRate || 0}%`, backgroundColor: theme.success }]} />
+                      </View>
+                    </View>
 
-                  {/* Progress / Quiz scores */}
-                  <View>
-                    <View style={styles.metricHeader}>
-                      <Text style={styles.metricLabel}>Quiz Average & Progress</Text>
-                      <Text style={styles.metricValue}>{studentStats?.progressVal || 0}%</Text>
+                    {/* Progress / Quiz scores */}
+                    <View>
+                      <View style={styles.metricHeader}>
+                        <Text style={[styles.metricLabel, { color: theme.subText }]}>Quiz Average & Progress</Text>
+                        <Text style={[styles.metricValue, { color: theme.text }]}>{studentStats?.progressVal || 0}%</Text>
+                      </View>
+                      <View style={[styles.progressBarTrack, { backgroundColor: theme.border }]}>
+                        <View style={[styles.progressBarFill, { width: `${studentStats?.progressVal || 0}%`, backgroundColor: theme.accent }]} />
+                      </View>
+                      {studentStats?.quizCount > 0 && (
+                        <Text style={[styles.quizSubtext, { color: theme.subText }]}>Based on {studentStats.quizCount} quiz attempts</Text>
+                      )}
                     </View>
-                    <View style={styles.progressBarTrack}>
-                      <View style={[styles.progressBarFill, { width: `${studentStats?.progressVal || 0}%`, backgroundColor: '#4F46E5' }]} />
-                    </View>
-                    {studentStats?.quizCount > 0 && (
-                      <Text style={styles.quizSubtext}>Based on {studentStats.quizCount} quiz attempts</Text>
-                    )}
-                  </View>
                   </>
-                  )}
-                </View>
+                )}
+              </View>
 
-                {/* Contact Information */}
-                <View style={styles.modalSectionCard}>
-                  <Text style={styles.modalSectionTitle}>📞 Contact Information</Text>
-                  <View style={{ gap: 8 }}>
-                    <View style={styles.contactRow}>
-                      <Text style={styles.contactIcon}>✉️</Text>
-                      <Text style={styles.contactText} numberOfLines={1}>{studentStats?.email || 'N/A'}</Text>
-                    </View>
-                    <View style={styles.contactRow}>
-                      <Text style={styles.contactIcon}>📞</Text>
-                      <Text style={styles.contactText}>{studentStats?.phone || 'N/A'}</Text>
-                    </View>
+              {/* Contact Information */}
+              <View style={[styles.modalSectionCard, { backgroundColor: theme.bg }]}>
+                <Text style={[styles.modalSectionTitle, { color: theme.text }]}>📞 Contact Information</Text>
+                <View style={{ gap: 8 }}>
+                  <View style={styles.contactRow}>
+                    <Text style={styles.contactIcon}>✉️</Text>
+                    <Text style={[styles.contactText, { color: theme.textMid }]} numberOfLines={1}>{studentStats?.email || 'N/A'}</Text>
+                  </View>
+                  <View style={styles.contactRow}>
+                    <Text style={styles.contactIcon}>📞</Text>
+                    <Text style={[styles.contactText, { color: theme.textMid }]}>{studentStats?.phone || 'N/A'}</Text>
                   </View>
                 </View>
-              </ScrollView>
-            </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
     );
@@ -392,30 +396,34 @@ export default function RevenueScreen() {
     });
 
     return (
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={{ backgroundColor: theme.bg }}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Summary Cards */}
         <View style={styles.summaryGrid}>
-          <View style={[styles.summaryCard, { borderLeftColor: '#10B981' }]}>
-            <Text style={styles.summaryLabel}>Total Income</Text>
-            <Text style={[styles.summaryValue, { color: '#10B981' }]}>₹{Number(dashboardData.total_income).toFixed(1)}</Text>
+          <View style={[styles.summaryCard, { borderLeftColor: theme.success, backgroundColor: theme.card }]}>
+            <Text style={[styles.summaryLabel, { color: theme.subText }]}>Total Income</Text>
+            <Text style={[styles.summaryValue, { color: theme.success }]}>₹{Number(dashboardData.total_income).toFixed(1)}</Text>
           </View>
-          <View style={[styles.summaryCard, { borderLeftColor: '#EF4444' }]}>
-            <Text style={styles.summaryLabel}>Total Expenses</Text>
-            <Text style={[styles.summaryValue, { color: '#EF4444' }]}>₹{Number(dashboardData.total_expenses).toFixed(1)}</Text>
+          <View style={[styles.summaryCard, { borderLeftColor: theme.danger, backgroundColor: theme.card }]}>
+            <Text style={[styles.summaryLabel, { color: theme.subText }]}>Total Expenses</Text>
+            <Text style={[styles.summaryValue, { color: theme.danger }]}>₹{Number(dashboardData.total_expenses).toFixed(1)}</Text>
           </View>
         </View>
-        <View style={[styles.summaryCard, { borderLeftColor: '#4F46E5', marginBottom: 24 }]}>
-          <Text style={styles.summaryLabel}>Net Profit</Text>
-          <Text style={[styles.summaryValue, { color: '#4F46E5', fontSize: 28 }]}>
+        <View style={[styles.summaryCard, { borderLeftColor: theme.accent, marginBottom: 24, backgroundColor: theme.card }]}>
+          <Text style={[styles.summaryLabel, { color: theme.subText }]}>Net Profit</Text>
+          <Text style={[styles.summaryValue, { color: theme.accent, fontSize: 28 }]}>
             ₹{Number(dashboardData.net_profit).toFixed(1)}
           </Text>
         </View>
 
         {/* Monthly Chart */}
-        <Text style={styles.sectionTitle}>Monthly Overview</Text>
-        <View style={styles.chartContainer}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Monthly Overview</Text>
+        <View style={[styles.chartContainer, { backgroundColor: theme.card }]}>
           {dashboardData.monthly_data.length === 0 ? (
-            <Text style={styles.emptyText}>No data available</Text>
+            <Text style={[styles.emptyText, { color: theme.muted }]}>No data available</Text>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {dashboardData.monthly_data.map((item, idx) => {
@@ -424,57 +432,57 @@ export default function RevenueScreen() {
 
                 return (
                   <View key={idx} style={styles.chartCol}>
-                    <View style={styles.barsWrap}>
+                    <View style={[styles.barsWrap, { borderBottomColor: theme.border }]}>
                       <View style={styles.barGroup}>
                         <View style={[styles.bar, styles.incBar, { height: `${incHeight}%` }]} />
                         <View style={[styles.bar, styles.expBar, { height: `${expHeight}%` }]} />
                       </View>
                     </View>
-                    <Text style={styles.chartLabel}>{item.month.split('-')[1]}</Text>
+                    <Text style={[styles.chartLabel, { color: theme.subText }]}>{item.month.split('-')[1]}</Text>
                   </View>
                 );
               })}
             </ScrollView>
           )}
           <View style={styles.legend}>
-            <View style={styles.legendItem}><View style={[styles.dot, styles.incBar]} /><Text style={styles.legendText}>Income</Text></View>
-            <View style={styles.legendItem}><View style={[styles.dot, styles.expBar]} /><Text style={styles.legendText}>Expense</Text></View>
+            <View style={styles.legendItem}><View style={[styles.dot, styles.incBar]} /><Text style={[styles.legendText, { color: theme.subText }]}>Income</Text></View>
+            <View style={styles.legendItem}><View style={[styles.dot, styles.expBar]} /><Text style={[styles.legendText, { color: theme.subText }]}>Expense</Text></View>
           </View>
         </View>
 
         {/* Breakdown Sections */}
-        <Text style={styles.sectionTitle}>Revenue by Course</Text>
-        <View style={styles.breakdownCard}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Revenue by Course</Text>
+        <View style={[styles.breakdownCard, { backgroundColor: theme.card }]}>
           {dashboardData.course_breakdown.map((item, idx) => (
-            <View key={idx} style={styles.breakdownRow}>
+            <View key={idx} style={[styles.breakdownRow, { borderBottomColor: theme.rowBorder }]}>
               <View style={styles.breakdownInfo}>
-                <Text style={styles.breakdownName}>{item.name}</Text>
-                <Text style={styles.breakdownAmt}>₹{Number(item.amount).toFixed(1)}</Text>
+                <Text style={[styles.breakdownName, { color: theme.text }]}>{item.name}</Text>
+                <Text style={[styles.breakdownAmt, { color: theme.subText }]}>₹{Number(item.amount).toFixed(1)}</Text>
               </View>
-              <View style={styles.progressBg}>
+              <View style={[styles.progressBg, { backgroundColor: theme.border }]}>
                 <View style={[styles.progressFill, { width: `${item.percentage}%`, backgroundColor: '#8B5CF6' }]} />
               </View>
-              <Text style={styles.percentText}>{item.percentage}%</Text>
+              <Text style={[styles.percentText, { color: theme.subText }]}>{item.percentage}%</Text>
             </View>
           ))}
-          {dashboardData.course_breakdown.length === 0 && <Text style={styles.emptyText}>No course data</Text>}
+          {dashboardData.course_breakdown.length === 0 && <Text style={[styles.emptyText, { color: theme.muted }]}>No course data</Text>}
         </View>
 
-        <Text style={styles.sectionTitle}>Revenue by Batch</Text>
-        <View style={styles.breakdownCard}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Revenue by Batch</Text>
+        <View style={[styles.breakdownCard, { backgroundColor: theme.card }]}>
           {dashboardData.batch_breakdown.map((item, idx) => (
-            <View key={idx} style={styles.breakdownRow}>
+            <View key={idx} style={[styles.breakdownRow, { borderBottomColor: theme.rowBorder }]}>
               <View style={styles.breakdownInfo}>
-                <Text style={styles.breakdownName}>{item.name}</Text>
-                <Text style={styles.breakdownAmt}>₹{Number(item.amount).toFixed(1)}</Text>
+                <Text style={[styles.breakdownName, { color: theme.text }]}>{item.name}</Text>
+                <Text style={[styles.breakdownAmt, { color: theme.subText }]}>₹{Number(item.amount).toFixed(1)}</Text>
               </View>
-              <View style={styles.progressBg}>
+              <View style={[styles.progressBg, { backgroundColor: theme.border }]}>
                 <View style={[styles.progressFill, { width: `${item.percentage}%`, backgroundColor: '#F59E0B' }]} />
               </View>
-              <Text style={styles.percentText}>{item.percentage}%</Text>
+              <Text style={[styles.percentText, { color: theme.subText }]}>{item.percentage}%</Text>
             </View>
           ))}
-          {dashboardData.batch_breakdown.length === 0 && <Text style={styles.emptyText}>No batch data</Text>}
+          {dashboardData.batch_breakdown.length === 0 && <Text style={[styles.emptyText, { color: theme.muted }]}>No batch data</Text>}
         </View>
 
       </ScrollView>
@@ -482,55 +490,58 @@ export default function RevenueScreen() {
   };
 
   const renderIncomeTab = () => (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: theme.bg }}>
       {/* Sub Tabs */}
-      <View style={styles.subTabContainer}>
+      <View style={[styles.subTabContainer, { backgroundColor: theme.tabBg }]}>
         {['Record Income', 'Fee Details'].map(subTab => (
           <TouchableOpacity
             key={subTab}
-            style={[styles.subTabBtn, activeIncomeSubTab === subTab && styles.subTabBtnActive]}
+            style={[styles.subTabBtn, activeIncomeSubTab === subTab && [styles.subTabBtnActive, { backgroundColor: theme.card }]]}
             onPress={() => setActiveIncomeSubTab(subTab)}
           >
-            <Text style={[styles.subTabText, activeIncomeSubTab === subTab && styles.subTabTextActive]}>{subTab}</Text>
+            <Text style={[styles.subTabText, { color: theme.subText }, activeIncomeSubTab === subTab && [styles.subTabTextActive, { color: theme.accent }]]}>{subTab}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
       {activeIncomeSubTab === 'Record Income' ? (
         <View style={{ flex: 1 }}>
-          <View style={styles.addExpCard}>
-            <Text style={styles.formTitle}>Record New Income</Text>
+          <View style={[styles.addExpCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <Text style={[styles.formTitle, { color: theme.text }]}>Record New Income</Text>
 
             <View style={styles.categoryRow}>
               {['Course Fee', 'Event', 'Donation', 'Other'].map(cat => (
                 <TouchableOpacity
                   key={cat}
-                  style={[styles.catChip, incCategory === cat && styles.catChipActive, { backgroundColor: incCategory === cat ? '#10B981' : '#F1F5F9', borderColor: incCategory === cat ? '#10B981' : '#E2E8F0' }]}
+                  style={[styles.catChip, incCategory === cat && styles.catChipActive, { backgroundColor: incCategory === cat ? theme.success : theme.chipBg, borderColor: incCategory === cat ? theme.success : theme.border }]}
                   onPress={() => setIncCategory(cat)}
                 >
-                  <Text style={[styles.catChipText, incCategory === cat && styles.catChipTextActive]}>{cat}</Text>
+                  <Text style={[styles.catChipText, { color: incCategory === cat ? '#fff' : theme.subText }]}>{cat}</Text>
                 </TouchableOpacity>
               ))}
             </View>
 
             <View style={styles.inputRow}>
               <TextInput
-                style={[styles.input, { flex: 1, marginRight: 8 }]}
+                style={[styles.input, { flex: 1, marginRight: 8, backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
                 placeholder="Amount"
+                placeholderTextColor={theme.muted}
                 keyboardType="numeric"
                 value={incAmount}
                 onChangeText={setIncAmount}
               />
               <TextInput
-                style={[styles.input, { flex: 1 }]}
+                style={[styles.input, { flex: 1, backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
                 placeholder="Date (YYYY-MM-DD)"
+                placeholderTextColor={theme.muted}
                 value={incDate}
                 onChangeText={setIncDate}
               />
             </View>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
               placeholder="Description (Optional)"
+              placeholderTextColor={theme.muted}
               value={incDesc}
               onChangeText={setIncDesc}
             />
@@ -543,14 +554,14 @@ export default function RevenueScreen() {
             data={incomes}
             keyExtractor={item => item.id}
             contentContainerStyle={styles.listContent}
-            ListEmptyComponent={<Text style={styles.emptyText}>No income records.</Text>}
+            ListEmptyComponent={<Text style={[styles.emptyText, { color: theme.muted }]}>No income records.</Text>}
             renderItem={({ item }) => (
-              <View style={styles.recordCard}>
+              <View style={[styles.recordCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
                 <View style={styles.recLeft}>
-                  <Text style={styles.recTitle}>{item.title}</Text>
-                  <Text style={styles.recSub}>{item.subtitle}</Text>
+                  <Text style={[styles.recTitle, { color: theme.text }]}>{item.title}</Text>
+                  <Text style={[styles.recSub, { color: theme.subText }]}>{item.subtitle}</Text>
                 </View>
-                <Text style={[styles.recAmt, { color: '#10B981' }]}>+₹{item.amount}</Text>
+                <Text style={[styles.recAmt, { color: theme.success }]}>+₹{item.amount}</Text>
               </View>
             )}
           />
@@ -562,40 +573,46 @@ export default function RevenueScreen() {
   );
 
   const renderExpensesTab = () => (
-    <View style={{ flex: 1 }}>
-      <View style={styles.addExpCard}>
-        <Text style={styles.formTitle}>Record New Expense</Text>
+    <View style={{ flex: 1, backgroundColor: theme.bg }}>
+      <View style={[styles.addExpCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <Text style={[styles.formTitle, { color: theme.text }]}>Record New Expense</Text>
 
         <View style={styles.categoryRow}>
           {['Salary', 'Maintenance', 'Other'].map(cat => (
             <TouchableOpacity
               key={cat}
-              style={[styles.catChip, expCategory === cat && styles.catChipActive]}
+              style={[styles.catChip, expCategory === cat && styles.catChipActive, {
+                backgroundColor: expCategory === cat ? theme.accent : theme.chipBg,
+                borderColor: expCategory === cat ? theme.accent : theme.border,
+              }]}
               onPress={() => setExpCategory(cat)}
             >
-              <Text style={[styles.catChipText, expCategory === cat && styles.catChipTextActive]}>{cat}</Text>
+              <Text style={[styles.catChipText, { color: expCategory === cat ? '#fff' : theme.subText }]}>{cat}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
         <View style={styles.inputRow}>
           <TextInput
-            style={[styles.input, { flex: 1, marginRight: 8 }]}
+            style={[styles.input, { flex: 1, marginRight: 8, backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
             placeholder="Amount"
+            placeholderTextColor={theme.muted}
             keyboardType="numeric"
             value={expAmount}
             onChangeText={setExpAmount}
           />
           <TextInput
-            style={[styles.input, { flex: 1 }]}
+            style={[styles.input, { flex: 1, backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
             placeholder="Date (YYYY-MM-DD)"
+            placeholderTextColor={theme.muted}
             value={expDate}
             onChangeText={setExpDate}
           />
         </View>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
           placeholder="Description (Optional)"
+          placeholderTextColor={theme.muted}
           value={expDesc}
           onChangeText={setExpDesc}
         />
@@ -608,14 +625,14 @@ export default function RevenueScreen() {
         data={expenses}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContent}
-        ListEmptyComponent={<Text style={styles.emptyText}>No expense records.</Text>}
+        ListEmptyComponent={<Text style={[styles.emptyText, { color: theme.muted }]}>No expense records.</Text>}
         renderItem={({ item }) => (
-          <View style={styles.recordCard}>
+          <View style={[styles.recordCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.recLeft}>
-              <Text style={styles.recTitle}>{item.category} {item.description ? `- ${item.description}` : ''}</Text>
-              <Text style={styles.recSub}>{item.expense_date}</Text>
+              <Text style={[styles.recTitle, { color: theme.text }]}>{item.category} {item.description ? `- ${item.description}` : ''}</Text>
+              <Text style={[styles.recSub, { color: theme.subText }]}>{item.expense_date}</Text>
             </View>
-            <Text style={[styles.recAmt, { color: '#EF4444' }]}>-₹{item.amount}</Text>
+            <Text style={[styles.recAmt, { color: theme.danger }]}>-₹{item.amount}</Text>
           </View>
         )}
       />
@@ -653,12 +670,12 @@ export default function RevenueScreen() {
           if (f.course_id !== selectedCourseId) return false;
         }
       }
-      
+
       // 2. Batch Filter
       if (selectedBatchId !== 'all') {
         if (f.batch_id !== selectedBatchId) return false;
       }
-      
+
       // 3. Status Filter
       if (selectedStatus !== 'all') {
         if (f.status !== selectedStatus) return false;
@@ -682,7 +699,7 @@ export default function RevenueScreen() {
           return false;
         }
       }
-      
+
       return true;
     });
   }, [fees, selectedCourseId, selectedBatchId, selectedStatus, searchQuery, selectedMonth]);
@@ -695,7 +712,7 @@ export default function RevenueScreen() {
     const totalCount = filteredFeeDetails.length;
     const paidCount = paidList.length;
     const rate = totalCount > 0 ? Math.round((paidCount / totalCount) * 100) : 0;
-    
+
     return { totalPaid, totalPending, rate };
   }, [filteredFeeDetails]);
 
@@ -751,7 +768,7 @@ export default function RevenueScreen() {
       const studentEmail = f.user?.email || '';
       const courseName = f.course?.name || 'Direct';
       const batchName = f.batch?.name || 'Unassigned';
-      
+
       html += `
         <tr>
           <td>
@@ -832,7 +849,7 @@ export default function RevenueScreen() {
       const studentEmail = f.user?.email || '';
       const courseName = f.course?.name || 'Direct';
       const batchName = f.batch?.name || 'Unassigned';
-      
+
       html += `
         <tr>
           <td>
@@ -884,118 +901,118 @@ export default function RevenueScreen() {
     const tableWidthStyle = isWeb ? { width: '100%' } : { width: 520 };
 
     return (
-      <ScrollView 
-        style={{ flex: 1, backgroundColor: '#F8FAFC' }}
+      <ScrollView
+        style={{ flex: 1, backgroundColor: theme.bg }}
         contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={true}
       >
         {/* Summary Card */}
-        <View style={styles.statsCardFee}>
+        <View style={[styles.statsCardFee, { backgroundColor: theme.card }]}>
           <View style={styles.statsRowFee}>
             <View style={styles.statColFee}>
-              <Text style={styles.statLabelFee}>Collected</Text>
-              <Text style={[styles.statValFee, { color: '#10B981' }]}>₹{feeStats.totalPaid}</Text>
+              <Text style={[styles.statLabelFee, { color: theme.subText }]}>Collected</Text>
+              <Text style={[styles.statValFee, { color: theme.success }]}>₹{feeStats.totalPaid}</Text>
             </View>
-            <View style={styles.statColDividerFee} />
+            <View style={[styles.statColDividerFee, { backgroundColor: theme.border }]} />
             <View style={styles.statColFee}>
-              <Text style={styles.statLabelFee}>Pending</Text>
-              <Text style={[styles.statValFee, { color: '#EF4444' }]}>₹{feeStats.totalPending}</Text>
+              <Text style={[styles.statLabelFee, { color: theme.subText }]}>Pending</Text>
+              <Text style={[styles.statValFee, { color: theme.danger }]}>₹{feeStats.totalPending}</Text>
             </View>
-            <View style={styles.statColDividerFee} />
+            <View style={[styles.statColDividerFee, { backgroundColor: theme.border }]} />
             <View style={styles.statColFee}>
-              <Text style={styles.statLabelFee}>Collection Rate</Text>
-              <Text style={[styles.statValFee, { color: '#6366F1' }]}>{feeStats.rate}%</Text>
+              <Text style={[styles.statLabelFee, { color: theme.subText }]}>Collection Rate</Text>
+              <Text style={[styles.statValFee, { color: theme.accent }]}>{feeStats.rate}%</Text>
             </View>
           </View>
         </View>
 
         {/* Export Button Group */}
         <View style={styles.exportBtnGroupFee}>
-          <TouchableOpacity style={[styles.exportBtnFee, { backgroundColor: '#EF4444' }]} onPress={exportToPDF}>
-            <Text style={styles.exportBtnTextFee}>📄 Export to PDF</Text>
+          <TouchableOpacity style={[styles.exportBtnFee, { backgroundColor: theme.bg, borderColor: theme.danger, borderWidth: 1 }]} onPress={exportToPDF}>
+            <Text style={[styles.exportBtnTextFee, { color: theme.danger }]}>📄 Export to PDF</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.exportBtnFee, { backgroundColor: '#4F46E5' }]} onPress={exportToWord}>
-            <Text style={styles.exportBtnTextFee}>📝 Export to Word</Text>
+          <TouchableOpacity style={[styles.exportBtnFee, { backgroundColor: theme.bg, borderColor: theme.accent, borderWidth: 1 }]} onPress={exportToWord}>
+            <Text style={[styles.exportBtnTextFee, { color: theme.accent }]}>📝 Export to Word</Text>
           </TouchableOpacity>
         </View>
 
         {/* Filter Section Card */}
-        <View style={styles.filterCardFee}>
+        <View style={[styles.filterCardFee, { backgroundColor: theme.card, borderColor: theme.border }]}>
           {/* Search Input */}
-          <Text style={styles.filterGroupTitleFee}>Search Student</Text>
-          <View style={styles.searchContainerFee}>
+          <Text style={[styles.filterGroupTitleFee, { color: theme.subText }]}>Search Student</Text>
+          <View style={[styles.searchContainerFee, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
             <TextInput
-              style={styles.searchInputFee}
+              style={[styles.searchInputFee, { color: theme.text }]}
               placeholder="Search by student name or email..."
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={theme.muted}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
             {searchQuery !== '' && (
               <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearSearchBtnFee}>
-                <Text style={styles.clearSearchTextFee}>✕</Text>
+                <Text style={[styles.clearSearchTextFee, { color: theme.muted }]}>✕</Text>
               </TouchableOpacity>
             )}
           </View>
 
           {/* Month Filter */}
-          <Text style={[styles.filterGroupTitleFee, { marginTop: 12 }]}>Month</Text>
+          <Text style={[styles.filterGroupTitleFee, { marginTop: 12, color: theme.subText }]}>Month</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScrollFee}>
             {MONTHS.map(m => (
               <TouchableOpacity
                 key={m.value}
-                style={[styles.chipFee, selectedMonth === m.value && styles.chipActiveFee]}
+                style={[styles.chipFee, { backgroundColor: selectedMonth === m.value ? theme.accent : theme.chipBg, borderColor: selectedMonth === m.value ? theme.accent : theme.border }]}
                 onPress={() => setSelectedMonth(m.value)}
               >
-                <Text style={[styles.chipTextFee, selectedMonth === m.value && styles.chipTextActiveFee]}>{m.label}</Text>
+                <Text style={[styles.chipTextFee, { color: selectedMonth === m.value ? '#fff' : theme.subText }]}>{m.label}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
           {/* Course filter chips */}
-          <Text style={[styles.filterGroupTitleFee, { marginTop: 12 }]}>Course</Text>
+          <Text style={[styles.filterGroupTitleFee, { marginTop: 12, color: theme.subText }]}>Course</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScrollFee}>
-            <TouchableOpacity 
-              style={[styles.chipFee, selectedCourseId === 'all' && styles.chipActiveFee]}
+            <TouchableOpacity
+              style={[styles.chipFee, { backgroundColor: selectedCourseId === 'all' ? theme.accent : theme.chipBg, borderColor: selectedCourseId === 'all' ? theme.accent : theme.border }]}
               onPress={() => handleSelectCourseFilter('all')}
             >
-              <Text style={[styles.chipTextFee, selectedCourseId === 'all' && styles.chipTextActiveFee]}>All</Text>
+              <Text style={[styles.chipTextFee, { color: selectedCourseId === 'all' ? '#fff' : theme.subText }]}>All</Text>
             </TouchableOpacity>
             {coursesWithBatches.map(course => (
-              <TouchableOpacity 
+              <TouchableOpacity
                 key={course.id}
-                style={[styles.chipFee, selectedCourseId === course.id && styles.chipActiveFee]}
+                style={[styles.chipFee, { backgroundColor: selectedCourseId === course.id ? theme.accent : theme.chipBg, borderColor: selectedCourseId === course.id ? theme.accent : theme.border }]}
                 onPress={() => handleSelectCourseFilter(course.id)}
               >
-                <Text style={[styles.chipTextFee, selectedCourseId === course.id && styles.chipTextActiveFee]}>{course.name}</Text>
+                <Text style={[styles.chipTextFee, { color: selectedCourseId === course.id ? '#fff' : theme.subText }]}>{course.name}</Text>
               </TouchableOpacity>
             ))}
-            <TouchableOpacity 
-              style={[styles.chipFee, selectedCourseId === 'unassigned' && styles.chipActiveFee]}
+            <TouchableOpacity
+              style={[styles.chipFee, { backgroundColor: selectedCourseId === 'unassigned' ? theme.accent : theme.chipBg, borderColor: selectedCourseId === 'unassigned' ? theme.accent : theme.border }]}
               onPress={() => handleSelectCourseFilter('unassigned')}
             >
-              <Text style={[styles.chipTextFee, selectedCourseId === 'unassigned' && styles.chipTextActiveFee]}>Direct / Unassigned</Text>
+              <Text style={[styles.chipTextFee, { color: selectedCourseId === 'unassigned' ? '#fff' : theme.subText }]}>Direct / Unassigned</Text>
             </TouchableOpacity>
           </ScrollView>
 
           {/* Batch filter chips (visible only if course selected has batches) */}
           {availableBatchesForFilter.length > 0 && (
             <>
-              <Text style={[styles.filterGroupTitleFee, { marginTop: 12 }]}>Batch</Text>
+              <Text style={[styles.filterGroupTitleFee, { marginTop: 12, color: theme.subText }]}>Batch</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScrollFee}>
-                <TouchableOpacity 
-                  style={[styles.chipFee, selectedBatchId === 'all' && styles.chipActiveFee]}
+                <TouchableOpacity
+                  style={[styles.chipFee, { backgroundColor: selectedBatchId === 'all' ? theme.accent : theme.chipBg, borderColor: selectedBatchId === 'all' ? theme.accent : theme.border }]}
                   onPress={() => setSelectedBatchId('all')}
                 >
-                  <Text style={[styles.chipTextFee, selectedBatchId === 'all' && styles.chipTextActiveFee]}>All Batches</Text>
+                  <Text style={[styles.chipTextFee, { color: selectedBatchId === 'all' ? '#fff' : theme.subText }]}>All Batches</Text>
                 </TouchableOpacity>
                 {availableBatchesForFilter.map(batch => (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     key={batch.id}
-                    style={[styles.chipFee, selectedBatchId === batch.id && styles.chipActiveFee]}
+                    style={[styles.chipFee, { backgroundColor: selectedBatchId === batch.id ? theme.accent : theme.chipBg, borderColor: selectedBatchId === batch.id ? theme.accent : theme.border }]}
                     onPress={() => setSelectedBatchId(batch.id)}
                   >
-                    <Text style={[styles.chipTextFee, selectedBatchId === batch.id && styles.chipTextActiveFee]}>{batch.name}</Text>
+                    <Text style={[styles.chipTextFee, { color: selectedBatchId === batch.id ? '#fff' : theme.subText }]}>{batch.name}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -1003,22 +1020,23 @@ export default function RevenueScreen() {
           )}
 
           {/* Status Segmented Filter */}
-          <Text style={[styles.filterGroupTitleFee, { marginTop: 12 }]}>Status</Text>
-          <View style={styles.statusRowContainerFee}>
+          <Text style={[styles.filterGroupTitleFee, { marginTop: 12, color: theme.subText }]}>Status</Text>
+          <View style={[styles.statusRowContainerFee, { backgroundColor: theme.chipBg }]}>
             {['all', 'paid', 'pending'].map(status => (
               <TouchableOpacity
                 key={status}
                 style={[
-                  styles.statusSegmentFee, 
-                  selectedStatus === status && styles.statusSegmentActiveFee,
-                  status === 'paid' && selectedStatus === 'paid' && { backgroundColor: '#10B981', borderColor: '#10B981' },
-                  status === 'pending' && selectedStatus === 'pending' && { backgroundColor: '#F59E0B', borderColor: '#F59E0B' }
+                  styles.statusSegmentFee,
+                  selectedStatus === status && [styles.statusSegmentActiveFee, { backgroundColor: theme.card }],
+                  status === 'paid' && selectedStatus === 'paid' && { backgroundColor: theme.success, borderColor: theme.success },
+                  status === 'pending' && selectedStatus === 'pending' && { backgroundColor: theme.warning, borderColor: theme.warning }
                 ]}
                 onPress={() => setSelectedStatus(status)}
               >
                 <Text style={[
-                  styles.statusSegmentTextFee, 
-                  selectedStatus === status && styles.statusSegmentTextActiveFee
+                  styles.statusSegmentTextFee,
+                  { color: theme.subText },
+                  selectedStatus === status && { color: (status === 'paid' || status === 'pending') ? '#fff' : theme.text, fontWeight: '700' }
                 ]}>
                   {status === 'all' ? 'All Status' : status.toUpperCase()}
                 </Text>
@@ -1028,19 +1046,18 @@ export default function RevenueScreen() {
         </View>
 
         {/* Scrollable Table View */}
-        <ScrollView 
-          horizontal={true} 
-          showsHorizontalScrollIndicator={isWeb} 
+        <ScrollView
+          horizontal={true}
+          showsHorizontalScrollIndicator={isWeb}
           style={{ marginHorizontal: 16 }}
           contentContainerStyle={isWeb ? { flexGrow: 1 } : null}
         >
-          <View style={[styles.tableCardFee, tableWidthStyle]}>
+          <View style={[styles.tableCardFee, tableWidthStyle, { backgroundColor: theme.card, borderColor: theme.border }]}>
             {/* Table Header Row */}
-            <View style={styles.tableHeaderFee}>
-              <Text style={[styles.thTextFee, studentColStyle, { textAlign: 'left' }]}>STUDENT</Text>
-              <Text style={[styles.thTextFee, courseColStyle, { textAlign: 'center' }]}>COURSE</Text>
-              <Text style={[styles.thTextFee, amountColStyle, { textAlign: 'center' }]}>AMOUNT</Text>
-              <Text style={[styles.thTextFee, statusColStyle, { textAlign: 'center' }]}>STATUS</Text>
+            <View style={[styles.tableHeaderFee, { backgroundColor: theme.headerBg, borderBottomColor: theme.border }]}>
+              <Text style={[styles.thTextFee, studentColStyle, { textAlign: 'left', color: theme.subText }]}>STUDENT</Text>
+              <Text style={[styles.thTextFee, amountColStyle, { textAlign: 'center', color: theme.subText }]}>AMOUNT</Text>
+              <Text style={[styles.thTextFee, statusColStyle, { textAlign: 'center', color: theme.subText }]}>STATUS</Text>
             </View>
 
             {filteredFeeDetails.map(item => {
@@ -1050,36 +1067,31 @@ export default function RevenueScreen() {
               const isPaid = item.status === 'paid';
 
               return (
-                <TouchableOpacity 
-                  key={item.id} 
-                  style={styles.tableRowFee} 
+                <TouchableOpacity
+                  key={item.id}
+                  style={[styles.tableRowFee, { borderBottomColor: theme.rowBorder }]}
                   onPress={() => fetchStudentDetails(item)}
                   activeOpacity={0.7}
                 >
                   {/* Student info column */}
                   <View style={[studentColStyle, { justifyContent: 'center', alignItems: 'flex-start' }]}>
-                    <Text style={styles.studentNameFee} numberOfLines={1}>{studentName}</Text>
-                  </View>
-
-                  {/* Course info column */}
-                  <View style={[courseColStyle, { justifyContent: 'center', alignItems: 'center' }]}>
-                    <Text style={[styles.courseNameFee, { textAlign: 'center' }]} numberOfLines={1}>{courseName}</Text>
+                    <Text style={[styles.studentNameFee, { color: theme.text }]} numberOfLines={1}>{studentName}</Text>
                   </View>
 
                   {/* Amount column */}
                   <View style={[isWeb ? { flex: 1.2 } : { width: 100 }, { justifyContent: 'center', alignItems: 'center' }]}>
-                    <Text style={[styles.amountFee, { textAlign: 'center' }]}>₹{item.amount}</Text>
+                    <Text style={[styles.amountFee, { textAlign: 'center', color: theme.text }]}>₹{item.amount}</Text>
                   </View>
 
                   {/* Status column */}
                   <View style={[isWeb ? { flex: 1.3 } : { width: 100 }, { justifyContent: 'center', alignItems: 'center' }]}>
                     <View style={[
-                      styles.statusPillFee, 
-                      isPaid ? styles.statusPillPaidFee : styles.statusPillPendingFee
+                      styles.statusPillFee,
+                      isPaid ? { backgroundColor: theme.successLight } : { backgroundColor: theme.warningLight }
                     ]}>
                       <Text style={[
-                        styles.statusPillTextFee, 
-                        isPaid ? styles.statusPillTextPaidFee : styles.statusPillTextPendingFee
+                        styles.statusPillTextFee,
+                        isPaid ? { color: theme.success } : { color: theme.warning }
                       ]}>
                         {isPaid ? 'PAID' : 'PENDING'}
                       </Text>
@@ -1090,8 +1102,8 @@ export default function RevenueScreen() {
             })}
 
             {filteredFeeDetails.length === 0 && (
-              <View style={styles.emptyContainerFee}>
-                <Text style={styles.emptyTextFee}>No matching fee records found.</Text>
+              <View style={[styles.emptyContainerFee, { backgroundColor: theme.card }]}>
+                <Text style={[styles.emptyTextFee, { color: theme.muted }]}>No matching fee records found.</Text>
               </View>
             )}
           </View>
@@ -1102,23 +1114,23 @@ export default function RevenueScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Custom Tabs */}
-      <View style={styles.tabContainer}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+      {/* Tab header */}
+      <View style={[styles.tabContainer, { backgroundColor: theme.tabBg, borderBottomColor: theme.border }]}>
         {['Dashboard', 'Income', 'Expenses'].map(tab => (
           <TouchableOpacity
             key={tab}
             style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
             onPress={() => setActiveTab(tab)}
           >
-            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
+            <Text style={[styles.tabText, { color: theme.subText }, activeTab === tab && { color: theme.accent, fontWeight: '700' }]}>{tab}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
       {loading ? (
         <View style={styles.loaderWrap}>
-          <Text style={{ fontSize: 16, color: '#64748B' }}>Loading {activeTab.toLowerCase()} data...</Text>
+          <Text style={{ fontSize: 16, color: theme.subText }}>Loading {activeTab.toLowerCase()} data...</Text>
         </View>
       ) : (
         <>

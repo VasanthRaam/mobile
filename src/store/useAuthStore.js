@@ -80,6 +80,6 @@ export const useAuthStore = create((set) => ({
       console.warn('Supabase signout failed', error);
     }
     await Promise.all([deleteToken(), deleteUser()]);
-    set({ token: null, user: null, isAuthenticated: false });
+    set({ token: null, user: null, isAuthenticated: false, requiresUnlock: false });
   },
 }));

@@ -6,9 +6,12 @@ import {
 } from 'react-native';
 import apiClient from '../api/apiClient';
 
+import { useThemeStore } from '../store/useThemeStore';
+
 const { width } = Dimensions.get('window');
 
 export default function ResetPasswordScreen({ route, navigation }) {
+  const { theme, isDark } = useThemeStore();
   const { email } = route.params || { email: '' };
 
   const [otp, setOtp] = useState('');
@@ -56,74 +59,74 @@ export default function ResetPasswordScreen({ route, navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.bgDecor1} />
-      <View style={styles.bgDecor2} />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+      <View style={[styles.bgDecor1, { backgroundColor: isDark ? theme.accentLight : '#EEF2FF' }]} />
+      <View style={[styles.bgDecor2, { backgroundColor: isDark ? theme.successLight : '#F0FDF4' }]} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>← Back</Text>
+          <Text style={[styles.backText, { color: theme.accent }]}>← Back</Text>
         </TouchableOpacity>
 
         <View style={styles.headerSection}>
-          <Text style={styles.title}>Secure Reset</Text>
-          <Text style={styles.subtitle}>Create a new password for {email}</Text>
+          <Text style={[styles.title, { color: theme.text }]}>Secure Reset</Text>
+          <Text style={[styles.subtitle, { color: theme.subText }]}>Create a new password for {email}</Text>
         </View>
 
-        <View style={styles.formCard}>
+        <View style={[styles.formCard, { backgroundColor: theme.card }]}>
           <View style={styles.inputWrapper}>
-            <Text style={styles.inputLabel}>6-Digit Reset Code</Text>
+            <Text style={[styles.inputLabel, { color: theme.text }]}>6-Digit Reset Code</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
               placeholder="123456"
               value={otp}
               onChangeText={setOtp}
               keyboardType="number-pad"
               maxLength={6}
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={theme.muted}
               editable={!loading}
             />
           </View>
 
           <View style={styles.inputWrapper}>
-            <Text style={styles.inputLabel}>New Password</Text>
-            <View style={styles.passwordContainer}>
+            <Text style={[styles.inputLabel, { color: theme.text }]}>New Password</Text>
+            <View style={[styles.passwordContainer, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
               <TextInput
-                style={styles.passwordInput}
+                style={[styles.passwordInput, { color: theme.text }]}
                 placeholder="••••••••"
                 value={newPassword}
                 onChangeText={setNewPassword}
                 secureTextEntry={!showPassword}
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={theme.muted}
                 editable={!loading}
               />
               <TouchableOpacity 
                 style={styles.eyeButton} 
                 onPress={() => setShowPassword(!showPassword)}
               >
-                <Text style={styles.eyeText}>{showPassword ? 'Hide' : 'Show'}</Text>
+                <Text style={[styles.eyeText, { color: theme.accent }]}>{showPassword ? 'Hide' : 'Show'}</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           <View style={styles.inputWrapper}>
-            <Text style={styles.inputLabel}>Confirm New Password</Text>
+            <Text style={[styles.inputLabel, { color: theme.text }]}>Confirm New Password</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
               placeholder="••••••••"
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry={!showPassword}
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={theme.muted}
               editable={!loading}
             />
           </View>
 
           <TouchableOpacity
-            style={[styles.actionBtn, loading && styles.disabledBtn]}
+            style={[styles.actionBtn, { backgroundColor: theme.accent }, loading && styles.disabledBtn]}
             onPress={handleResetPassword}
             disabled={loading}
             activeOpacity={0.8}

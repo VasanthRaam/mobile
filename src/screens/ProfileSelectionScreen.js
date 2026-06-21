@@ -7,7 +7,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 import apiClient from '../api/apiClient';
 
+import { useThemeStore } from '../store/useThemeStore';
+
 export default function ProfileSelectionScreen({ route, navigation }) {
+  const { theme, isDark } = useThemeStore();
   const { profiles, phone, otp } = route.params;
   const [loadingId, setLoadingId] = useState(null);
   const login = useAuthStore((state) => state.login);
@@ -44,39 +47,39 @@ export default function ProfileSelectionScreen({ route, navigation }) {
     const isLoading = loadingId === item.id;
     return (
       <TouchableOpacity
-        style={[styles.profileCard, isLoading && styles.profileCardLoading]}
+        style={[styles.profileCard, { backgroundColor: theme.card, borderColor: theme.border }, isLoading && styles.profileCardLoading]}
         onPress={() => handleSelectProfile(item.id)}
         disabled={loadingId !== null}
         activeOpacity={0.7}
       >
-        <View style={styles.avatarContainer}>
+        <View style={[styles.avatarContainer, { backgroundColor: theme.accent }]}>
           <Text style={styles.avatarText}>
             {item.full_name.charAt(0).toUpperCase()}
           </Text>
         </View>
         <View style={styles.profileInfo}>
-          <Text style={styles.profileName}>{item.full_name}</Text>
-          <Text style={styles.profileRole}>{item.role.charAt(0).toUpperCase() + item.role.slice(1)}</Text>
-          <Text style={styles.profileEmail}>{item.email}</Text>
+          <Text style={[styles.profileName, { color: theme.text }]}>{item.full_name}</Text>
+          <Text style={[styles.profileRole, { color: theme.accent }]}>{item.role.charAt(0).toUpperCase() + item.role.slice(1)}</Text>
+          <Text style={[styles.profileEmail, { color: theme.subText }]}>{item.email}</Text>
         </View>
-        <Ionicons name="chevron-forward" size={24} color={isLoading ? "#94A3B8" : "#2563EB"} />
+        <Ionicons name="chevron-forward" size={24} color={isLoading ? theme.muted : theme.accent} />
       </TouchableOpacity>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.bgDecor1} />
-      <View style={styles.bgDecor2} />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+      <View style={[styles.bgDecor1, { backgroundColor: isDark ? theme.accentLight : '#EEF2FF' }]} />
+      <View style={[styles.bgDecor2, { backgroundColor: isDark ? theme.successLight : '#F0FDF4' }]} />
 
-      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} disabled={loadingId !== null}>
-        <Ionicons name="arrow-back" size={24} color="#1E293B" />
+      <TouchableOpacity style={[styles.backButton, { backgroundColor: theme.card }]} onPress={() => navigation.goBack()} disabled={loadingId !== null}>
+        <Ionicons name="arrow-back" size={24} color={theme.text} />
       </TouchableOpacity>
 
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title}>Who's Logging In?</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, { color: theme.text }]}>Who's Logging In?</Text>
+          <Text style={[styles.subtitle, { color: theme.subText }]}>
             Multiple profiles are linked to {phone}. Please choose the profile you want to log into.
           </Text>
         </View>

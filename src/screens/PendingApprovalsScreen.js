@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import apiClient from '../api/apiClient';
 import { useAuthStore } from '../store/useAuthStore';
 import { getCache, setCache } from '../utils/cacheManager';
+import { useThemeStore } from '../store/useThemeStore';
 
 const ROLE_COLORS = {
   teacher: '#6366F1',
@@ -18,6 +19,7 @@ const ROLE_COLORS = {
 export default function PendingApprovalsScreen({ navigation }) {
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'admin';
+  const { theme, isDark } = useThemeStore();
   const [activeTab, setActiveTab] = useState(isAdmin ? 'registrations' : 'leaves'); // registrations, enrollments, leaves
   const [data, setData] = useState(getCache('pending_' + (isAdmin ? 'registrations' : 'leaves')) || []);
   const [loading, setLoading] = useState(!getCache('pending_' + (isAdmin ? 'registrations' : 'leaves')));
@@ -133,41 +135,41 @@ export default function PendingApprovalsScreen({ navigation }) {
       : 'Unknown date';
 
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: theme.card }]}>
         <View style={styles.cardHeader}>
-          <View style={[styles.avatar, { backgroundColor: '#EEF2FF' }]}>
-            <Text style={[styles.avatarText, { color: '#6366F1' }]}>{initials}</Text>
+          <View style={[styles.avatar, { backgroundColor: theme.accentLight }]}>
+            <Text style={[styles.avatarText, { color: theme.accent }]}>{initials}</Text>
           </View>
 
           <View style={styles.cardInfo}>
-            <Text style={styles.cardName}>{title}</Text>
-            <Text style={styles.cardSubtitle}>{subtitle}</Text>
-            {extra1 ? <Text style={styles.cardExtra}>{extra1}</Text> : null}
-            <Text style={styles.cardDate}>Requested on {dateStr}</Text>
+            <Text style={[styles.cardName, { color: theme.text }]}>{title}</Text>
+            <Text style={[styles.cardSubtitle, { color: theme.subText }]}>{subtitle}</Text>
+            {extra1 ? <Text style={[styles.cardExtra, { color: theme.textMid }]}>{extra1}</Text> : null}
+            <Text style={[styles.cardDate, { color: theme.muted }]}>Requested on {dateStr}</Text>
           </View>
           
           {extra2 ? (
-            <View style={styles.roleBadge}>
-              <Text style={styles.roleBadgeText}>{extra2}</Text>
+            <View style={[styles.roleBadge, { backgroundColor: theme.chipBg }]}>
+              <Text style={[styles.roleBadgeText, { color: theme.textMid }]}>{extra2}</Text>
             </View>
           ) : null}
         </View>
 
         {isProcessing ? (
           <View style={styles.processingRow}>
-            <Text style={styles.processingText}>Processing...</Text>
+            <Text style={[styles.processingText, { color: theme.accent }]}>Processing...</Text>
           </View>
         ) : (
           <View style={styles.actionRow}>
             <TouchableOpacity
-              style={[styles.actionBtn, styles.rejectBtn]}
+              style={[styles.actionBtn, styles.rejectBtn, { backgroundColor: isDark ? '#3d1c1f' : '#FEF2F2', borderColor: isDark ? '#5c2227' : '#FECACA' }]}
               activeOpacity={0.8}
               onPress={() => setConfirmModal({ type: 'reject', item, tab: activeTab, rejectReason: '' })}
             >
               <Text style={styles.rejectBtnText}>❌  Reject</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.actionBtn, styles.approveBtn]}
+              style={[styles.actionBtn, styles.approveBtn, { backgroundColor: theme.accent }]}
               activeOpacity={0.8}
               onPress={() => setConfirmModal({ type: 'approve', item, tab: activeTab })}
             >
@@ -180,48 +182,69 @@ export default function PendingApprovalsScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtnWrapper}>
-          <Text style={styles.backText}>← Back</Text>
+          <Text style={[styles.backText, { color: theme.accent }]}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Approvals</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Approvals</Text>
       </View>
 
-      <View style={styles.tabsContainer}>
+      <View style={[styles.tabsContainer, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 15 }}>
           {isAdmin && (
             <>
-              <TouchableOpacity style={[styles.tab, activeTab === 'registrations' && styles.activeTab]} onPress={() => setActiveTab('registrations')}>
-                <Text style={[styles.tabText, activeTab === 'registrations' && styles.activeTabText]}>Registrations</Text>
+              <TouchableOpacity 
+                style={[
+                  styles.tab, 
+                  { backgroundColor: theme.chipBg },
+                  activeTab === 'registrations' && [styles.activeTab, { backgroundColor: theme.accent }]
+                ]} 
+                onPress={() => setActiveTab('registrations')}
+              >
+                <Text style={[styles.tabText, { color: theme.subText }, activeTab === 'registrations' && { color: '#fff' }]}>Registrations</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.tab, activeTab === 'enrollments' && styles.activeTab]} onPress={() => setActiveTab('enrollments')}>
-                <Text style={[styles.tabText, activeTab === 'enrollments' && styles.activeTabText]}>Enrollments</Text>
+              <TouchableOpacity 
+                style={[
+                  styles.tab, 
+                  { backgroundColor: theme.chipBg },
+                  activeTab === 'enrollments' && [styles.activeTab, { backgroundColor: theme.accent }]
+                ]} 
+                onPress={() => setActiveTab('enrollments')}
+              >
+                <Text style={[styles.tabText, { color: theme.subText }, activeTab === 'enrollments' && { color: '#fff' }]}>Enrollments</Text>
               </TouchableOpacity>
             </>
           )}
-          <TouchableOpacity style={[styles.tab, activeTab === 'leaves' && styles.activeTab]} onPress={() => setActiveTab('leaves')}>
-            <Text style={[styles.tabText, activeTab === 'leaves' && styles.activeTabText]}>Leave Requests</Text>
+          <TouchableOpacity 
+            style={[
+              styles.tab, 
+              { backgroundColor: theme.chipBg },
+              activeTab === 'leaves' && [styles.activeTab, { backgroundColor: theme.accent }]
+            ]} 
+            onPress={() => setActiveTab('leaves')}
+          >
+            <Text style={[styles.tabText, { color: theme.subText }, activeTab === 'leaves' && { color: '#fff' }]}>Leave Requests</Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
 
       {loading ? (
-        <View style={styles.centered}>
-          <Text style={styles.loadingLabel}>Loading requests...</Text>
+        <View style={[styles.centered, { backgroundColor: theme.bg }]}>
+          <Text style={[styles.loadingLabel, { color: theme.subText }]}>Loading requests...</Text>
         </View>
       ) : data.length === 0 ? (
-        <View style={styles.emptyState}>
+        <View style={[styles.emptyState, { backgroundColor: theme.bg }]}>
           <Text style={styles.emptyIcon}>🎉</Text>
-          <Text style={styles.emptyTitle}>All caught up!</Text>
-          <Text style={styles.emptySubtitle}>No pending {activeTab} requests.</Text>
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>All caught up!</Text>
+          <Text style={[styles.emptySubtitle, { color: theme.subText }]}>No pending {activeTab} requests.</Text>
         </View>
       ) : (
         <FlatList
-          style={{ backgroundColor: '#F8FAFC' }}
+          style={{ backgroundColor: theme.bg }}
           showsVerticalScrollIndicator={false}
           data={data}
           keyExtractor={(item) => item.id}
@@ -231,7 +254,7 @@ export default function PendingApprovalsScreen({ navigation }) {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => { setRefreshing(true); fetchData(); }}
-              tintColor="#6366F1"
+              tintColor={theme.accent}
             />
           }
         />
@@ -241,19 +264,19 @@ export default function PendingApprovalsScreen({ navigation }) {
       {confirmModal && (
         <Modal transparent animationType="fade" visible onRequestClose={() => setConfirmModal(null)}>
           <View style={styles.overlay}>
-            <View style={styles.modalCard}>
+            <View style={[styles.modalCard, { backgroundColor: theme.card }]}>
               {confirmModal.type === 'approve' ? (
                 <>
                   <Text style={styles.modalIcon}>✅</Text>
-                  <Text style={styles.modalTitle}>Approve Request?</Text>
-                  <Text style={styles.modalBody}>
+                  <Text style={[styles.modalTitle, { color: theme.text }]}>Approve Request?</Text>
+                  <Text style={[styles.modalBody, { color: theme.subText }]}>
                     Are you sure you want to approve this {confirmModal.tab} request?
                   </Text>
                   <View style={styles.modalActions}>
-                    <TouchableOpacity style={[styles.modalBtn, styles.modalBtnCancel]} onPress={() => setConfirmModal(null)}>
-                      <Text style={styles.modalBtnCancelText}>Cancel</Text>
+                    <TouchableOpacity style={[styles.modalBtn, styles.modalBtnCancel, { backgroundColor: theme.chipBg, borderColor: theme.border }]} onPress={() => setConfirmModal(null)}>
+                      <Text style={[styles.modalBtnCancelText, { color: theme.text }]}>Cancel</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.modalBtn, styles.modalBtnApprove]} onPress={() => doApprove(confirmModal.item, confirmModal.tab)}>
+                    <TouchableOpacity style={[styles.modalBtn, styles.modalBtnApprove, { backgroundColor: theme.accent }]} onPress={() => doApprove(confirmModal.item, confirmModal.tab)}>
                       <Text style={styles.modalBtnApproveText}>Approve →</Text>
                     </TouchableOpacity>
                   </View>
@@ -261,12 +284,12 @@ export default function PendingApprovalsScreen({ navigation }) {
               ) : (
                 <>
                   <Text style={styles.modalIcon}>❌</Text>
-                  <Text style={styles.modalTitle}>Reject Request?</Text>
+                  <Text style={[styles.modalTitle, { color: theme.text }]}>Reject Request?</Text>
                   {confirmModal.tab === 'registrations' && (
                     <TextInput
-                      style={styles.rejectInput}
+                      style={[styles.rejectInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
                       placeholder="Reason (optional)"
-                      placeholderTextColor="#94A3B8"
+                      placeholderTextColor={theme.muted}
                       value={confirmModal.rejectReason}
                       onChangeText={(t) => setConfirmModal({ ...confirmModal, rejectReason: t })}
                       multiline
@@ -274,10 +297,10 @@ export default function PendingApprovalsScreen({ navigation }) {
                     />
                   )}
                   <View style={styles.modalActions}>
-                    <TouchableOpacity style={[styles.modalBtn, styles.modalBtnCancel]} onPress={() => setConfirmModal(null)}>
-                      <Text style={styles.modalBtnCancelText}>Cancel</Text>
+                    <TouchableOpacity style={[styles.modalBtn, styles.modalBtnCancel, { backgroundColor: theme.chipBg, borderColor: theme.border }]} onPress={() => setConfirmModal(null)}>
+                      <Text style={[styles.modalBtnCancelText, { color: theme.text }]}>Cancel</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.modalBtn, styles.modalBtnReject]} onPress={() => doReject(confirmModal.item, confirmModal.tab, confirmModal.rejectReason)}>
+                    <TouchableOpacity style={[styles.modalBtn, styles.modalBtnReject, { backgroundColor: theme.danger }]} onPress={() => doReject(confirmModal.item, confirmModal.tab, confirmModal.rejectReason)}>
                       <Text style={styles.modalBtnRejectText}>Reject</Text>
                     </TouchableOpacity>
                   </View>

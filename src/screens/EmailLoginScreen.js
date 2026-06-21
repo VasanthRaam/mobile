@@ -7,8 +7,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 import apiClient from '../api/apiClient';
+import { useThemeStore } from '../store/useThemeStore';
 
 export default function EmailLoginScreen({ navigation }) {
+  const { theme, isDark } = useThemeStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -40,68 +42,68 @@ export default function EmailLoginScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.bgDecor1} />
-      <View style={styles.bgDecor2} />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+      <View style={[styles.bgDecor1, { backgroundColor: isDark ? theme.accentLight : '#EEF2FF' }]} />
+      <View style={[styles.bgDecor2, { backgroundColor: isDark ? theme.successLight : '#F0FDF4' }]} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#1E293B" />
+        <TouchableOpacity style={[styles.backButton, { backgroundColor: theme.chipBg, shadowColor: 'transparent', elevation: 0 }]} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
 
         <View style={styles.headerSection}>
-          <View style={styles.logoCircle}>
+          <View style={[styles.logoCircle, { backgroundColor: theme.card }]}>
             <Image 
               source={require('../../assets/icon.png')} 
               style={styles.logoImage} 
               resizeMode="contain"
             />
           </View>
-          <Text style={styles.title}>BuddyBloom</Text>
-          <Text style={styles.subtitle}>Nurturing Minds, Together.</Text>
+          <Text style={[styles.title, { color: theme.text }]}>BuddyBloom</Text>
+          <Text style={[styles.subtitle, { color: theme.subText }]}>Nurturing Minds, Together.</Text>
         </View>
 
-        <View style={styles.formCard}>
-          <Text style={styles.formTitle}>Sign In with Email</Text>
+        <View style={[styles.formCard, { backgroundColor: theme.card, shadowColor: 'transparent', elevation: 0, borderWidth: 1, borderColor: theme.border }]}>
+          <Text style={[styles.formTitle, { color: theme.text }]}>Sign In with Email</Text>
 
           <View style={styles.inputWrapper}>
-            <Text style={styles.inputLabel}>Email Address</Text>
+            <Text style={[styles.inputLabel, { color: theme.text }]}>Email Address</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
               placeholder="abcxyz@gmail.com"
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
               keyboardType="email-address"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={theme.muted}
             />
           </View>
 
           <View style={styles.inputWrapper}>
-            <Text style={styles.inputLabel}>Password</Text>
-            <View style={styles.passwordContainer}>
+            <Text style={[styles.inputLabel, { color: theme.text }]}>Password</Text>
+            <View style={[styles.passwordContainer, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
               <TextInput
-                style={styles.passwordInput}
+                style={[styles.passwordInput, { color: theme.text }]}
                 placeholder="••••••••"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={theme.muted}
               />
               <TouchableOpacity 
                 style={styles.eyeButton} 
                 onPress={() => setShowPassword(!showPassword)}
               >
-                <Text style={styles.eyeText}>{showPassword ? 'Hide' : 'Show'}</Text>
+                <Text style={[styles.eyeText, { color: theme.accent }]}>{showPassword ? 'Hide' : 'Show'}</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           <TouchableOpacity
-            style={[styles.loginBtn, loading && styles.disabledBtn]}
+            style={[styles.loginBtn, { backgroundColor: theme.accent }, loading && { backgroundColor: theme.muted }]}
             onPress={handleLogin}
             disabled={loading}
             activeOpacity={0.8}
@@ -111,10 +113,10 @@ export default function EmailLoginScreen({ navigation }) {
 
           <View style={styles.linkRow}>
             <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
-              <Text style={styles.forgotText}>Forgot Password?</Text>
+              <Text style={[styles.forgotText, { color: theme.subText }]}>Forgot Password?</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={styles.registerLinkText}>Create Account →</Text>
+              <Text style={[styles.registerLinkText, { color: theme.accent }]}>Create Account →</Text>
             </TouchableOpacity>
           </View>
         </View>

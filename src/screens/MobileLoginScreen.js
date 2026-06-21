@@ -6,7 +6,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import apiClient from '../api/apiClient';
 
+import { useThemeStore } from '../store/useThemeStore';
+
 export default function MobileLoginScreen({ navigation }) {
+  const { theme, isDark } = useThemeStore();
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -29,50 +32,50 @@ export default function MobileLoginScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.bgDecor1} />
-      <View style={styles.bgDecor2} />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+      <View style={[styles.bgDecor1, { backgroundColor: isDark ? theme.accentLight : '#EEF2FF' }]} />
+      <View style={[styles.bgDecor2, { backgroundColor: isDark ? theme.successLight : '#F0FDF4' }]} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#1E293B" />
+        <TouchableOpacity style={[styles.backButton, { backgroundColor: theme.card }]} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
 
         <View style={styles.headerSection}>
-          <View style={styles.logoCircle}>
+          <View style={[styles.logoCircle, { backgroundColor: theme.card }]}>
             <Image 
               source={require('../../assets/icon.png')} 
               style={styles.logoImage} 
               resizeMode="contain"
             />
           </View>
-          <Text style={styles.title}>BuddyBloom</Text>
-          <Text style={styles.subtitle}>Nurturing Minds, Together.</Text>
+          <Text style={[styles.title, { color: theme.text }]}>BuddyBloom</Text>
+          <Text style={[styles.subtitle, { color: theme.subText }]}>Nurturing Minds, Together.</Text>
         </View>
 
-        <View style={styles.formCard}>
-          <Text style={styles.formTitle}>Mobile Login</Text>
-          <Text style={styles.formSubtitle}>
+        <View style={[styles.formCard, { backgroundColor: theme.card }]}>
+          <Text style={[styles.formTitle, { color: theme.text }]}>Mobile Login</Text>
+          <Text style={[styles.formSubtitle, { color: theme.subText }]}>
             Enter your registered phone number to receive a one-time password.
           </Text>
 
           <View style={styles.inputWrapper}>
-            <Text style={styles.inputLabel}>Phone Number</Text>
+            <Text style={[styles.inputLabel, { color: theme.text }]}>Phone Number</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
               placeholder="+91 9876543210"
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={theme.muted}
             />
           </View>
 
           <TouchableOpacity
-            style={[styles.actionBtn, loading && styles.disabledBtn]}
+            style={[styles.actionBtn, { backgroundColor: theme.accent }, loading && styles.disabledBtn]}
             onPress={handleSendOTP}
             disabled={loading}
             activeOpacity={0.8}

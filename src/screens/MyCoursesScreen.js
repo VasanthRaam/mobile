@@ -3,8 +3,10 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, Modal, A
 import { SafeAreaView } from 'react-native-safe-area-context';
 import apiClient from '../api/apiClient';
 import { getCache, setCache } from '../utils/cacheManager';
+import { useThemeStore } from '../store/useThemeStore';
 
 export default function MyCoursesScreen({ navigation }) {
+  const { theme, isDark } = useThemeStore();
   const [courses, setCourses] = useState(getCache('my_courses') || []);
   const [loading, setLoading] = useState(!getCache('my_courses'));
   
@@ -78,53 +80,53 @@ export default function MyCoursesScreen({ navigation }) {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.loadingText}>Loading your programs...</Text>
+      <View style={[styles.centered, { backgroundColor: theme.bg }]}>
+        <Text style={[styles.loadingText, { color: theme.text }]}>Loading your programs...</Text>
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+      <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backText}>← Back</Text>
+          <Text style={[styles.backText, { color: theme.accent }]}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>My Enrolled Courses</Text>
+        <Text style={[styles.title, { color: theme.text }]}>My Enrolled Courses</Text>
       </View>
 
       <FlatList
-        style={{ backgroundColor: '#F8FAFC' }}
+        style={{ backgroundColor: theme.bg }}
         showsVerticalScrollIndicator={false}
         data={courses}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => (
-          <View style={styles.courseCard}>
+          <View style={[styles.courseCard, { backgroundColor: theme.card }]}>
             <View style={styles.courseHeader}>
-              <View style={styles.iconContainer}>
+              <View style={[styles.iconContainer, { backgroundColor: theme.accentLight }]}>
                 <Text style={styles.courseIcon}>📚</Text>
               </View>
               <View style={styles.courseInfo}>
-                <Text style={styles.courseName}>{item.name}</Text>
-                <Text style={styles.courseDesc} numberOfLines={2}>{item.description || 'Professional training program'}</Text>
+                <Text style={[styles.courseName, { color: theme.text }]}>{item.name}</Text>
+                <Text style={[styles.courseDesc, { color: theme.subText }]} numberOfLines={2}>{item.description || 'Professional training program'}</Text>
               </View>
             </View>
 
-            <View style={styles.batchesSection}>
-              <Text style={styles.sectionLabel}>Active Batches:</Text>
+            <View style={[styles.batchesSection, { borderTopColor: theme.border }]}>
+              <Text style={[styles.sectionLabel, { color: theme.subText }]}>Active Batches:</Text>
               {item.batches && item.batches.length > 0 ? (
                 item.batches.map(batch => (
-                  <View key={batch.id} style={styles.batchRow}>
-                    <Text style={styles.batchName}>📍 {batch.name}</Text>
-                    <View style={styles.activeBadge}>
-                      <Text style={styles.activeText}>Enrolled</Text>
+                  <View key={batch.id} style={[styles.batchRow, { backgroundColor: theme.bg }]}>
+                    <Text style={[styles.batchName, { color: theme.text }]}>📍 {batch.name}</Text>
+                    <View style={[styles.activeBadge, { backgroundColor: theme.successLight }]}>
+                      <Text style={[styles.activeText, { color: theme.success }]}>Enrolled</Text>
                     </View>
                   </View>
                 ))
               ) : (
-                <Text style={styles.noBatches}>No active batches found.</Text>
+                <Text style={[styles.noBatches, { color: theme.muted }]}>No active batches found.</Text>
               )}
             </View>
           </View>
@@ -132,65 +134,91 @@ export default function MyCoursesScreen({ navigation }) {
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyIcon}>🎓</Text>
-            <Text style={styles.emptyTitle}>No Courses Yet</Text>
-            <Text style={styles.emptySubtitle}>You haven't been enrolled in any courses yet.</Text>
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>No Courses Yet</Text>
+            <Text style={[styles.emptySubtitle, { color: theme.subText }]}>You haven't been enrolled in any courses yet.</Text>
           </View>
         }
       />
       
       {/* Floating Action Button for New Enrollment */}
-      <TouchableOpacity style={styles.fab} onPress={handleOpenEnrollModal}>
+      <TouchableOpacity style={[styles.fab, { backgroundColor: theme.accent }]} onPress={handleOpenEnrollModal}>
         <Text style={styles.fabIcon}>+</Text>
       </TouchableOpacity>
 
       {/* Enroll Course Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent={true} onRequestClose={() => setModalVisible(false)}>
         <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Enroll in a New Course</Text>
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Enroll in a New Course</Text>
             
             {loadingAll ? (
-              <Text style={{ textAlign: 'center', marginVertical: 20, color: '#6366F1', fontWeight: '600' }}>Loading available courses...</Text>
+              <Text style={{ textAlign: 'center', marginVertical: 20, color: theme.accent, fontWeight: '600' }}>Loading available courses...</Text>
             ) : (
               <ScrollView style={styles.modalScroll}>
-                <Text style={styles.sectionLabel}>Select a Course:</Text>
-                {allCourses.map(course => (
-                  <TouchableOpacity 
-                    key={course.id} 
-                    style={[styles.modalCard, selectedCourse === course.id && styles.modalCardSelected]}
-                    onPress={() => { setSelectedCourse(course.id); setSelectedBatch(null); }}
-                  >
-                    <Text style={[styles.modalCardText, selectedCourse === course.id && styles.modalCardTextSelected]}>
-                      {course.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                <Text style={[styles.sectionLabel, { color: theme.subText }]}>Select a Course:</Text>
+                {allCourses.map(course => {
+                  const isSelected = selectedCourse === course.id;
+                  return (
+                    <TouchableOpacity 
+                      key={course.id} 
+                      style={[
+                        styles.modalCard, 
+                        { backgroundColor: theme.chipBg, borderColor: theme.border },
+                        isSelected && { backgroundColor: theme.accentLight, borderColor: theme.accent }
+                      ]}
+                      onPress={() => { setSelectedCourse(course.id); setSelectedBatch(null); }}
+                    >
+                      <Text style={[
+                        styles.modalCardText, 
+                        { color: theme.text },
+                        isSelected && { color: theme.accent }
+                      ]}>
+                        {course.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
                 
                 {selectedCourse && (
                   <View style={{ marginTop: 20 }}>
-                    <Text style={styles.sectionLabel}>Select a Batch:</Text>
-                    {allCourses.find(c => c.id === selectedCourse)?.batches.map(batch => (
-                      <TouchableOpacity 
-                        key={batch.id} 
-                        style={[styles.modalCard, selectedBatch === batch.id && styles.modalCardSelected]}
-                        onPress={() => setSelectedBatch(batch.id)}
-                      >
-                        <Text style={[styles.modalCardText, selectedBatch === batch.id && styles.modalCardTextSelected]}>
-                          {batch.name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                    <Text style={[styles.sectionLabel, { color: theme.subText }]}>Select a Batch:</Text>
+                    {allCourses.find(c => c.id === selectedCourse)?.batches.map(batch => {
+                      const isSelected = selectedBatch === batch.id;
+                      return (
+                        <TouchableOpacity 
+                          key={batch.id} 
+                          style={[
+                            styles.modalCard, 
+                            { backgroundColor: theme.chipBg, borderColor: theme.border },
+                            isSelected && { backgroundColor: theme.accentLight, borderColor: theme.accent }
+                          ]}
+                          onPress={() => setSelectedBatch(batch.id)}
+                        >
+                          <Text style={[
+                            styles.modalCardText, 
+                            { color: theme.text },
+                            isSelected && { color: theme.accent }
+                          ]}>
+                            {batch.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                 )}
               </ScrollView>
             )}
 
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalCancel} onPress={() => { setModalVisible(false); setSelectedCourse(null); setSelectedBatch(null); }}>
-                <Text style={styles.modalCancelText}>Cancel</Text>
+              <TouchableOpacity style={[styles.modalCancel, { backgroundColor: theme.chipBg }]} onPress={() => { setModalVisible(false); setSelectedCourse(null); setSelectedBatch(null); }}>
+                <Text style={[styles.modalCancelText, { color: theme.text }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={[styles.modalSubmit, (!selectedCourse || !selectedBatch || enrolling) && styles.modalSubmitDisabled]} 
+                style={[
+                  styles.modalSubmit, 
+                  { backgroundColor: theme.accent },
+                  (!selectedCourse || !selectedBatch || enrolling) && { backgroundColor: theme.muted }
+                ]} 
                 onPress={handleEnrollRequest}
                 disabled={!selectedCourse || !selectedBatch || enrolling}
               >

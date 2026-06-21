@@ -266,14 +266,14 @@ export default function RegisterScreen({ navigation, route }) {
 
   if (submitted) {
     return (
-      <SafeAreaView style={styles.successContainer}>
-        <Animated.View style={[styles.successCard, { opacity: fadeAnim }]}>
+      <SafeAreaView style={[styles.successContainer, { backgroundColor: theme.bg }]}>
+        <Animated.View style={[styles.successCard, { opacity: fadeAnim, backgroundColor: theme.card }]}>
           <Text style={styles.successIcon}>🎉</Text>
-          <Text style={styles.successTitle}>Request Submitted!</Text>
-          <Text style={styles.successMsg}>
+          <Text style={[styles.successTitle, { color: theme.text }]}>Request Submitted!</Text>
+          <Text style={[styles.successMsg, { color: theme.subText }]}>
             Your registration is being reviewed by an admin. You will be able to login once approved.
           </Text>
-          <TouchableOpacity style={styles.backToLoginBtn} onPress={() => navigation.navigate('Login')}>
+          <TouchableOpacity style={[styles.backToLoginBtn, { backgroundColor: theme.accent }]} onPress={() => navigation.navigate('Login')}>
             <Text style={styles.backToLoginText}>Back to Login</Text>
           </TouchableOpacity>
         </Animated.View>
@@ -282,31 +282,31 @@ export default function RegisterScreen({ navigation, route }) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>← Back to Login</Text>
+            <Text style={[styles.backBtnText, { color: theme.accent }]}>← Back to Login</Text>
           </TouchableOpacity>
 
           <View style={styles.heading}>
-            <View style={styles.logoCircle}>
+            <View style={[styles.logoCircle, { backgroundColor: theme.card }]}>
               <Image 
                 source={require('../../assets/icon.png')} 
                 style={styles.logoImage} 
                 resizeMode="contain"
               />
             </View>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Fill in your details to join BuddyBloom</Text>
+            <Text style={[styles.title, { color: theme.text }]}>Create Account</Text>
+            <Text style={[styles.subtitle, { color: theme.subText }]}>Fill in your details to join BuddyBloom</Text>
           </View>
 
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: theme.card }]}>
             {authMethod === null ? (
               <View style={styles.choiceContainer}>
                 <TouchableOpacity
-                  style={styles.googleBtnLarge}
+                  style={[styles.googleBtnLarge, { backgroundColor: theme.card, borderColor: theme.border }]}
                   onPress={handleGoogleRegistration}
                   activeOpacity={0.7}
                 >
@@ -314,36 +314,44 @@ export default function RegisterScreen({ navigation, route }) {
                     source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' }} 
                     style={styles.googleIconLarge} 
                   />
-                  <Text style={styles.googleBtnTextLarge}>Continue with Google</Text>
+                  <Text style={[styles.googleBtnTextLarge, { color: theme.text }]}>Continue with Google</Text>
                 </TouchableOpacity>
 
                 <View style={styles.divider}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>or</Text>
-                  <View style={styles.dividerLine} />
+                  <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+                  <Text style={[styles.dividerText, { color: theme.muted }]}>or</Text>
+                  <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
                 </View>
 
                 <TouchableOpacity
-                  style={styles.emailBtnLarge}
+                  style={[styles.emailBtnLarge, { backgroundColor: theme.chipBg, borderColor: theme.border }]}
                   onPress={() => setAuthMethod('email')}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.emailBtnTextLarge}>Continue with Email</Text>
+                  <Text style={[styles.emailBtnTextLarge, { color: theme.text }]}>Continue with Email</Text>
                 </TouchableOpacity>
               </View>
             ) : (
               <>
 
-            <Text style={styles.sectionLabel}>Select Your Role</Text>
+            <Text style={[styles.sectionLabel, { color: theme.text }]}>Select Your Role</Text>
             <View style={styles.roleRow}>
               {ROLES.map((r) => (
                 <TouchableOpacity
                   key={r.value}
-                  style={[styles.roleChip, role === r.value && styles.roleChipActive]}
+                  style={[
+                    styles.roleChip, 
+                    { backgroundColor: theme.chipBg, borderColor: theme.border },
+                    role === r.value && { backgroundColor: theme.accentLight, borderColor: theme.accent }
+                  ]}
                   onPress={() => setRole(r.value)}
                 >
                   <Text style={styles.roleChipIcon}>{r.icon}</Text>
-                  <Text style={[styles.roleChipLabel, role === r.value && styles.roleChipLabelActive]}>{r.label}</Text>
+                  <Text style={[
+                    styles.roleChipLabel, 
+                    { color: theme.subText },
+                    role === r.value && { color: theme.accent, fontWeight: '700' }
+                  ]}>{r.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -353,30 +361,46 @@ export default function RegisterScreen({ navigation, route }) {
             <Field label="Phone Number" value={phone} onChangeText={setPhone} placeholder="+91 9876543210" keyboardType="phone-pad" />
             
             {/* Courses & Batches Selection */}
-            <Text style={[styles.sectionLabel, { marginTop: 10 }]}>Select Courses & Batches</Text>
+            <Text style={[styles.sectionLabel, { marginTop: 10, color: theme.text }]}>Select Courses & Batches</Text>
             {fetchingData ? (
-              <Text style={{ marginVertical: 10, color: '#6366F1', fontWeight: '600' }}>Loading courses & batches...</Text>
+              <Text style={{ marginVertical: 10, color: theme.accent, fontWeight: '600' }}>Loading courses & batches...</Text>
             ) : (
               <View style={styles.selectionArea}>
                 {availableData.map(course => (
-                  <View key={course.id} style={styles.courseBlock}>
+                  <View key={course.id} style={[styles.courseBlock, { borderColor: theme.border }]}>
                     <TouchableOpacity 
-                      style={[styles.courseHeader, selectedCourses.includes(course.id) && styles.courseHeaderActive]}
+                      style={[
+                        styles.courseHeader, 
+                        { backgroundColor: theme.bg },
+                        selectedCourses.includes(course.id) && { backgroundColor: theme.accentLight }
+                      ]}
                       onPress={() => toggleCourse(course.id)}
                     >
-                      <Text style={[styles.courseName, selectedCourses.includes(course.id) && styles.courseNameActive]}>{course.name}</Text>
+                      <Text style={[
+                        styles.courseName, 
+                        { color: theme.text },
+                        selectedCourses.includes(course.id) && { color: theme.accent }
+                      ]}>{course.name}</Text>
                       <Text style={styles.checkIcon}>{selectedCourses.includes(course.id) ? '✅' : '⬜'}</Text>
                     </TouchableOpacity>
                     
                     {selectedCourses.includes(course.id) && (
-                      <View style={styles.batchList}>
+                      <View style={[styles.batchList, { backgroundColor: theme.card }]}>
                         {course.batches.map(batch => (
                           <TouchableOpacity 
                             key={batch.id} 
-                            style={[styles.batchChip, selectedBatches.includes(batch.id) && styles.batchChipActive]}
+                            style={[
+                              styles.batchChip, 
+                              { backgroundColor: theme.chipBg, borderColor: theme.border },
+                              selectedBatches.includes(batch.id) && { backgroundColor: theme.accent, borderColor: theme.accent }
+                            ]}
                             onPress={() => toggleBatch(batch.id)}
                           >
-                            <Text style={[styles.batchText, selectedBatches.includes(batch.id) && styles.batchTextActive]}>{batch.name}</Text>
+                            <Text style={[
+                              styles.batchText, 
+                              { color: theme.subText },
+                              selectedBatches.includes(batch.id) && { color: '#fff' }
+                            ]}>{batch.name}</Text>
                           </TouchableOpacity>
                         ))}
                       </View>
@@ -394,7 +418,7 @@ export default function RegisterScreen({ navigation, route }) {
               </>
             )}
 
-            <TouchableOpacity style={[styles.submitBtn, loading && styles.submitBtnDisabled]} onPress={handleRegister} disabled={loading}>
+            <TouchableOpacity style={[styles.submitBtn, { backgroundColor: theme.accent }, loading && styles.submitBtnDisabled]} onPress={handleRegister} disabled={loading}>
               <Text style={styles.submitText}>{loading ? 'Submitting...' : 'Submit Registration Request'}</Text>
             </TouchableOpacity>
             </>
@@ -408,10 +432,18 @@ export default function RegisterScreen({ navigation, route }) {
 }
 
 function Field({ label, value, onChangeText, placeholder, ...props }) {
+  const { theme } = useThemeStore();
   return (
     <View style={styles.fieldWrapper}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <TextInput style={styles.input} value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor="#94A3B8" {...props} />
+      <Text style={[styles.fieldLabel, { color: theme.text }]}>{label}</Text>
+      <TextInput 
+        style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]} 
+        value={value} 
+        onChangeText={onChangeText} 
+        placeholder={placeholder} 
+        placeholderTextColor={theme.muted} 
+        {...props} 
+      />
     </View>
   );
 }

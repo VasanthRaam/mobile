@@ -9,11 +9,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 const { width } = Dimensions.get('window');
 import apiClient from '../api/apiClient';
 import { useAuthStore } from '../store/useAuthStore';
+import { useThemeStore } from '../store/useThemeStore';
 import { getCache, setCache } from '../utils/cacheManager';
 
 export default function FeesScreen() {
   const { user } = useAuthStore();
   const role = user?.role;
+  const { theme, isDark } = useThemeStore();
   
   const [fees, setFees] = useState(getCache('fees_list') || []);
   const [loading, setLoading] = useState(!getCache('fees_list'));
@@ -21,6 +23,7 @@ export default function FeesScreen() {
   
   // Admin specific states
   const [adminUpi, setAdminUpi] = useState(getCache('admin_upi') || '');
+  const [showUpi, setShowUpi] = useState(false);
   const [amount, setAmount] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -244,22 +247,22 @@ export default function FeesScreen() {
         onRequestClose={() => setShowDatePicker(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.calendarModalCard}>
+          <View style={[styles.calendarModalCard, { backgroundColor: theme.card }]}>
             <View style={styles.calendarModalHeader}>
-              <TouchableOpacity onPress={() => changeMonth(-1)} style={styles.arrowBtn}>
-                <Text style={styles.arrowText}>←</Text>
+              <TouchableOpacity onPress={() => changeMonth(-1)} style={[styles.arrowBtn, { backgroundColor: theme.chipBg }]}>
+                <Text style={[styles.arrowText, { color: theme.text }]}>←</Text>
               </TouchableOpacity>
-              <Text style={styles.monthTitle}>
+              <Text style={[styles.monthTitle, { color: theme.text }]}>
                 {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][displayMonth]} {displayYear}
               </Text>
-              <TouchableOpacity onPress={() => changeMonth(1)} style={styles.arrowBtn}>
-                <Text style={styles.arrowText}>→</Text>
+              <TouchableOpacity onPress={() => changeMonth(1)} style={[styles.arrowBtn, { backgroundColor: theme.chipBg }]}>
+                <Text style={[styles.arrowText, { color: theme.text }]}>→</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.weekDays}>
               {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, idx) => (
-                <Text key={idx} style={styles.weekDayText}>{d}</Text>
+                <Text key={idx} style={[styles.weekDayText, { color: theme.subText }]}>{d}</Text>
               ))}
             </View>
 
@@ -275,13 +278,13 @@ export default function FeesScreen() {
                     key={idx} 
                     style={[
                       styles.dayBox, 
-                      isSelected && styles.selectedDayBox
+                      isSelected ? { backgroundColor: theme.accent } : null
                     ]}
                     onPress={() => handleSelectDay(day)}
                   >
                     <Text style={[
                       styles.dayText,
-                      isSelected && styles.selectedDayText
+                      { color: isSelected ? '#fff' : theme.text }
                     ]}>{day}</Text>
                   </TouchableOpacity>
                 );
@@ -289,10 +292,10 @@ export default function FeesScreen() {
             </View>
 
             <TouchableOpacity 
-              style={styles.closeModalBtn} 
+              style={[styles.closeModalBtn, { backgroundColor: theme.chipBg }]} 
               onPress={() => setShowDatePicker(false)}
             >
-              <Text style={styles.closeModalBtnText}>Cancel</Text>
+              <Text style={[styles.closeModalBtnText, { color: theme.text }]}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -302,58 +305,84 @@ export default function FeesScreen() {
 
   const renderAdminView = () => (
     <View style={styles.adminSection}>
-      <Text style={styles.sectionTitle}>Admin Settings</Text>
+      <Text style={[styles.sectionTitle, { color: theme.text }]}>Admin Settings</Text>
       <View style={styles.upiContainer}>
-        <TextInput 
-          style={styles.input} 
-          placeholder="Enter Admin UPI ID" 
-          value={adminUpi}
-          onChangeText={setAdminUpi}
-        />
-        <TouchableOpacity style={styles.saveBtn} onPress={handleUpdateUpi} disabled={savingUpi}>
+        <View style={[styles.upiInputWrapper, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
+          <TextInput 
+            style={[styles.upiInput, { color: theme.text }]} 
+            placeholder="Enter Admin UPI ID" 
+            placeholderTextColor={theme.muted}
+            value={adminUpi}
+            onChangeText={setAdminUpi}
+            secureTextEntry={!showUpi}
+          />
+          <TouchableOpacity 
+            style={styles.eyeButton} 
+            onPress={() => setShowUpi(!showUpi)}
+          >
+            <Text style={[styles.eyeText, { color: theme.accent }]}>{showUpi ? 'Hide' : 'Show'}</Text>
+          </TouchableOpacity>
+        </View>
+        <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme.accent }]} onPress={handleUpdateUpi} disabled={savingUpi}>
           <Text style={styles.saveBtnText}>{savingUpi ? 'Saving...' : 'Save'}</Text>
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.sectionTitle}>Send Fee Reminder & Notifications</Text>
-      <View style={styles.createCard}>
+      <Text style={[styles.sectionTitle, { color: theme.text }]}>Send Fee Reminder & Notifications</Text>
+      <View style={[styles.createCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
         
         {/* Course Selection */}
         <View style={styles.pickerContainer}>
-          <Text style={styles.label}>1. Select Course:</Text>
+          <Text style={[styles.label, { color: theme.text }]}>1. Select Course:</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
             {courses.map(course => (
               <TouchableOpacity 
                 key={course.id}
-                style={[styles.chip, selectedCourse === course.id && styles.chipActive]}
+                style={[
+                  styles.chip, 
+                  { backgroundColor: theme.chipBg, borderColor: theme.border },
+                  selectedCourse === course.id && { backgroundColor: theme.accent, borderColor: theme.accent }
+                ]}
                 onPress={() => handleCourseSelect(course.id)}
               >
-                <Text style={[styles.chipText, selectedCourse === course.id && styles.chipTextActive]}>
+                <Text style={[
+                  styles.chipText, 
+                  { color: theme.subText },
+                  selectedCourse === course.id && { color: '#fff' }
+                ]}>
                   {course.name}
                 </Text>
               </TouchableOpacity>
             ))}
-            {courses.length === 0 && <Text style={styles.noDataText}>No courses available</Text>}
+            {courses.length === 0 && <Text style={[styles.noDataText, { color: theme.muted }]}>No courses available</Text>}
           </ScrollView>
         </View>
 
         {/* Batch Selection */}
         {selectedCourse && (
           <View style={styles.pickerContainer}>
-            <Text style={styles.label}>2. Select Batch:</Text>
+            <Text style={[styles.label, { color: theme.text }]}>2. Select Batch:</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
               {batches.map(batch => (
                 <TouchableOpacity 
                   key={batch.id}
-                  style={[styles.chip, selectedBatch === batch.id && styles.chipActive]}
+                  style={[
+                    styles.chip, 
+                    { backgroundColor: theme.chipBg, borderColor: theme.border },
+                    selectedBatch === batch.id && { backgroundColor: theme.accent, borderColor: theme.accent }
+                  ]}
                   onPress={() => handleBatchSelect(batch.id)}
                 >
-                  <Text style={[styles.chipText, selectedBatch === batch.id && styles.chipTextActive]}>
+                  <Text style={[
+                    styles.chipText, 
+                    { color: theme.subText },
+                    selectedBatch === batch.id && { color: '#fff' }
+                  ]}>
                     {batch.name}
                   </Text>
                 </TouchableOpacity>
               ))}
-              {batches.length === 0 && <Text style={styles.noDataText}>No batches available</Text>}
+              {batches.length === 0 && <Text style={[styles.noDataText, { color: theme.muted }]}>No batches available</Text>}
             </ScrollView>
           </View>
         )}
@@ -362,10 +391,10 @@ export default function FeesScreen() {
         {selectedBatch && (
           <View style={styles.pickerContainer}>
             <View style={styles.multiSelectHeader}>
-              <Text style={styles.label}>3. Select Students:</Text>
+              <Text style={[styles.label, { color: theme.text }]}>3. Select Students:</Text>
               {students.length > 0 && (
                 <TouchableOpacity onPress={toggleSelectAll}>
-                  <Text style={styles.selectAllText}>
+                  <Text style={[styles.selectAllText, { color: theme.accent }]}>
                     {selectedStudents.length === students.length ? 'Deselect All' : 'Select All'}
                   </Text>
                 </TouchableOpacity>
@@ -377,42 +406,61 @@ export default function FeesScreen() {
                 return (
                   <TouchableOpacity 
                     key={student.id}
-                    style={[styles.studentPill, isSelected && styles.studentPillActive]}
+                    style={[
+                      styles.studentPill, 
+                      { backgroundColor: theme.chipBg, borderColor: theme.border },
+                      isSelected && { backgroundColor: theme.accent, borderColor: theme.accent }
+                    ]}
                     onPress={() => toggleStudentSelection(student.user_id)}
                   >
-                    <Text style={[styles.studentPillText, isSelected && styles.studentPillTextActive]}>
+                    <Text style={[
+                      styles.studentPillText, 
+                      { color: theme.subText },
+                      isSelected && { color: '#fff' }
+                    ]}>
                       {student.first_name} {student.last_name}
                     </Text>
                   </TouchableOpacity>
                 )
               })}
-              {students.length === 0 && <Text style={styles.noDataText}>No students in this batch</Text>}
+              {students.length === 0 && <Text style={[styles.noDataText, { color: theme.muted }]}>No students in this batch</Text>}
             </View>
           </View>
         )}
 
         {/* Amount & Date Input */}
         <TextInput 
-          style={styles.input} 
+          style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]} 
           placeholder="Amount (e.g. 5000)" 
+          placeholderTextColor={theme.muted}
           keyboardType="numeric"
           value={amount}
           onChangeText={setAmount}
         />
         <TouchableOpacity 
-          style={styles.datePickerTrigger}
+          style={[styles.datePickerTrigger, { backgroundColor: theme.inputBg, borderColor: theme.border }]}
           onPress={() => setShowDatePicker(true)}
         >
-          <Text style={[styles.datePickerTriggerText, !dueDate && styles.placeholderText]}>
+          <Text style={[styles.datePickerTriggerText, { color: theme.text }, !dueDate && { color: theme.muted }]}>
             {dueDate ? `Due Date: ${dueDate}` : 'Select Due Date (YYYY-MM-DD)'}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity 
-          style={[styles.primaryBtn, selectedStudents.length === 0 && styles.disabledBtn]} 
+          style={[
+            styles.primaryBtn, 
+            { backgroundColor: theme.accent },
+            (creatingFee || selectedStudents.length === 0) && { backgroundColor: theme.chipBg }
+          ]} 
           onPress={handleCreateFee} 
           disabled={creatingFee || selectedStudents.length === 0}
         >
-          <Text style={styles.primaryBtnText}>{creatingFee ? 'Sending...' : `Send Reminder (${selectedStudents.length})`}</Text>
+          <Text style={[
+            styles.primaryBtnText,
+            { color: '#fff' },
+            (creatingFee || selectedStudents.length === 0) && { color: theme.subText }
+          ]}>
+            {creatingFee ? 'Sending...' : `Send Reminder (${selectedStudents.length})`}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -423,34 +471,40 @@ export default function FeesScreen() {
     const dueDateStr = item.due_date ? new Date(item.due_date).toLocaleDateString() : 'N/A';
     
     return (
-      <View style={styles.feeCard}>
+      <View style={[styles.feeCard, { backgroundColor: theme.card, borderLeftColor: isPaid ? theme.success : '#4F46E5' }]}>
         <View style={styles.feeHeader}>
-          <Text style={styles.feeAmount}>₹{item.amount}</Text>
-          <View style={[styles.statusBadge, isPaid ? styles.statusPaid : styles.statusPending]}>
-            <Text style={[styles.statusText, isPaid ? styles.statusTextPaid : styles.statusTextPending]}>
+          <Text style={[styles.feeAmount, { color: theme.text }]}>₹{item.amount}</Text>
+          <View style={[
+            styles.statusBadge, 
+            isPaid ? { backgroundColor: theme.successLight } : { backgroundColor: theme.warningLight }
+          ]}>
+            <Text style={[
+              styles.statusText, 
+              isPaid ? { color: theme.success } : { color: theme.warning }
+            ]}>
               {isPaid ? 'PAID' : 'PENDING'}
             </Text>
           </View>
         </View>
         
         {item.course?.name && item.batch?.name && (
-          <Text style={styles.feeCourseBatch}>📚 {item.course.name} • {item.batch.name}</Text>
+          <Text style={[styles.feeCourseBatch, { color: theme.accent }]}>📚 {item.course.name} • {item.batch.name}</Text>
         )}
 
         {(role === 'admin' || role === 'teacher') && item.user && (
-          <Text style={styles.feeStudentName}>Student: {item.user.full_name}</Text>
+          <Text style={[styles.feeStudentName, { color: theme.textMid }]}>Student: {item.user.full_name}</Text>
         )}
         
-        <Text style={styles.feeDate}>Due: {dueDateStr}</Text>
+        <Text style={[styles.feeDate, { color: theme.subText }]}>Due: {dueDateStr}</Text>
         
         {!isPaid && (
-          <View style={styles.actionRow}>
+          <View style={[styles.actionRow, { borderTopColor: theme.border }]}>
             {role === 'admin' ? (
-              <TouchableOpacity style={styles.actionBtn} onPress={() => handleMarkReceived(item.id)}>
-                <Text style={styles.actionBtnText}>Mark as Received</Text>
+              <TouchableOpacity style={[styles.actionBtn, { backgroundColor: theme.accentLight }]} onPress={() => handleMarkReceived(item.id)}>
+                <Text style={[styles.actionBtnText, { color: theme.accent }]}>Mark as Received</Text>
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity style={styles.payBtn} onPress={() => handlePay(item)}>
+              <TouchableOpacity style={[styles.payBtn, { backgroundColor: theme.accent }]} onPress={() => handlePay(item)}>
                 <Text style={styles.payBtnText}>Pay Now via UPI</Text>
               </TouchableOpacity>
             )}
@@ -478,51 +532,65 @@ export default function FeesScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
       {renderDatePickerModal()}
       <ScrollView 
         contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#4F46E5" />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={theme.accent} />
         }
       >
         {role === 'admin' && renderAdminView()}
         
         {(role === 'student' || role === 'parent') && (
-           <View style={styles.summaryCard}>
-              <Text style={styles.summaryTitle}>Fee Summary</Text>
+           <View style={[styles.summaryCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <Text style={[styles.summaryTitle, { color: theme.text }]}>Fee Summary</Text>
               <View style={styles.summaryRow}>
                 <View style={styles.summaryBox}>
-                  <Text style={styles.summaryLabel}>Total Paid</Text>
-                  <Text style={styles.summaryValuePaid}>₹{totalPaid}</Text>
+                  <Text style={[styles.summaryLabel, { color: theme.subText }]}>Total Paid</Text>
+                  <Text style={[styles.summaryValuePaid, { color: theme.success }]}>₹{totalPaid}</Text>
                 </View>
                 <View style={styles.summaryBox}>
-                  <Text style={styles.summaryLabel}>Total Pending</Text>
-                  <Text style={styles.summaryValuePending}>₹{totalPending}</Text>
+                  <Text style={[styles.summaryLabel, { color: theme.subText }]}>Total Pending</Text>
+                  <Text style={[styles.summaryValuePending, { color: theme.danger }]}>₹{totalPending}</Text>
                 </View>
               </View>
            </View>
         )}
         
-        <Text style={[styles.sectionTitle, {marginTop: 20}]}>
+        <Text style={[styles.sectionTitle, {marginTop: 20, color: theme.text}]}>
           {role === 'student' || role === 'parent' ? 'My Fees' : 'Fee Records'}
         </Text>
 
         {/* Fee Status Tabs */}
-        <View style={styles.feeTabsContainer}>
+        <View style={[styles.feeTabsContainer, { backgroundColor: theme.tabBg }]}>
           <TouchableOpacity
-            style={[styles.feeTabBtn, selectedFeeStatusTab === 'pending' && styles.feeTabBtnActivePending]}
+            style={[
+              styles.feeTabBtn, 
+              selectedFeeStatusTab === 'pending' && [styles.feeTabBtnActivePending, { backgroundColor: theme.card, borderColor: theme.border }]
+            ]}
             onPress={() => setSelectedFeeStatusTab('pending')}
           >
-            <Text style={[styles.feeTabText, selectedFeeStatusTab === 'pending' && styles.feeTabTextActivePending]}>
+            <Text style={[
+              styles.feeTabText, 
+              { color: theme.subText },
+              selectedFeeStatusTab === 'pending' && { color: theme.danger, fontWeight: '700' }
+            ]}>
               Pending ({fees.filter(f => f.status !== 'paid').length})
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.feeTabBtn, selectedFeeStatusTab === 'paid' && styles.feeTabBtnActivePaid]}
+            style={[
+              styles.feeTabBtn, 
+              selectedFeeStatusTab === 'paid' && [styles.feeTabBtnActivePaid, { backgroundColor: theme.card, borderColor: theme.border }]
+            ]}
             onPress={() => setSelectedFeeStatusTab('paid')}
           >
-            <Text style={[styles.feeTabText, selectedFeeStatusTab === 'paid' && styles.feeTabTextActivePaid]}>
+            <Text style={[
+              styles.feeTabText, 
+              { color: theme.subText },
+              selectedFeeStatusTab === 'paid' && { color: theme.success, fontWeight: '700' }
+            ]}>
               Paid ({fees.filter(f => f.status === 'paid').length})
             </Text>
           </TouchableOpacity>
@@ -530,7 +598,7 @@ export default function FeesScreen() {
 
         {/* Fees list matching selection */}
         {loading ? (
-          <Text style={{ textAlign: 'center', marginVertical: 20, color: '#64748B' }}>Loading fees...</Text>
+          <Text style={{ textAlign: 'center', marginVertical: 20, color: theme.subText }}>Loading fees...</Text>
         ) : (
           <View style={styles.feesList}>
             {filteredFees.map(fee => renderFeeItem({ item: fee }))}
@@ -567,6 +635,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: 20,
     gap: 10,
+  },
+  upiInputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 12,
+    height: 48,
+  },
+  upiInput: {
+    flex: 1,
+    height: '100%',
+    paddingHorizontal: 12,
+    fontSize: 14,
+  },
+  eyeButton: {
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+  },
+  eyeText: {
+    fontWeight: '700',
+    fontSize: 12,
   },
   input: {
     flex: 1,

@@ -2,13 +2,15 @@ import React from 'react';
 import { TouchableOpacity, StyleSheet, Text } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons'; // Assuming Expo vector icons are available
+import { useThemeStore } from '../store/useThemeStore';
 
 const ChatFAB = () => {
   const navigation = useNavigation();
+  const { theme } = useThemeStore();
 
   return (
     <TouchableOpacity
-      style={styles.fab}
+      style={[styles.fab, { backgroundColor: theme.accent }]}
       onPress={() => navigation.navigate('Chat')}
       activeOpacity={0.8}
     >
@@ -25,7 +27,6 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#6200EE', // Primary theme color
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',

@@ -1,7 +1,8 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuthStore } from '../store/useAuthStore';
+import { useThemeStore } from '../store/useThemeStore';
 
 // Screens
 import LoginScreen from '../screens/LoginScreen';
@@ -31,16 +32,28 @@ import ChatScreen from '../screens/ChatScreen';
 
 const Stack = createNativeStackNavigator();
 
-import { createNavigationContainerRef } from '@react-navigation/native';
-
 export const navigationRef = createNavigationContainerRef();
 
 export default function AppNavigator() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const requiresUnlock = useAuthStore((state) => state.requiresUnlock);
+  const { isDark, theme } = useThemeStore();
+
+  const navTheme = isDark ? DarkTheme : DefaultTheme;
+  const customTheme = {
+    ...navTheme,
+    colors: {
+      ...navTheme.colors,
+      background: theme.bg,
+      card: theme.headerBg,
+      text: theme.text,
+      border: theme.border,
+      primary: theme.accent,
+    },
+  };
 
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer ref={navigationRef} theme={customTheme}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {requiresUnlock ? (
           // ── Unlock Stack ───────────────────────────────────────────
@@ -65,7 +78,7 @@ export default function AppNavigator() {
           }}>
             <Stack.Screen name="Dashboard" component={DashboardScreen} />
             <Stack.Screen name="Attendance" component={AttendanceScreen} />
-            <Stack.Screen name="QuizList" component={QuizListScreen} />
+            <Stack.Screen name="QuizList" component={QuizListScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Quiz" component={QuizScreen} options={{ headerShown: false }} />
             <Stack.Screen name="QuizResults" component={QuizResultsScreen} options={{ headerShown: false }} />
             <Stack.Screen name="CreateQuiz" component={CreateQuizScreen} options={{ headerShown: false }} />

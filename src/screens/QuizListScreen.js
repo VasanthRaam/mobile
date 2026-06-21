@@ -7,6 +7,7 @@ import {
 import apiClient from '../api/apiClient';
 import { useAuthStore } from '../store/useAuthStore';
 import { getCache, setCache } from '../utils/cacheManager';
+import { useThemeStore } from '../store/useThemeStore';
 
 export default function QuizListScreen({ navigation }) {
   const [quizzes, setQuizzes] = useState(getCache('quiz_list') || []);
@@ -14,6 +15,7 @@ export default function QuizListScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const { user } = useAuthStore();
   const role = user?.role;
+  const { theme, isDark } = useThemeStore();
 
   useEffect(() => {
     fetchQuizzes();
@@ -44,7 +46,11 @@ export default function QuizListScreen({ navigation }) {
     
     return (
       <TouchableOpacity 
-        style={[styles.quizCard, item.is_completed && styles.completedCard]}
+        style={[
+          styles.quizCard, 
+          { backgroundColor: theme.card, borderColor: theme.border },
+          item.is_completed && { backgroundColor: isDark ? '#1e293b' : '#FAFAFA', borderColor: theme.border }
+        ]}
         onPress={() => {
           if (isStudent) {
             if (item.is_completed) {
@@ -58,30 +64,48 @@ export default function QuizListScreen({ navigation }) {
         }}
       >
         <View style={styles.cardHeader}>
-          <View style={[styles.iconContainer, item.is_completed && styles.completedIconContainer]}>
+          <View style={[
+            styles.iconContainer, 
+            { backgroundColor: theme.accentLight },
+            item.is_completed && { backgroundColor: theme.chipBg }
+          ]}>
             <Text style={styles.quizIcon}>{item.is_completed ? '✅' : (isStudent ? '📝' : '📊')}</Text>
           </View>
-          <View style={[styles.badge, item.is_completed ? styles.completedBadge : (isStudent ? styles.newBadge : styles.activeBadge)]}>
-            <Text style={[styles.badgeText, item.is_completed ? styles.completedBadgeText : (isStudent ? styles.newBadgeText : styles.activeBadgeText)]}>
+          <View style={[
+            styles.badge, 
+            item.is_completed ? { backgroundColor: theme.chipBg } : (isStudent ? { backgroundColor: theme.accentLight } : { backgroundColor: theme.successLight })
+          ]}>
+            <Text style={[
+              styles.badgeText, 
+              item.is_completed ? { color: theme.subText } : (isStudent ? { color: theme.accent } : { color: theme.success })
+            ]}>
               {item.is_completed ? 'COMPLETED' : (isStudent ? 'NEW' : 'ACTIVE')}
             </Text>
           </View>
         </View>
 
         <View style={styles.quizInfo}>
-          <Text style={styles.quizTitle}>{item.title}</Text>
-          <Text style={styles.quizDescription} numberOfLines={2}>
+          <Text style={[styles.quizTitle, { color: theme.text }]}>{item.title}</Text>
+          <Text style={[styles.quizDescription, { color: theme.subText }]} numberOfLines={2}>
             {item.description || 'Test your knowledge and grow your skills! 🌟'}
           </Text>
         </View>
 
-        <View style={styles.cardFooter}>
+        <View style={[styles.cardFooter, { borderTopColor: theme.border }]}>
           <View style={styles.statsRow}>
-            <Text style={styles.statText}>⏱️ 10m</Text>
-            <Text style={styles.statText}>❓ {item.questions?.length || 0} Qs</Text>
+            <Text style={[styles.statText, { color: theme.subText }]}>⏱️ 10m</Text>
+            <Text style={[styles.statText, { color: theme.subText }]}>❓ {item.questions?.length || 0} Qs</Text>
           </View>
-          <View style={[styles.actionBtn, !isStudent && styles.staffBtn, item.is_completed && styles.completedBtn]}>
-            <Text style={styles.actionBtnText}>
+          <View style={[
+            styles.actionBtn, 
+            { backgroundColor: theme.accent }, 
+            item.is_completed && { backgroundColor: theme.chipBg }
+          ]}>
+            <Text style={[
+              styles.actionBtnText,
+              { color: '#fff' },
+              item.is_completed && { color: theme.text }
+            ]}>
               {item.is_completed ? 'View Score' : (isStudent ? 'Start Quiz' : 'View Results')}
             </Text>
           </View>
@@ -91,23 +115,23 @@ export default function QuizListScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>←</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+      <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+        <TouchableOpacity style={[styles.backBtn, { backgroundColor: theme.chipBg }]} onPress={() => navigation.goBack()}>
+          <Text style={[styles.backText, { color: theme.text }]}>←</Text>
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Learning Quizzes</Text>
-          <View style={styles.roleBadge}>
-            <Text style={styles.roleText}>{role?.toUpperCase()}</Text>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Learning Quizzes</Text>
+          <View style={[styles.roleBadge, { backgroundColor: theme.chipBg }]}>
+            <Text style={[styles.roleText, { color: theme.subText }]}>{role?.toUpperCase()}</Text>
           </View>
         </View>
         <View style={{ width: 40 }} />
       </View>
 
       {loading ? (
-        <View style={styles.centered}>
-          <Text style={styles.loadingText}>Fetching your challenges...</Text>
+        <View style={[styles.centered, { backgroundColor: theme.bg }]}>
+          <Text style={[styles.loadingText, { color: theme.text }]}>Fetching your challenges...</Text>
         </View>
       ) : (
         <FlatList
@@ -122,7 +146,7 @@ export default function QuizListScreen({ navigation }) {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyEmoji}>🎈</Text>
-              <Text style={styles.emptyText}>No quizzes available right now. Check back later!</Text>
+              <Text style={[styles.emptyText, { color: theme.subText }]}>No quizzes available right now. Check back later!</Text>
             </View>
           }
         />

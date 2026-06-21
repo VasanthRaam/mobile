@@ -7,8 +7,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import apiClient from '../api/apiClient';
 import { useAuthStore } from '../store/useAuthStore';
 import { getCache, setCache } from '../utils/cacheManager';
+import { useThemeStore } from '../store/useThemeStore';
 
 export default function QuizResultsScreen({ navigation }) {
+  const { theme, isDark } = useThemeStore();
   const { user } = useAuthStore();
   const isStaff = user?.role === 'teacher' || user?.role === 'admin';
 
@@ -206,7 +208,7 @@ export default function QuizResultsScreen({ navigation }) {
         return (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyEmoji}>📊</Text>
-            <Text style={styles.emptyText}>No dashboard data available. Please select a different course/batch or wait for submissions.</Text>
+            <Text style={[styles.emptyText, { color: theme.subText }]}>No dashboard data available. Please select a different course/batch or wait for submissions.</Text>
           </View>
         );
       }
@@ -216,58 +218,58 @@ export default function QuizResultsScreen({ navigation }) {
       return (
         <View style={styles.staffDashboard}>
           <View style={styles.statsRow}>
-            <View style={[styles.statBox, { borderTopColor: avgColor, borderTopWidth: 4 }]}>
-              <Text style={styles.statLabel}>Class Average</Text>
+            <View style={[styles.statBox, { borderTopColor: avgColor, borderTopWidth: 4, backgroundColor: theme.card }]}>
+              <Text style={[styles.statLabel, { color: theme.subText }]}>Class Average</Text>
               <Text style={[styles.statVal, { color: avgColor }]}>{staffData.classAverage.toFixed(1)}%</Text>
-              <View style={styles.miniProgressBg}>
+              <View style={[styles.miniProgressBg, { backgroundColor: theme.chipBg }]}>
                 <View style={[styles.miniProgressFill, { width: `${staffData.classAverage}%`, backgroundColor: avgColor }]} />
               </View>
             </View>
-            <View style={[styles.statBox, { borderTopColor: '#007AFF', borderTopWidth: 4 }]}>
-              <Text style={styles.statLabel}>Total Submissions</Text>
-              <Text style={[styles.statVal, { color: '#007AFF' }]}>{staffData.totalAttempts}</Text>
-              <Text style={styles.statSubText}>attempts recorded</Text>
+            <View style={[styles.statBox, { borderTopColor: theme.accent, borderTopWidth: 4, backgroundColor: theme.card }]}>
+              <Text style={[styles.statLabel, { color: theme.subText }]}>Total Submissions</Text>
+              <Text style={[styles.statVal, { color: theme.accent }]}>{staffData.totalAttempts}</Text>
+              <Text style={[styles.statSubText, { color: theme.muted }]}>attempts recorded</Text>
             </View>
           </View>
 
-          <Text style={styles.dashSectionTitle}>Top Performers 🌟</Text>
-          <View style={styles.cardSection}>
+          <Text style={[styles.dashSectionTitle, { color: theme.text }]}>Top Performers 🌟</Text>
+          <View style={[styles.cardSection, { backgroundColor: theme.card }]}>
             {staffData.topStudents.map((s, idx) => (
-              <View key={idx} style={styles.studentLeaderboardRow}>
+              <View key={idx} style={[styles.studentLeaderboardRow, { borderBottomColor: theme.border }]}>
                 <View style={styles.leaderboardLeft}>
-                  <Text style={[styles.leaderboardRank, idx === 0 && { color: '#FFD700' }, idx === 1 && { color: '#C0C0C0' }, idx === 2 && { color: '#CD7F32' }]}>#{idx + 1}</Text>
-                  <Text style={styles.leaderboardName}>{s.name}</Text>
+                  <Text style={[styles.leaderboardRank, { color: theme.text }, idx === 0 && { color: '#FFD700' }, idx === 1 && { color: '#C0C0C0' }, idx === 2 && { color: '#CD7F32' }]}>#{idx + 1}</Text>
+                  <Text style={[styles.leaderboardName, { color: theme.text }]}>{s.name}</Text>
                 </View>
                 <View style={styles.leaderboardRight}>
                   <Text style={styles.leaderboardScore}>{s.percentage.toFixed(0)}%</Text>
-                  <Text style={styles.leaderboardAttempts}>{s.count} quizzes</Text>
+                  <Text style={[styles.leaderboardAttempts, { color: theme.subText }]}>{s.count} quizzes</Text>
                 </View>
               </View>
             ))}
             {staffData.topStudents.length === 0 && (
-              <Text style={styles.noDataText}>No students record available</Text>
+              <Text style={[styles.noDataText, { color: theme.muted }]}>No students record available</Text>
             )}
           </View>
 
-          <Text style={styles.dashSectionTitle}>Quiz wise Performance 📋</Text>
-          <View style={styles.cardSection}>
+          <Text style={[styles.dashSectionTitle, { color: theme.text }]}>Quiz wise Performance 📋</Text>
+          <View style={[styles.cardSection, { backgroundColor: theme.card }]}>
             {staffData.quizzesSummary.map((q, idx) => {
               const color = getProgressColor(q.percentage);
               return (
                 <View key={idx} style={styles.quizStatRow}>
                   <View style={styles.quizStatHeader}>
-                    <Text style={styles.quizStatTitle} numberOfLines={1}>{q.title}</Text>
+                    <Text style={[styles.quizStatTitle, { color: theme.text }]} numberOfLines={1}>{q.title}</Text>
                     <Text style={[styles.quizStatPct, { color }]}>{q.percentage.toFixed(0)}%</Text>
                   </View>
-                  <View style={styles.progressBg}>
+                  <View style={[styles.progressBg, { backgroundColor: theme.chipBg }]}>
                     <View style={[styles.progressFill, { width: `${q.percentage}%`, backgroundColor: color }]} />
                   </View>
-                  <Text style={styles.quizStatAttempts}>{q.count} student submissions</Text>
+                  <Text style={[styles.quizStatAttempts, { color: theme.subText }]}>{q.count} student submissions</Text>
                 </View>
               );
             })}
             {staffData.quizzesSummary.length === 0 && (
-              <Text style={styles.noDataText}>No quizzes attempts record available</Text>
+              <Text style={[styles.noDataText, { color: theme.muted }]}>No quizzes attempts record available</Text>
             )}
           </View>
         </View>
@@ -278,7 +280,7 @@ export default function QuizResultsScreen({ navigation }) {
         return (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyEmoji}>📊</Text>
-            <Text style={styles.emptyText}>No quiz attempts found. Start attempting quizzes to see your dashboard!</Text>
+            <Text style={[styles.emptyText, { color: theme.subText }]}>No quiz attempts found. Start attempting quizzes to see your dashboard!</Text>
           </View>
         );
       }
@@ -289,34 +291,34 @@ export default function QuizResultsScreen({ navigation }) {
             const avgColor = getProgressColor(course.averagePercentage);
             
             return (
-              <View key={course.courseId} style={styles.courseDashCard}>
+              <View key={course.courseId} style={[styles.courseDashCard, { backgroundColor: theme.card }]}>
                 <View style={styles.courseDashHeader}>
-                  <Text style={styles.courseDashTitle}>📚 {course.courseName}</Text>
-                  <View style={styles.courseQuizzesBadge}>
-                    <Text style={styles.courseQuizzesBadgeText}>{course.totalQuizzes} Quizzes</Text>
+                  <Text style={[styles.courseDashTitle, { color: theme.text }]}>📚 {course.courseName}</Text>
+                  <View style={[styles.courseQuizzesBadge, { backgroundColor: theme.accentLight }]}>
+                    <Text style={[styles.courseQuizzesBadgeText, { color: theme.accent }]}>{course.totalQuizzes} Quizzes</Text>
                   </View>
                 </View>
 
                 <View style={styles.courseDashMetrics}>
                   <View style={styles.metricItem}>
-                    <Text style={styles.metricLabel}>Average Score</Text>
+                    <Text style={[styles.metricLabel, { color: theme.subText }]}>Average Score</Text>
                     <Text style={[styles.metricVal, { color: avgColor }]}>{course.averagePercentage.toFixed(1)}%</Text>
                   </View>
                   <View style={styles.metricItem}>
-                    <Text style={styles.metricLabel}>Best Score</Text>
-                    <Text style={[styles.metricVal, { color: '#10B981' }]}>{course.highestPct.toFixed(0)}%</Text>
+                    <Text style={[styles.metricLabel, { color: theme.subText }]}>Best Score</Text>
+                    <Text style={[styles.metricVal, { color: theme.success }]}>{course.highestPct.toFixed(0)}%</Text>
                   </View>
                 </View>
 
-                <View style={styles.progressBgLarge}>
+                <View style={[styles.progressBgLarge, { backgroundColor: theme.chipBg }]}>
                   <View style={[styles.progressFillLarge, { width: `${course.averagePercentage}%`, backgroundColor: avgColor }]} />
                 </View>
 
-                <Text style={styles.attemptsSectionHeader}>Recent Submissions</Text>
+                <Text style={[styles.attemptsSectionHeader, { color: theme.subText, borderTopColor: theme.border }]}>Recent Submissions</Text>
                 {course.attempts.slice(0, 3).map((attempt, idx) => (
                   <View key={idx} style={styles.miniAttemptRow}>
-                    <Text style={styles.miniAttemptTitle} numberOfLines={1}>{attempt.quiz_title}</Text>
-                    <Text style={styles.miniAttemptScore}>
+                    <Text style={[styles.miniAttemptTitle, { color: theme.text }]} numberOfLines={1}>{attempt.quiz_title}</Text>
+                    <Text style={[styles.miniAttemptScore, { color: theme.subText }]}>
                       {attempt.total_score} / {attempt.max_score} ({attempt.percentage.toFixed(0)}%)
                     </Text>
                   </View>
@@ -331,103 +333,109 @@ export default function QuizResultsScreen({ navigation }) {
 
   const renderItem = ({ item }) => (
     <TouchableOpacity 
-      style={styles.resultCard}
+      style={[styles.resultCard, { backgroundColor: theme.card }]}
       onPress={() => navigation.navigate('SubmissionDetail', { attemptId: item.id })}
     >
       <View style={styles.resultInfo}>
-        <Text style={styles.quizTitle}>{item.quiz_title}</Text>
-        <Text style={styles.studentName}>👤 {item.student_name}</Text>
-        <Text style={styles.dateText}>📅 {new Date(item.attempted_at).toLocaleDateString()}</Text>
+        <Text style={[styles.quizTitle, { color: theme.text }]}>{item.quiz_title}</Text>
+        <Text style={[styles.studentName, { color: theme.accent }]}>👤 {item.student_name}</Text>
+        <Text style={[styles.dateText, { color: theme.muted }]}>📅 {new Date(item.attempted_at).toLocaleDateString()}</Text>
       </View>
-      <View style={styles.scoreContainer}>
-        <Text style={styles.scoreText}>
-          {item.total_score} <Text style={styles.maxScore}>/ {item.max_score}</Text>
+      <View style={[styles.scoreContainer, { borderLeftColor: theme.border }]}>
+        <Text style={[styles.scoreText, { color: theme.success }]}>
+          {item.total_score} <Text style={[styles.maxScore, { color: theme.muted }]}>/ {item.max_score}</Text>
         </Text>
-        <Text style={styles.ptsLabel}>Score</Text>
+        <Text style={[styles.ptsLabel, { color: theme.muted }]}>Score</Text>
       </View>
-      <Text style={styles.chevron}>→</Text>
+      <Text style={[styles.chevron, { color: theme.muted }]}>→</Text>
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>←</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+      <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border, elevation: 0, shadowOpacity: 0 }]}>
+        <TouchableOpacity style={[styles.backBtn, { backgroundColor: theme.chipBg }]} onPress={() => navigation.goBack()}>
+          <Text style={[styles.backText, { color: theme.text }]}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Student Achievements 🏆</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Student Achievements 🏆</Text>
         <View style={{ width: 40 }} />
       </View>
 
       {isStaff && courses.length > 0 && (
-        <View style={styles.filterContainer}>
-          <Text style={styles.filterLabel}>Select Course</Text>
+        <View style={[styles.filterContainer, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+          <Text style={[styles.filterLabel, { color: theme.subText }]}>Select Course</Text>
           <FlatList
             horizontal
             data={courses}
             keyExtractor={(item) => item.id.toString()}
             showsHorizontalScrollIndicator={false}
-            renderItem={({ item }) => (
-              <TouchableOpacity 
-                style={[styles.chip, selectedCourseId === item.id && styles.chipActive]}
-                onPress={() => {
-                  setSelectedCourseId(item.id);
-                  fetchBatches(item.id);
-                }}
-              >
-                <Text style={[styles.chipText, selectedCourseId === item.id && styles.chipTextActive]}>
-                  {item.name}
-                </Text>
-              </TouchableOpacity>
-            )}
+            renderItem={({ item }) => {
+              const isSelected = selectedCourseId === item.id;
+              return (
+                <TouchableOpacity 
+                  style={[styles.chip, { backgroundColor: theme.chipBg, borderColor: theme.border }, isSelected && { backgroundColor: theme.accent, borderColor: theme.accent }]}
+                  onPress={() => {
+                    setSelectedCourseId(item.id);
+                    fetchBatches(item.id);
+                  }}
+                >
+                  <Text style={[styles.chipText, { color: theme.subText }, isSelected && { color: '#fff' }]}>
+                    {item.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            }}
             style={styles.chipList}
           />
 
-          <Text style={[styles.filterLabel, { marginTop: 10 }]}>Select Batch</Text>
+          <Text style={[styles.filterLabel, { marginTop: 10, color: theme.subText }]}>Select Batch</Text>
           {fetchingBatches ? (
-            <Text style={{ marginVertical: 10, color: '#64748B' }}>Fetching batches...</Text>
+            <Text style={{ marginVertical: 10, marginLeft: 20, color: theme.muted }}>Fetching batches...</Text>
           ) : (
             <FlatList
               horizontal
               data={batches}
               keyExtractor={(item) => item.id.toString()}
               showsHorizontalScrollIndicator={false}
-              renderItem={({ item }) => (
-                <TouchableOpacity 
-                  style={[styles.chip, selectedBatchId === item.id && styles.chipActive]}
-                  onPress={() => setSelectedBatchId(item.id)}
-                >
-                  <Text style={[styles.chipText, selectedBatchId === item.id && styles.chipTextActive]}>
-                    {item.name}
-                  </Text>
-                </TouchableOpacity>
-              )}
+              renderItem={({ item }) => {
+                const isSelected = selectedBatchId === item.id;
+                return (
+                  <TouchableOpacity 
+                    style={[styles.chip, { backgroundColor: theme.chipBg, borderColor: theme.border }, isSelected && { backgroundColor: theme.accent, borderColor: theme.accent }]}
+                    onPress={() => setSelectedBatchId(item.id)}
+                  >
+                    <Text style={[styles.chipText, { color: theme.subText }, isSelected && { color: '#fff' }]}>
+                      {item.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              }}
               style={styles.chipList}
-              ListEmptyComponent={<Text style={styles.noDataText}>No batches found</Text>}
+              ListEmptyComponent={<Text style={[styles.noDataText, { color: theme.muted }]}>No batches found</Text>}
             />
           )}
         </View>
       )}
 
       {/* Top Tab Bar */}
-      <View style={styles.tabContainer}>
+      <View style={[styles.tabContainer, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <TouchableOpacity 
-          style={[styles.tabBtn, activeTab === 'Scores' && styles.tabBtnActive]}
+          style={[styles.tabBtn, activeTab === 'Scores' && { borderBottomColor: theme.accent }]}
           onPress={() => setActiveTab('Scores')}
         >
-          <Text style={[styles.tabBtnText, activeTab === 'Scores' && styles.tabBtnTextActive]}>Quiz Scores</Text>
+          <Text style={[styles.tabBtnText, { color: theme.subText }, activeTab === 'Scores' && { color: theme.accent, fontWeight: '700' }]}>Quiz Scores</Text>
         </TouchableOpacity>
         <TouchableOpacity 
-          style={[styles.tabBtn, activeTab === 'Dashboard' && styles.tabBtnActive]}
+          style={[styles.tabBtn, activeTab === 'Dashboard' && { borderBottomColor: theme.accent }]}
           onPress={() => setActiveTab('Dashboard')}
         >
-          <Text style={[styles.tabBtnText, activeTab === 'Dashboard' && styles.tabBtnTextActive]}>Performance Dashboard</Text>
+          <Text style={[styles.tabBtnText, { color: theme.subText }, activeTab === 'Dashboard' && { color: theme.accent, fontWeight: '700' }]}>Performance Dashboard</Text>
         </TouchableOpacity>
       </View>
 
       {loading ? (
-        <View style={styles.loaderContainer}>
-          <Text style={styles.loadingText}>Loading scores...</Text>
+        <View style={[styles.loaderContainer, { backgroundColor: theme.bg }]}>
+          <Text style={[styles.loadingText, { color: theme.text }]}>Loading scores...</Text>
         </View>
       ) : activeTab === 'Scores' ? (
         <FlatList
@@ -439,7 +447,7 @@ export default function QuizResultsScreen({ navigation }) {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyEmoji}>📦</Text>
-              <Text style={styles.emptyText}>No results found yet. Check back soon!</Text>
+              <Text style={[styles.emptyText, { color: theme.subText }]}>No results found yet. Check back soon!</Text>
             </View>
           }
         />
