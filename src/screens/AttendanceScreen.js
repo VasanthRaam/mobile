@@ -295,7 +295,7 @@ export default function AttendanceScreen({ navigation }) {
       for (let i = 1; i <= daysInMonth; i++) days.push(i);
 
       return (
-        <View style={[styles.calendarContainer, { backgroundColor: theme.card }]}>
+        <View style={[styles.calendarContainer, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}>
           <View style={styles.calendarHeader}>
             <TouchableOpacity onPress={() => changeMonth(-1)} style={[styles.arrowBtn, { backgroundColor: theme.chipBg }]}>
               <Text style={[styles.arrowText, { color: theme.accent }]}>←</Text>
@@ -399,15 +399,15 @@ export default function AttendanceScreen({ navigation }) {
       };
 
       return (
-        <View style={[styles.pickerCalendarContainer, { backgroundColor: theme.bg, borderColor: theme.border }]}>
+        <View style={[styles.pickerCalendarContainer, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}>
           <View style={styles.pickerCalendarHeader}>
-            <TouchableOpacity onPress={() => changeLeaveMonth(-1)} style={[styles.pickerArrowBtn, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <TouchableOpacity onPress={() => changeLeaveMonth(-1)} style={[styles.pickerArrowBtn, { backgroundColor: theme.chipBg, borderColor: theme.border }]}>
               <Text style={[styles.pickerArrowText, { color: theme.text }]}>←</Text>
             </TouchableOpacity>
             <Text style={[styles.pickerMonthTitle, { color: theme.text }]}>
               {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][displayMonth]} {displayYear}
             </Text>
-            <TouchableOpacity onPress={() => changeLeaveMonth(1)} style={[styles.pickerArrowBtn, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <TouchableOpacity onPress={() => changeLeaveMonth(1)} style={[styles.pickerArrowBtn, { backgroundColor: theme.chipBg, borderColor: theme.border }]}>
               <Text style={[styles.pickerArrowText, { color: theme.text }]}>→</Text>
             </TouchableOpacity>
           </View>
@@ -454,14 +454,19 @@ export default function AttendanceScreen({ navigation }) {
 
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: theme.bg, borderBottomColor: theme.border, borderBottomWidth: 1 }]}>
           <Text style={[styles.title, { color: theme.text }]}>Attendance Insights</Text>
           <Text style={[styles.subtitle, { color: theme.subText }]}>Track your learning consistency 📈</Text>
         </View>
 
         {statusMsg.text !== '' && (
-          <View style={[styles.statusBanner, statusMsg.type === 'error' ? styles.errorBanner : styles.successBanner]}>
-            <Text style={styles.statusBannerText}>{statusMsg.text}</Text>
+          <View style={[
+            styles.statusBanner,
+            statusMsg.type === 'error'
+              ? [styles.errorBanner, { backgroundColor: isDark ? '#3a1818' : '#FEE2E2', borderColor: isDark ? '#7f1d1d' : '#FECACA' }]
+              : [styles.successBanner, { backgroundColor: isDark ? '#14311e' : '#DCFCE7', borderColor: isDark ? '#166534' : '#86EFAC' }]
+          ]}>
+            <Text style={[styles.statusBannerText, { color: statusMsg.type === 'error' ? theme.danger : theme.success }]}>{statusMsg.text}</Text>
           </View>
         )}
         
@@ -476,7 +481,7 @@ export default function AttendanceScreen({ navigation }) {
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Logs</Text>
             {attendanceRecords.length > 0 ? (
               attendanceRecords.slice(0, 5).map(item => (
-                <View key={item.id} style={[styles.recordItem, { backgroundColor: theme.card }]}>
+                <View key={item.id} style={[styles.recordItem, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}>
                   <Text style={[styles.recordDate, { color: theme.text }]}>{item.date}</Text>
                   <View style={[styles.statusBadge, { backgroundColor: item.status === 'present' ? theme.successLight : theme.dangerLight }]}>
                     <Text style={[styles.recordStatus, { color: item.status === 'present' ? theme.success : theme.danger }]}>
@@ -516,7 +521,7 @@ export default function AttendanceScreen({ navigation }) {
 
                 {renderLeaveCalendar()}
 
-                <Text style={[styles.inputLabel, { color: theme.text }]}>Reason</Text>
+                <Text style={[styles.inputLabel, { color: theme.subText }]}>Reason</Text>
                 <TextInput 
                   style={[styles.modalInput, { height: 80, textAlignVertical: 'top', marginBottom: 10, backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]} 
                   placeholder="Why do you need a leave?" 
@@ -556,8 +561,13 @@ export default function AttendanceScreen({ navigation }) {
       </View>
 
       {statusMsg.text !== '' && (
-        <View style={[styles.statusBanner, statusMsg.type === 'error' ? styles.errorBanner : styles.successBanner]}>
-          <Text style={styles.statusBannerText}>{statusMsg.text}</Text>
+        <View style={[
+          styles.statusBanner,
+          statusMsg.type === 'error'
+            ? [styles.errorBanner, { backgroundColor: isDark ? '#3a1818' : '#FEE2E2', borderColor: isDark ? '#7f1d1d' : '#FECACA' }]
+            : [styles.successBanner, { backgroundColor: isDark ? '#14311e' : '#DCFCE7', borderColor: isDark ? '#166534' : '#86EFAC' }]
+        ]}>
+          <Text style={[styles.statusBannerText, { color: statusMsg.type === 'error' ? theme.danger : theme.success }]}>{statusMsg.text}</Text>
         </View>
       )}
 
