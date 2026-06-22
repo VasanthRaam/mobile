@@ -11,7 +11,7 @@ import { useThemeStore } from '../store/useThemeStore';
 export default function RevenueScreen() {
   const [activeTab, setActiveTab] = useState('Dashboard'); // 'Dashboard', 'Income', 'Expenses'
   const [activeIncomeSubTab, setActiveIncomeSubTab] = useState('Record Income'); // 'Record Income', 'Fee Details'
-  
+
   // Global theme — shared across all screens via useThemeStore
   const { theme, isDark, toggleDark } = useThemeStore();
 
