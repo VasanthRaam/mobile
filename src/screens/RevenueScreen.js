@@ -146,7 +146,7 @@ export default function RevenueScreen() {
           >
             {/* Close Button */}
             <TouchableOpacity
-              style={styles.modalCloseBtn}
+              style={[styles.modalCloseBtn, { backgroundColor: theme.chipBg }]}
               onPress={() => setIsDetailModalVisible(false)}
             >
               <Text style={[styles.modalCloseText, { color: theme.subText }]}>✕</Text>
@@ -894,11 +894,10 @@ export default function RevenueScreen() {
 
   const renderFeeDetailsTab = () => {
     const isWeb = Platform.OS === 'web';
-    const studentColStyle = isWeb ? { flex: 2 } : { width: 200 };
-    const courseColStyle = isWeb ? { flex: 1.5 } : { width: 120 };
-    const amountColStyle = isWeb ? { flex: 1.2, textAlign: 'center' } : { width: 100, textAlign: 'center' };
-    const statusColStyle = isWeb ? { flex: 1.3, textAlign: 'center' } : { width: 100, textAlign: 'center' };
-    const tableWidthStyle = isWeb ? { width: '100%' } : { width: 520 };
+    const studentColStyle = { flex: 1.6 };
+    const amountColStyle = { flex: 1, textAlign: 'center' };
+    const statusColStyle = { flex: 1.1, textAlign: 'center' };
+    const tableWidthStyle = { width: '100%' };
 
     return (
       <ScrollView
@@ -1045,14 +1044,9 @@ export default function RevenueScreen() {
           </View>
         </View>
 
-        {/* Scrollable Table View */}
-        <ScrollView
-          horizontal={true}
-          showsHorizontalScrollIndicator={isWeb}
-          style={{ marginHorizontal: 16 }}
-          contentContainerStyle={isWeb ? { flexGrow: 1 } : null}
-        >
-          <View style={[styles.tableCardFee, tableWidthStyle, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        {/* Table View */}
+        <View style={{ marginHorizontal: 16 }}>
+          <View style={[styles.tableCardFee, tableWidthStyle, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}>
             {/* Table Header Row */}
             <View style={[styles.tableHeaderFee, { backgroundColor: theme.headerBg, borderBottomColor: theme.border }]}>
               <Text style={[styles.thTextFee, studentColStyle, { textAlign: 'left', color: theme.subText }]}>STUDENT</Text>
@@ -1062,8 +1056,6 @@ export default function RevenueScreen() {
 
             {filteredFeeDetails.map(item => {
               const studentName = item.user?.full_name || 'Unknown Student';
-              const studentInitials = studentName.substring(0, 2).toUpperCase();
-              const courseName = item.course?.name || 'Direct';
               const isPaid = item.status === 'paid';
 
               return (
@@ -1074,17 +1066,17 @@ export default function RevenueScreen() {
                   activeOpacity={0.7}
                 >
                   {/* Student info column */}
-                  <View style={[studentColStyle, { justifyContent: 'center', alignItems: 'flex-start' }]}>
+                  <View style={[studentColStyle, { justifyContent: 'center', alignItems: 'flex-start', paddingRight: 8 }]}>
                     <Text style={[styles.studentNameFee, { color: theme.text }]} numberOfLines={1}>{studentName}</Text>
                   </View>
 
                   {/* Amount column */}
-                  <View style={[isWeb ? { flex: 1.2 } : { width: 100 }, { justifyContent: 'center', alignItems: 'center' }]}>
+                  <View style={[{ flex: 1 }, { justifyContent: 'center', alignItems: 'center' }]}>
                     <Text style={[styles.amountFee, { textAlign: 'center', color: theme.text }]}>₹{item.amount}</Text>
                   </View>
 
                   {/* Status column */}
-                  <View style={[isWeb ? { flex: 1.3 } : { width: 100 }, { justifyContent: 'center', alignItems: 'center' }]}>
+                  <View style={[{ flex: 1.1 }, { justifyContent: 'center', alignItems: 'center' }]}>
                     <View style={[
                       styles.statusPillFee,
                       isPaid ? { backgroundColor: theme.successLight } : { backgroundColor: theme.warningLight }
@@ -1107,7 +1099,7 @@ export default function RevenueScreen() {
               </View>
             )}
           </View>
-        </ScrollView>
+        </View>
         {renderDetailModal()}
       </ScrollView>
     );
