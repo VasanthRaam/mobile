@@ -47,6 +47,13 @@ export default function AdminScreen({ navigation }) {
   const [statsLoading, setStatsLoading] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
 
+  // --- Student Search/Filter/Sort States ---
+  const [studentSearch, setStudentSearch] = useState('');
+  const [debouncedStudentSearch, setDebouncedStudentSearch] = useState('');
+  const [selectedStudentCourse, setSelectedStudentCourse] = useState('all');
+  const [studentSortBy, setStudentSortBy] = useState('name'); // 'name' | 'date'
+  const [studentSortOrder, setStudentSortOrder] = useState('asc'); // 'asc' | 'desc'
+
   // ─────────────────────────────────────────────────────────────────────────────
   // EFFECTS & FETCHERS
   // ─────────────────────────────────────────────────────────────────────────────
@@ -213,6 +220,174 @@ export default function AdminScreen({ navigation }) {
       .finally(() => {
         setStatsLoading(false);
       });
+  };
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedStudentSearch(studentSearch);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [studentSearch]);
+
+  const handleSort = (key) => {
+    if (studentSortBy === key) {
+      setStudentSortOrder(studentSortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setStudentSortBy(key);
+      setStudentSortOrder('asc');
+    }
+  };
+
+  const uniqueStudentCourses = React.useMemo(() => {
+    const coursesSet = new Set();
+    students.forEach(s => {
+      if (s.courses) {
+        s.courses.forEach(c => coursesSet.add(c));
+      }
+    });
+    return ['all', ...Array.from(coursesSet)];
+  }, [students]);
+
+  const filteredAndSortedStudents = React.useMemo(() => {
+    // 1. Filter
+    const filtered = students.filter(s => {
+      const fullName = `${s.first_name || ''} ${s.last_name || ''}`.toLowerCase();
+      const email = (s.email || '').toLowerCase();
+      const phone = (s.phone || '').toLowerCase();
+      const query = debouncedStudentSearch.toLowerCase().trim();
+      
+      const matchesSearch = !query || 
+        fullName.includes(query) || 
+        email.includes(query) || 
+        phone.includes(query);
+
+      const matchesCourse = selectedStudentCourse === 'all' || 
+        (s.courses && s.courses.includes(selectedStudentCourse));
+
+      return matchesSearch && matchesCourse;
+    });
+
+    // 2. Sort
+    return [...filtered].sort((a, b) => {
+      let comparison = 0;
+      if (studentSortBy === 'name') {
+        const nameA = `${a.first_name || ''} ${a.last_name || ''}`.toLowerCase();
+        const nameB = `${b.first_name || ''} ${b.last_name || ''}`.toLowerCase();
+        comparison = nameA.localeCompare(nameB);
+      } else if (studentSortBy === 'date') {
+        const dateA = new Date(a.created_at || 0);
+        const dateB = new Date(b.created_at || 0);
+        comparison = dateA - dateB;
+      }
+      return studentSortOrder === 'asc' ? comparison : -comparison;
+    });
+  }, [students, debouncedStudentSearch, selectedStudentCourse, studentSortBy, studentSortOrder]);
+
+  const exportToCSV = () => {
+    const headers = ['First Name', 'Last Name', 'Email', 'Phone', 'Registered Courses', 'Joined Date'];
+    const rows = filteredAndSortedStudents.map(s => [
+      s.first_name || '',
+      s.last_name || '',
+      s.email || '',
+      s.phone || '',
+      s.courses ? s.courses.join(', ') : '',
+      s.created_at ? new Date(s.created_at).toLocaleDateString() : ''
+    ]);
+    const csvContent = [headers.join(','), ...rows.map(r => r.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))].join('\n');
+
+    if (Platform.OS === 'web') {
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `students_report_${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } else {
+      Alert.alert('CSV Exported', `Student report data compiled for ${filteredAndSortedStudents.length} students.`);
+    }
+  };
+
+  const exportToExcel = () => {
+    const title = `BuddyBloom Students Report - ${new Date().toLocaleDateString()}`;
+    let html = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+          <!--[if gte mso 9]>
+          <xml>
+            <x:ExcelWorkbook>
+              <x:ExcelWorksheets>
+                <x:ExcelWorksheet>
+                  <x:Name>Students</x:Name>
+                  <x:WorksheetOptions>
+                    <x:DisplayGridlines/>
+                  </x:WorksheetOptions>
+                </x:ExcelWorksheet>
+              </x:ExcelWorksheets>
+            </x:ExcelWorkbook>
+          </xml>
+          <![endif]-->
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; }
+            h1 { font-size: 16pt; color: #1e293b; font-weight: bold; margin-bottom: 12px; }
+            table { border-collapse: collapse; width: 100%; }
+            th { background-color: #4f46e5; color: #ffffff; font-weight: bold; padding: 10px; border: 1px solid #e2e8f0; text-align: left; }
+            td { padding: 10px; border: 1px solid #e2e8f0; text-align: left; }
+            .name { font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <h1>${title}</h1>
+          <table>
+            <thead>
+              <tr>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Registered Courses</th>
+                <th>Joined Date</th>
+              </tr>
+            </thead>
+            <tbody>
+    `;
+
+    filteredAndSortedStudents.forEach(s => {
+      html += `
+        <tr>
+          <td class="name">${s.first_name || ''}</td>
+          <td>${s.last_name || ''}</td>
+          <td>${s.email || ''}</td>
+          <td>${s.phone || ''}</td>
+          <td>${s.courses ? s.courses.join(', ') : ''}</td>
+          <td>${s.created_at ? new Date(s.created_at).toLocaleDateString() : ''}</td>
+        </tr>
+      `;
+    });
+
+    html += `
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+
+    if (Platform.OS === 'web') {
+      const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `students_report_${new Date().toISOString().slice(0,10)}.xls`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } else {
+      Alert.alert('Excel Exported', `Student Excel report data compiled for ${filteredAndSortedStudents.length} students.`);
+    }
   };
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -611,22 +786,116 @@ export default function AdminScreen({ navigation }) {
 
     return (
       <View style={{ flex: 1, backgroundColor: theme.bg }}>
-        {/* Table Header */}
-        <View style={[styles.tableHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-          <View style={[styles.tableCol, { flex: 1.5 }]}>
-            <Text style={[styles.headerColText, { color: theme.subText }]}>Student</Text>
+        {/* Search Bar & Export Buttons Card */}
+        <View style={[styles.studentFilterCard, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+          
+          {/* Export Buttons Row */}
+          <View style={styles.studentExportRow}>
+            <TouchableOpacity 
+              style={[styles.studentExportBtn, { borderColor: theme.accent, borderWidth: 1 }]} 
+              onPress={exportToCSV}
+            >
+              <Ionicons name="document-text-outline" size={16} color={theme.accent} />
+              <Text style={[styles.studentExportBtnText, { color: theme.accent }]}>Export CSV</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.studentExportBtn, { borderColor: theme.success, borderWidth: 1 }]} 
+              onPress={exportToExcel}
+            >
+              <Ionicons name="grid-outline" size={16} color={theme.success} />
+              <Text style={[styles.studentExportBtnText, { color: theme.success }]}>Export Excel</Text>
+            </TouchableOpacity>
           </View>
+
+          {/* Search Wrapper */}
+          <View style={[styles.studentSearchWrapper, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
+            <Ionicons name="search-outline" size={18} color={theme.muted} style={{ marginRight: 8 }} />
+            <TextInput
+              style={[styles.studentSearchInput, { color: theme.text }]}
+              placeholder="Search by name, email or phone..."
+              placeholderTextColor={theme.muted}
+              value={studentSearch}
+              onChangeText={setStudentSearch}
+            />
+            {studentSearch !== '' && (
+              <TouchableOpacity onPress={() => setStudentSearch('')}>
+                <Ionicons name="close-circle" size={18} color={theme.muted} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Course Chips Filter */}
+          <View style={{ marginTop: 12 }}>
+            <Text style={[styles.studentFilterLabel, { color: theme.subText }]}>Filter by Course</Text>
+            <FlatList
+              horizontal
+              data={uniqueStudentCourses}
+              keyExtractor={(item) => item}
+              showsHorizontalScrollIndicator={false}
+              renderItem={({ item }) => {
+                const isSelected = selectedStudentCourse === item;
+                const displayName = item === 'all' ? 'All Courses' : item;
+                return (
+                  <TouchableOpacity
+                    style={[
+                      styles.studentFilterChip,
+                      { backgroundColor: theme.chipBg, borderColor: theme.border },
+                      isSelected && { backgroundColor: theme.accent, borderColor: theme.accent }
+                    ]}
+                    onPress={() => setSelectedStudentCourse(item)}
+                  >
+                    <Text style={[styles.studentFilterChipText, { color: theme.subText }, isSelected && { color: '#fff' }]}>
+                      {displayName}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          </View>
+
+        </View>
+
+        {/* Table Header with interactive Sorting */}
+        <View style={[styles.tableHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+          <TouchableOpacity 
+            style={[styles.tableCol, { flex: 1.5, flexDirection: 'row', alignItems: 'center' }]} 
+            onPress={() => handleSort('name')}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.headerColText, { color: theme.subText }]}>Student</Text>
+            {studentSortBy === 'name' && (
+              <Ionicons 
+                name={studentSortOrder === 'asc' ? 'arrow-up' : 'arrow-down'} 
+                size={12} 
+                color={theme.accent} 
+                style={{ marginLeft: 4 }} 
+              />
+            )}
+          </TouchableOpacity>
           <View style={[styles.tableCol, { flex: 1.5 }]}>
             <Text style={[styles.headerColText, { color: theme.subText }]}>Registered Courses</Text>
           </View>
-          <View style={[styles.tableCol, { flex: 1, alignItems: 'flex-end' }]}>
+          <TouchableOpacity 
+            style={[styles.tableCol, { flex: 1, alignItems: 'flex-end', flexDirection: 'row', justifyContent: 'flex-end' }]} 
+            onPress={() => handleSort('date')}
+            activeOpacity={0.7}
+          >
             <Text style={[styles.headerColText, { color: theme.subText }]}>Joined</Text>
-          </View>
+            {studentSortBy === 'date' && (
+              <Ionicons 
+                name={studentSortOrder === 'asc' ? 'arrow-up' : 'arrow-down'} 
+                size={12} 
+                color={theme.accent} 
+                style={{ marginLeft: 4 }} 
+              />
+            )}
+          </TouchableOpacity>
         </View>
 
         <FlatList
           showsVerticalScrollIndicator={false}
-          data={students}
+          data={filteredAndSortedStudents}
           keyExtractor={(item) => item.id}
           renderItem={renderStudentRow}
           contentContainerStyle={{ paddingBottom: 20 }}
@@ -636,7 +905,7 @@ export default function AdminScreen({ navigation }) {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyEmoji}>👥</Text>
-              <Text style={[styles.emptyText, { color: theme.subText }]}>No students registered yet.</Text>
+              <Text style={[styles.emptyText, { color: theme.subText }]}>No students match the criteria.</Text>
             </View>
           }
         />
@@ -1402,5 +1671,58 @@ const styles = StyleSheet.create({
   shimmerLine: {
     height: 12,
     borderRadius: 6,
+  },
+  studentFilterCard: {
+    padding: 16,
+    borderBottomWidth: 1,
+  },
+  studentExportRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  studentExportBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 40,
+    borderRadius: 10,
+    gap: 6,
+  },
+  studentExportBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  studentSearchWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 48,
+  },
+  studentSearchInput: {
+    flex: 1,
+    height: '100%',
+    fontSize: 14,
+  },
+  studentFilterLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    marginBottom: 6,
+    letterSpacing: 0.5,
+  },
+  studentFilterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    marginRight: 8,
+    borderWidth: 1,
+  },
+  studentFilterChipText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

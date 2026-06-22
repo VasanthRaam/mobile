@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import apiClient from '../api/apiClient';
 
 import { useThemeStore } from '../store/useThemeStore';
+import { sendFirebaseOTP } from '../utils/firebase';
 
 export default function MobileLoginScreen({ navigation }) {
   const { theme, isDark } = useThemeStore();
@@ -21,8 +22,29 @@ export default function MobileLoginScreen({ navigation }) {
 
     setLoading(true);
     try {
-      await apiClient.post('/auth/mobile-login-init', { phone });
-      navigation.navigate('MobileOTPVerify', { phone });
+      const formattedPhone = phone.startsWith('+') ? phone : `+91${phone}`;
+      let firebaseSessionInfo = null;
+      let isFirebase = false;
+
+      try {
+        console.log('Attempting Firebase Phone Auth OTP...');
+        firebaseSessionInfo = await sendFirebaseOTP(formattedPhone);
+        isFirebase = true;
+        console.log('Firebase Phone Auth OTP sent.');
+      } catch (fbError) {
+        console.warn('Firebase Phone Auth failed, using backend mock:', fbError.message);
+      }
+
+      if (isFirebase) {
+        navigation.navigate('MobileOTPVerify', { 
+          phone: formattedPhone, 
+          firebaseSessionInfo, 
+          isFirebase: true 
+        });
+      } else {
+        await apiClient.post('/auth/mobile-login-init', { phone });
+        navigation.navigate('MobileOTPVerify', { phone, isFirebase: false });
+      }
     } catch (error) {
       console.error(error);
       Alert.alert('Error', error.response?.data?.detail || 'Failed to send OTP.');

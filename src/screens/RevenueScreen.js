@@ -1125,11 +1125,11 @@ export default function RevenueScreen() {
           <Text style={{ fontSize: 16, color: theme.subText }}>Loading {activeTab.toLowerCase()} data...</Text>
         </View>
       ) : (
-        <>
+        <View style={{ flex: 1 }}>
           {activeTab === 'Dashboard' && renderDashboard()}
           {activeTab === 'Income' && renderIncomeTab()}
           {activeTab === 'Expenses' && renderExpensesTab()}
-        </>
+        </View>
       )}
     </SafeAreaView>
   );

@@ -11,18 +11,26 @@ import { useThemeStore } from '../store/useThemeStore';
 
 export default function ProfileSelectionScreen({ route, navigation }) {
   const { theme, isDark } = useThemeStore();
-  const { profiles, phone, otp } = route.params;
+  const { profiles, phone, otp, isFirebase, idToken } = route.params;
   const [loadingId, setLoadingId] = useState(null);
   const login = useAuthStore((state) => state.login);
 
   const handleSelectProfile = async (profileId) => {
     setLoadingId(profileId);
     try {
-      const response = await apiClient.post('/auth/mobile-login-verify', {
-        phone,
-        otp,
-        selected_profile_id: profileId,
-      });
+      let response;
+      if (isFirebase) {
+        response = await apiClient.post('/auth/firebase-login-verify', {
+          id_token: idToken,
+          selected_profile_id: profileId,
+        });
+      } else {
+        response = await apiClient.post('/auth/mobile-login-verify', {
+          phone,
+          otp,
+          selected_profile_id: profileId,
+        });
+      }
 
       if (response.data.type === 'login_success') {
         const { access_token, user: userData } = response.data;

@@ -7,10 +7,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 import apiClient from '../api/apiClient';
 import { useThemeStore } from '../store/useThemeStore';
+import { verifyFirebaseOTP } from '../utils/firebase';
 
 export default function MobileOTPVerifyScreen({ route, navigation }) {
   const { theme, isDark } = useThemeStore();
-  const { phone } = route.params;
+  const { phone, isFirebase, firebaseSessionInfo } = route.params;
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const login = useAuthStore((state) => state.login);
@@ -23,13 +24,27 @@ export default function MobileOTPVerifyScreen({ route, navigation }) {
 
     setLoading(true);
     try {
-      const response = await apiClient.post('/auth/mobile-login-verify', { phone, otp });
+      let response;
+      let idToken = null;
+
+      if (isFirebase) {
+        console.log('Verifying Firebase verification code...');
+        idToken = await verifyFirebaseOTP(firebaseSessionInfo, otp);
+        console.log('Firebase verified code, exchanging token with backend...');
+        response = await apiClient.post('/auth/firebase-login-verify', {
+          id_token: idToken
+        });
+      } else {
+        response = await apiClient.post('/auth/mobile-login-verify', { phone, otp });
+      }
       
       if (response.data.type === 'multiple_profiles') {
         navigation.navigate('ProfileSelection', {
           profiles: response.data.profiles,
           phone,
           otp,
+          isFirebase,
+          idToken
         });
       } else if (response.data.type === 'login_success') {
         const { access_token, user: userData } = response.data;
@@ -40,7 +55,7 @@ export default function MobileOTPVerifyScreen({ route, navigation }) {
       }
     } catch (error) {
       console.error(error);
-      Alert.alert('Error', error.response?.data?.detail || 'Failed to verify OTP.');
+      Alert.alert('Error', error.message || error.response?.data?.detail || 'Failed to verify OTP.');
     } finally {
       setLoading(false);
     }
