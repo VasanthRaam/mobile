@@ -323,11 +323,18 @@ export default function DashboardScreen({ navigation }) {
                   'Income, expenses, and analytics'
                 )
               )}
-              {(role === 'student' || role === 'admin') && (
+              {role === 'student' && (
                 renderCard(
-                  role === 'student' ? 'Take a Quiz' : 'View Quizzes', '📝', '#F59E0B', 
+                  'Take a Quiz', '📝', '#F59E0B', 
                   () => navigation.navigate('QuizList'),
                   'Challenge your knowledge'
+                )
+              )}
+              {role === 'admin' && (
+                renderCard(
+                  'Admin Portal', '🛠️', '#F59E0B', 
+                  () => navigation.navigate('Admin'),
+                  'Manage quizzes, results, and students'
                 )
               )}
               {role === 'student' && (
@@ -351,10 +358,12 @@ export default function DashboardScreen({ navigation }) {
                   'Review new registration requests'
                 )
               )}
-              {renderCard(
-                role === 'parent' ? "Kid's Results" : "Quiz Results", '📊', '#8B5CF6', 
-                () => navigation.navigate('QuizResults'),
-                'Monitor performance metrics'
+              {role !== 'admin' && (
+                renderCard(
+                  role === 'parent' ? "Kid's Results" : "Quiz Results", '📊', '#8B5CF6', 
+                  () => navigation.navigate('QuizResults'),
+                  'Monitor performance metrics'
+                )
               )}
               {role === 'student' && (
                 renderCard(

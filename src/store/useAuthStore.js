@@ -13,11 +13,24 @@ export const useAuthStore = create((set) => ({
   // Call this function when the app starts to restore the session
   restoreSession: async () => {
     try {
-      const [token, user, biometricsEnabled] = await Promise.all([
+      const [storedToken, user, biometricsEnabled] = await Promise.all([
         getToken(),
         getUser(),
         getBiometricsEnabled()
       ]);
+
+      let token = storedToken;
+
+      // Attempt to retrieve fresh Supabase session (Google/Email login)
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && session.access_token) {
+          token = session.access_token;
+          await saveToken(token);
+        }
+      } catch (sbError) {
+        console.warn('Supabase getSession failed:', sbError);
+      }
 
       if (token) {
         // If biometrics are not explicitly enabled, bypass and restore session directly
@@ -83,3 +96,12 @@ export const useAuthStore = create((set) => ({
     set({ token: null, user: null, isAuthenticated: false, requiresUnlock: false });
   },
 }));
+
+// Listen for Supabase token refreshes and keep both secure storage and Zustand store in sync
+supabase.auth.onAuthStateChange(async (event, session) => {
+  if (session && session.access_token) {
+    await saveToken(session.access_token);
+    useAuthStore.setState({ token: session.access_token });
+  }
+});
+
