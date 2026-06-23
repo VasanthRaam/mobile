@@ -135,15 +135,13 @@ export default function RevenueScreen() {
         visible={isDetailModalVisible}
         onRequestClose={() => setIsDetailModalVisible(false)}
       >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setIsDetailModalVisible(false)}
-        >
+        <View style={styles.modalOverlay}>
           <TouchableOpacity
-            style={[styles.modalCard, { backgroundColor: theme.card }]}
+            style={StyleSheet.absoluteFillObject}
             activeOpacity={1}
-          >
+            onPress={() => setIsDetailModalVisible(false)}
+          />
+          <View style={[styles.modalCard, { backgroundColor: theme.card }]}>
             {/* Close Button */}
             <TouchableOpacity
               style={[styles.modalCloseBtn, { backgroundColor: theme.chipBg }]}
@@ -264,8 +262,8 @@ export default function RevenueScreen() {
                 </View>
               </View>
             </ScrollView>
-          </TouchableOpacity>
-        </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     );
   };

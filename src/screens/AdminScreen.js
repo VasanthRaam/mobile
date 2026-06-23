@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ScrollView, SafeAreaView, Modal, ActivityIndicator,
-  Dimensions, RefreshControl
+  ScrollView, Modal, ActivityIndicator,
+  Dimensions, RefreshControl, TextInput, Platform, Alert
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import apiClient from '../api/apiClient';
 import { useAuthStore } from '../store/useAuthStore';
@@ -82,6 +83,13 @@ export default function AdminScreen({ navigation }) {
 
   // --- Quizzes Tab Fetcher ---
   const fetchQuizzes = async () => {
+    const cached = getCache('admin_quizzes');
+    if (cached) {
+      setQuizzes(cached);
+      setQuizzesLoading(false);
+    } else {
+      setQuizzesLoading(true);
+    }
     try {
       const response = await apiClient.get('/quizzes');
       setQuizzes(response.data);
@@ -101,6 +109,10 @@ export default function AdminScreen({ navigation }) {
 
   // --- Results Tab Fetchers ---
   const fetchCourses = async () => {
+    const cached = getCache('courses');
+    if (cached) {
+      setCourses([{ id: 'all', name: 'All Courses' }, ...cached]);
+    }
     try {
       const response = await apiClient.get('/courses/');
       const fetchedCourses = [{ id: 'all', name: 'All Courses' }, ...response.data];
@@ -112,7 +124,13 @@ export default function AdminScreen({ navigation }) {
   };
 
   const fetchBatches = async (courseId) => {
-    setFetchingBatches(true);
+    const cacheKey = `batches_${courseId}`;
+    const cached = getCache(cacheKey);
+    if (cached) {
+      setBatches([{ id: 'all', name: 'All Batches' }, ...cached]);
+    } else {
+      setFetchingBatches(true);
+    }
     try {
       let url = '/batches/';
       if (courseId !== 'all') {
@@ -121,6 +139,7 @@ export default function AdminScreen({ navigation }) {
       const response = await apiClient.get(url);
       const fetchedBatches = [{ id: 'all', name: 'All Batches' }, ...response.data];
       setBatches(fetchedBatches);
+      setCache(cacheKey, response.data);
       setSelectedBatchId('all');
     } catch (error) {
       console.error('Failed to fetch batches:', error);
@@ -130,6 +149,25 @@ export default function AdminScreen({ navigation }) {
   };
 
   const fetchResults = async () => {
+    const isGlobal = selectedBatchId === 'all' && selectedCourseId === 'all';
+    if (isGlobal) {
+      const cached = getCache('admin_quiz_results');
+      if (cached) {
+        setResults(cached);
+        setResultsLoading(false);
+      } else {
+        setResultsLoading(true);
+      }
+    } else {
+      const cacheKey = `results_${selectedCourseId}_${selectedBatchId}`;
+      const cached = getCache(cacheKey);
+      if (cached) {
+        setResults(cached);
+        setResultsLoading(false);
+      } else {
+        setResultsLoading(true);
+      }
+    }
     try {
       let url = '/quizzes/results/all';
       if (selectedBatchId && selectedBatchId !== 'all') {
@@ -139,8 +177,11 @@ export default function AdminScreen({ navigation }) {
       }
       const response = await apiClient.get(url);
       setResults(response.data);
-      if (selectedBatchId === 'all' && selectedCourseId === 'all') {
+      if (isGlobal) {
         setCache('admin_quiz_results', response.data);
+      } else {
+        const cacheKey = `results_${selectedCourseId}_${selectedBatchId}`;
+        setCache(cacheKey, response.data);
       }
     } catch (error) {
       console.error('Failed to fetch results:', error);
@@ -157,6 +198,13 @@ export default function AdminScreen({ navigation }) {
 
   // --- Students Tab Fetchers ---
   const fetchStudents = async () => {
+    const cached = getCache('admin_students');
+    if (cached) {
+      setStudents(cached);
+      setStudentsLoading(false);
+    } else {
+      setStudentsLoading(true);
+    }
     try {
       const response = await apiClient.get('/students/');
       setStudents(response.data);

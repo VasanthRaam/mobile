@@ -198,6 +198,16 @@ export default function FeesScreen() {
     }
   };
 
+  const handleSendReminder = async (feeId) => {
+    try {
+      await apiClient.post(`/fees/${feeId}/remind`);
+      Alert.alert('Success', 'Fee reminder notification sent successfully');
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'Failed to send fee reminder');
+    }
+  };
+
   const handlePay = async (fee) => {
     if (!adminUpi) {
       Alert.alert('Error', 'Admin UPI not set. Cannot proceed with payment.');
@@ -500,9 +510,20 @@ export default function FeesScreen() {
         {!isPaid && (
           <View style={[styles.actionRow, { borderTopColor: theme.border }]}>
             {role === 'admin' ? (
-              <TouchableOpacity style={[styles.actionBtn, { backgroundColor: theme.accentLight }]} onPress={() => handleMarkReceived(item.id)}>
-                <Text style={[styles.actionBtnText, { color: theme.accent }]}>Mark as Received</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 8, width: '100%' }}>
+                <TouchableOpacity 
+                  style={[styles.actionBtn, { backgroundColor: theme.accentLight, flex: 1 }]} 
+                  onPress={() => handleMarkReceived(item.id)}
+                >
+                  <Text style={[styles.actionBtnText, { color: theme.accent }]} numberOfLines={1}>Mark Received</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.actionBtn, { backgroundColor: theme.warningLight, flex: 1 }]} 
+                  onPress={() => handleSendReminder(item.id)}
+                >
+                  <Text style={[styles.actionBtnText, { color: theme.warning }]} numberOfLines={1}>Send Reminder</Text>
+                </TouchableOpacity>
+              </View>
             ) : (
               <TouchableOpacity style={[styles.payBtn, { backgroundColor: theme.accent }]} onPress={() => handlePay(item)}>
                 <Text style={styles.payBtnText}>Pay Now via UPI</Text>

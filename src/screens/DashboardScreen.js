@@ -193,9 +193,11 @@ export default function DashboardScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <View>
+          <View style={{ flex: 1, marginRight: 16 }}>
             <Text style={[styles.welcomeText, { color: theme.subText }]}>Academy Hub</Text>
-            <Text style={[styles.nameText, { color: theme.text }]}>{user?.full_name || 'Teacher'} 👋</Text>
+            <Text style={[styles.nameText, { color: theme.text }]} numberOfLines={2}>
+              {user?.full_name || 'Teacher'} 👋
+            </Text>
           </View>
           <View style={[styles.roleBadgeHeader, { backgroundColor: theme.accentLight, borderColor: theme.border }]}>
             <Text style={[styles.roleBadgeText, { color: theme.accent }]}>{role?.toUpperCase()}</Text>
