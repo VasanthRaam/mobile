@@ -44,6 +44,12 @@ export default function RevenueScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('all'); // 'all', '01'...'12'
 
+  // Student Auto-Suggest Search States
+  const [students, setStudents] = useState(getCache('students_list') || []);
+  const [searchQueryStudent, setSearchQueryStudent] = useState('');
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [showStudentDropdown, setShowStudentDropdown] = useState(false);
+
   // Student Detail Modal States
   const [selectedStudentDetail, setSelectedStudentDetail] = useState(null);
   const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
@@ -290,22 +296,28 @@ export default function RevenueScreen() {
         setDashboardData(res.data);
         setCache('revenue_dashboard', res.data);
       } else if (activeTab === 'Income') {
-        const feesRes = await apiClient.get('/fees/');
-        const cbRes = await apiClient.get('/auth/courses-batches');
-        const manualRes = await apiClient.get('/revenue/incomes');
+        const [feesRes, cbRes, manualRes, studentsRes] = await Promise.all([
+          apiClient.get('/fees/').catch(err => { console.error('Fees fetch failed:', err); return { data: [] }; }),
+          apiClient.get('/auth/courses-batches').catch(err => { console.error('Courses/batches fetch failed:', err); return { data: [] }; }),
+          apiClient.get('/revenue/incomes').catch(err => { console.error('Incomes fetch failed:', err); return { data: [] }; }),
+          apiClient.get('/students/').catch(err => { console.error('Students fetch failed:', err); return { data: [] }; })
+        ]);
 
         setFees(feesRes.data);
         setCache('fees_list', feesRes.data);
         setCoursesWithBatches(cbRes.data);
         setCache('courses_with_batches', cbRes.data);
+        setStudents(studentsRes.data);
+        setCache('students_list', studentsRes.data);
 
         const filteredFees = feesRes.data.filter(f => f.status === 'paid').map(f => ({
           id: f.id,
           type: 'fee',
           amount: f.amount,
           title: f.user ? f.user.full_name : 'Unknown Student',
-          subtitle: `Fee Payment • ${f.paid_at ? f.paid_at.substring(0, 10) : ''}`,
+          subtitle: `${f.is_manual ? 'Manual' : 'Fee'} Payment • ${f.paid_at ? f.paid_at.substring(0, 10) : ''}`,
           date: f.paid_at || f.created_at,
+          is_manual: f.is_manual,
         }));
 
         const manualIncomes = manualRes.data.map(i => ({
@@ -363,21 +375,32 @@ export default function RevenueScreen() {
       Alert.alert('Error', 'Please fill required fields (Amount, Category, Date)');
       return;
     }
+    if (incCategory === 'Course Fee' && !selectedStudent) {
+      Alert.alert('Error', 'Please select a student from the dropdown search');
+      return;
+    }
     setAddingInc(true);
     try {
-      await apiClient.post('/revenue/incomes', {
+      const payload = {
         amount: parseFloat(incAmount),
         category: incCategory,
         description: incDesc,
         income_date: incDate
-      });
+      };
+      if (incCategory === 'Course Fee' && selectedStudent) {
+        payload.student_id = selectedStudent.user_id;
+      }
+      await apiClient.post('/revenue/incomes', payload);
       Alert.alert('Success', 'Income recorded!');
       setIncAmount('');
       setIncDesc('');
+      setSelectedStudent(null);
+      setSearchQueryStudent('');
       fetchData(); // refresh incomes
     } catch (err) {
       console.error(err);
-      Alert.alert('Error', 'Failed to record income');
+      const msg = err.response?.data?.detail || 'Failed to record income';
+      Alert.alert('Error', msg);
     } finally {
       setAddingInc(false);
     }
@@ -512,12 +535,132 @@ export default function RevenueScreen() {
                 <TouchableOpacity
                   key={cat}
                   style={[styles.catChip, incCategory === cat && styles.catChipActive, { backgroundColor: incCategory === cat ? theme.success : theme.chipBg, borderColor: incCategory === cat ? theme.success : theme.border }]}
-                  onPress={() => setIncCategory(cat)}
+                  onPress={() => {
+                    setIncCategory(cat);
+                    setSelectedStudent(null);
+                    setSearchQueryStudent('');
+                  }}
                 >
                   <Text style={[styles.catChipText, { color: incCategory === cat ? '#fff' : theme.subText }]}>{cat}</Text>
                 </TouchableOpacity>
               ))}
             </View>
+
+            {incCategory === 'Course Fee' && (
+              <View style={{ marginBottom: 12, zIndex: 100, position: 'relative' }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: theme.text, marginBottom: 6 }}>Search Student</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      {
+                        flex: 1,
+                        backgroundColor: selectedStudent ? theme.chipBg : theme.inputBg,
+                        borderColor: theme.border,
+                        color: selectedStudent ? theme.subText : theme.text,
+                        paddingRight: 40
+                      }
+                    ]}
+                    placeholder="Type name, email, or phone to search..."
+                    placeholderTextColor={theme.muted}
+                    value={searchQueryStudent}
+                    onChangeText={(text) => {
+                      setSearchQueryStudent(text);
+                      setSelectedStudent(null);
+                      setShowStudentDropdown(text.trim().length > 0);
+                    }}
+                    editable={!selectedStudent}
+                  />
+                  {selectedStudent && (
+                    <TouchableOpacity
+                      style={{ position: 'absolute', right: 12, padding: 4 }}
+                      onPress={() => {
+                        setSelectedStudent(null);
+                        setSearchQueryStudent('');
+                        setShowStudentDropdown(false);
+                      }}
+                    >
+                      <Text style={{ fontSize: 16 }}>✏️</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {showStudentDropdown && !selectedStudent && (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      top: 76,
+                      left: 0,
+                      right: 0,
+                      backgroundColor: theme.card,
+                      borderColor: theme.border,
+                      borderWidth: 1,
+                      borderRadius: 12,
+                      maxHeight: 180,
+                      overflow: 'hidden',
+                      shadowColor: '#000',
+                      shadowOpacity: 0.1,
+                      shadowRadius: 5,
+                      elevation: 5,
+                      zIndex: 999
+                    }}
+                  >
+                    <ScrollView keyboardShouldPersistTaps="handled" style={{ flexGrow: 1 }} nestedScrollEnabled={true}>
+                      {(() => {
+                        const query = searchQueryStudent.toLowerCase().trim();
+                        const filtered = query ? students.filter(s => {
+                          const terms = query.split(/\s+/);
+                          const firstName = (s.first_name || '').toLowerCase();
+                          const lastName = (s.last_name || '').toLowerCase();
+                          const email = (s.email || '').toLowerCase();
+                          const phone = (s.phone || '').toLowerCase();
+                          return terms.every(term => 
+                            firstName.includes(term) || 
+                            lastName.includes(term) || 
+                            email.includes(term) || 
+                            phone.includes(term)
+                          );
+                        }) : [];
+
+                        if (filtered.length === 0) {
+                          return (
+                            <View style={{ padding: 12 }}>
+                              <Text style={{ fontSize: 12, color: theme.muted, textAlign: 'center' }}>No matching students found.</Text>
+                            </View>
+                          );
+                        }
+
+                        return filtered.map(s => {
+                          const fullName = `${s.first_name} ${s.last_name}`;
+                          return (
+                            <TouchableOpacity
+                              key={s.id}
+                              style={{
+                                padding: 12,
+                                borderBottomWidth: 1,
+                                borderBottomColor: theme.border,
+                                backgroundColor: theme.card
+                              }}
+                              onPress={() => {
+                                setSelectedStudent(s);
+                                setSearchQueryStudent(fullName);
+                                setShowStudentDropdown(false);
+                              }}
+                            >
+                              <Text style={{ fontWeight: '700', color: theme.text, fontSize: 13 }}>{fullName}</Text>
+                              <Text style={{ fontSize: 10, color: theme.muted }}>{s.email || 'No email'} • {s.phone || 'No phone'}</Text>
+                              {s.courses && s.courses.length > 0 && (
+                                <Text style={{ fontSize: 9, color: theme.accent, marginTop: 2 }}>📚 {s.courses.join(', ')}</Text>
+                              )}
+                            </TouchableOpacity>
+                          );
+                        });
+                      })()}
+                    </ScrollView>
+                  </View>
+                )}
+              </View>
+            )}
 
             <View style={styles.inputRow}>
               <TextInput
@@ -543,7 +686,14 @@ export default function RevenueScreen() {
               value={incDesc}
               onChangeText={setIncDesc}
             />
-            <TouchableOpacity style={styles.primaryBtn} onPress={handleAddIncome} disabled={addingInc}>
+            <TouchableOpacity
+              style={[
+                styles.primaryBtn,
+                (addingInc || (incCategory === 'Course Fee' && !selectedStudent)) && { opacity: 0.5 }
+              ]}
+              onPress={handleAddIncome}
+              disabled={addingInc || (incCategory === 'Course Fee' && !selectedStudent)}
+            >
               <Text style={styles.primaryBtnText}>{addingInc ? 'Adding...' : 'Add Income'}</Text>
             </TouchableOpacity>
           </View>
@@ -1065,7 +1215,14 @@ export default function RevenueScreen() {
                 >
                   {/* Student info column */}
                   <View style={[studentColStyle, { justifyContent: 'center', alignItems: 'flex-start', paddingRight: 8 }]}>
-                    <Text style={[styles.studentNameFee, { color: theme.text }]} numberOfLines={1}>{studentName}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <Text style={[styles.studentNameFee, { color: theme.text }]} numberOfLines={1}>{studentName}</Text>
+                      {item.is_manual && (
+                        <View style={{ backgroundColor: theme.chipBg, borderRadius: 4, paddingHorizontal: 4, paddingVertical: 1, marginLeft: 6 }}>
+                          <Text style={{ fontSize: 8, fontWeight: '800', color: theme.subText }}>MANUAL</Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
 
                   {/* Amount column */}

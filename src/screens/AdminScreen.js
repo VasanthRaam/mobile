@@ -127,7 +127,19 @@ export default function AdminScreen({ navigation }) {
     const cacheKey = `batches_${courseId}`;
     const cached = getCache(cacheKey);
     if (cached) {
-      setBatches([{ id: 'all', name: 'All Batches' }, ...cached]);
+      if (courseId === 'all') {
+        const unique = [];
+        const seenNames = new Set();
+        cached.forEach(b => {
+          if (!seenNames.has(b.name)) {
+            seenNames.add(b.name);
+            unique.push({ id: `name:${b.name}`, name: b.name });
+          }
+        });
+        setBatches([{ id: 'all', name: 'All Batches' }, ...unique]);
+      } else {
+        setBatches([{ id: 'all', name: 'All Batches' }, ...cached]);
+      }
     } else {
       setFetchingBatches(true);
     }
@@ -137,7 +149,21 @@ export default function AdminScreen({ navigation }) {
         url += `?course_id=${courseId}`;
       }
       const response = await apiClient.get(url);
-      const fetchedBatches = [{ id: 'all', name: 'All Batches' }, ...response.data];
+      
+      let fetchedBatches;
+      if (courseId === 'all') {
+        const unique = [];
+        const seenNames = new Set();
+        response.data.forEach(b => {
+          if (!seenNames.has(b.name)) {
+            seenNames.add(b.name);
+            unique.push({ id: `name:${b.name}`, name: b.name });
+          }
+        });
+        fetchedBatches = [{ id: 'all', name: 'All Batches' }, ...unique];
+      } else {
+        fetchedBatches = [{ id: 'all', name: 'All Batches' }, ...response.data];
+      }
       setBatches(fetchedBatches);
       setCache(cacheKey, response.data);
       setSelectedBatchId('all');
@@ -170,7 +196,7 @@ export default function AdminScreen({ navigation }) {
     }
     try {
       let url = '/quizzes/results/all';
-      if (selectedBatchId && selectedBatchId !== 'all') {
+      if (selectedBatchId && selectedBatchId !== 'all' && !selectedBatchId.startsWith('name:')) {
         url += `?batch_id=${selectedBatchId}`;
       } else if (selectedCourseId && selectedCourseId !== 'all') {
         url += `?course_id=${selectedCourseId}`;
@@ -285,6 +311,14 @@ export default function AdminScreen({ navigation }) {
       setStudentSortOrder('asc');
     }
   };
+
+  const filteredResults = React.useMemo(() => {
+    if (selectedBatchId && typeof selectedBatchId === 'string' && selectedBatchId.startsWith('name:')) {
+      const targetName = selectedBatchId.replace('name:', '');
+      return results.filter(r => r.batch_name === targetName);
+    }
+    return results;
+  }, [results, selectedBatchId]);
 
   const uniqueStudentCourses = React.useMemo(() => {
     const coursesSet = new Set();
@@ -635,14 +669,14 @@ export default function AdminScreen({ navigation }) {
   // ─────────────────────────────────────────────────────────────────────────────
 
   const getStaffDashboardData = () => {
-    if (results.length === 0) return null;
+    if (filteredResults.length === 0) return null;
 
     let totalEarned = 0;
     let totalMax = 0;
     const studentAverages = {};
     const quizStats = {};
 
-    results.forEach(attempt => {
+    filteredResults.forEach(attempt => {
       totalEarned += attempt.total_score;
       totalMax += attempt.max_score;
 
@@ -677,7 +711,7 @@ export default function AdminScreen({ navigation }) {
 
     return {
       classAverage,
-      totalAttempts: results.length,
+      totalAttempts: filteredResults.length,
       topStudents,
       quizzesSummary
     };
@@ -858,7 +892,7 @@ export default function AdminScreen({ navigation }) {
         ) : resultsSubTab === 'Scores' ? (
           <FlatList
             showsVerticalScrollIndicator={false}
-            data={results}
+            data={filteredResults}
             keyExtractor={(item) => item.id}
             renderItem={renderResultItem}
             contentContainerStyle={styles.listContainer}

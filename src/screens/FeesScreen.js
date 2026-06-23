@@ -498,7 +498,11 @@ export default function FeesScreen() {
         </View>
         
         {item.course?.name && item.batch?.name && (
-          <Text style={[styles.feeCourseBatch, { color: theme.accent }]}>📚 {item.course.name} • {item.batch.name}</Text>
+          <Text style={[styles.feeCourseBatch, { color: theme.accent }]}>📚 {item.course.name} • {item.batch.name}{item.is_manual ? ' • Manual' : ''}</Text>
+        )}
+
+        {item.is_manual && !item.course?.name && (
+          <Text style={[styles.feeCourseBatch, { color: theme.accent }]}>⚙️ Manual Payment</Text>
         )}
 
         {(role === 'admin' || role === 'teacher') && item.user && (
