@@ -331,30 +331,146 @@ export default function AdminScreen({ navigation }) {
     });
   }, [students, debouncedStudentSearch, selectedStudentCourse, studentSortBy, studentSortOrder]);
 
-  const exportToCSV = () => {
+  const exportToPDF = () => {
+    const title = `BuddyBloom Students Report - ${new Date().toLocaleDateString()}`;
     const headers = ['First Name', 'Last Name', 'Email', 'Phone', 'Registered Courses', 'Joined Date'];
     const rows = filteredAndSortedStudents.map(s => [
-      s.first_name || '',
-      s.last_name || '',
-      s.email || '',
-      s.phone || '',
-      s.courses ? s.courses.join(', ') : '',
-      s.created_at ? new Date(s.created_at).toLocaleDateString() : ''
+      s.first_name || 'N/A',
+      s.last_name || 'N/A',
+      s.email || 'N/A',
+      s.phone || 'N/A',
+      s.courses ? s.courses.join(', ') : 'None',
+      s.created_at ? new Date(s.created_at).toLocaleDateString() : 'N/A'
     ]);
-    const csvContent = [headers.join(','), ...rows.map(r => r.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))].join('\n');
+
+    const rowsHtml = rows.map((r, index) => `
+      <tr style="background-color: ${index % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+        <td>${r[0]}</td>
+        <td>${r[1]}</td>
+        <td style="color: #4f46e5; font-weight: 500;">${r[2]}</td>
+        <td>${r[3]}</td>
+        <td>${r[4]}</td>
+        <td style="color: #64748b;">${r[5]}</td>
+      </tr>
+    `).join('');
+
+    const htmlContent = `
+      <html>
+        <head>
+          <title>${title}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap');
+            body { 
+              font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif; 
+              color: #1e293b; 
+              padding: 40px; 
+              background-color: #ffffff;
+            }
+            .header-container {
+              border-bottom: 3px solid #4f46e5;
+              padding-bottom: 20px;
+              margin-bottom: 30px;
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-end;
+            }
+            .title { 
+              font-size: 26pt; 
+              color: #1e293b; 
+              font-weight: 800; 
+              margin: 0;
+              letter-spacing: -0.5px;
+            }
+            .subtitle { 
+              font-size: 11pt; 
+              color: #64748b; 
+              font-weight: 600; 
+              margin-top: 5px; 
+              text-transform: uppercase;
+              letter-spacing: 1px;
+            }
+            .meta-text {
+              font-size: 10pt;
+              color: #94a3b8;
+              margin: 0;
+              text-align: right;
+            }
+            table { 
+              border-collapse: collapse; 
+              width: 100%; 
+              margin-top: 10px;
+              box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+              border-radius: 12px;
+              overflow: hidden;
+            }
+            th { 
+              background-color: #4f46e5; 
+              color: #ffffff; 
+              font-weight: 600; 
+              font-size: 11pt;
+              padding: 14px 16px; 
+              border: 1px solid #e2e8f0; 
+              text-align: left; 
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+            }
+            td { 
+              padding: 14px 16px; 
+              border: 1px solid #e2e8f0; 
+              font-size: 11pt;
+              color: #334155;
+            }
+            .footer-info {
+              margin-top: 40px;
+              text-align: center;
+              font-size: 9pt;
+              color: #94a3b8;
+              border-top: 1px solid #e2e8f0;
+              padding-top: 20px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header-container">
+            <div>
+              <h1 class="title">BuddyBloom</h1>
+              <div class="subtitle">Students Directory Report</div>
+            </div>
+            <div>
+              <p class="meta-text">Generated: ${new Date().toLocaleString()}</p>
+              <p class="meta-text">Total Students: ${filteredAndSortedStudents.length}</p>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                ${headers.map(h => `<th>${h}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+          <div class="footer-info">
+            BuddyBloom Administrator Console • Confidential Report • Page 1 of 1
+          </div>
+        </body>
+      </html>
+    `;
 
     if (Platform.OS === 'web') {
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `students_report_${new Date().toISOString().slice(0,10)}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        printWindow.onload = () => {
+          printWindow.print();
+        };
+      } else {
+        Alert.alert('Popup Blocked', 'Please allow popups to export PDF reports.');
+      }
     } else {
-      Alert.alert('CSV Exported', `Student report data compiled for ${filteredAndSortedStudents.length} students.`);
+      Alert.alert('PDF Exported', `PDF student report compiled for ${filteredAndSortedStudents.length} students.`);
     }
   };
 
@@ -841,10 +957,10 @@ export default function AdminScreen({ navigation }) {
           <View style={styles.studentExportRow}>
             <TouchableOpacity 
               style={[styles.studentExportBtn, { borderColor: theme.accent, borderWidth: 1 }]} 
-              onPress={exportToCSV}
+              onPress={exportToPDF}
             >
               <Ionicons name="document-text-outline" size={16} color={theme.accent} />
-              <Text style={[styles.studentExportBtnText, { color: theme.accent }]}>Export CSV</Text>
+              <Text style={[styles.studentExportBtnText, { color: theme.accent }]}>Export PDF</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 

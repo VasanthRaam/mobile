@@ -70,7 +70,21 @@ export default function QuizResultsScreen({ navigation }) {
         url += `?course_id=${courseId}`;
       }
       const response = await apiClient.get(url);
-      const fetchedBatches = [{ id: 'all', name: 'All Batches' }, ...response.data];
+      
+      let fetchedBatches;
+      if (courseId === 'all') {
+        const unique = [];
+        const seenNames = new Set();
+        response.data.forEach(b => {
+          if (!seenNames.has(b.name)) {
+            seenNames.add(b.name);
+            unique.push({ id: `name:${b.name}`, name: b.name });
+          }
+        });
+        fetchedBatches = [{ id: 'all', name: 'All Batches' }, ...unique];
+      } else {
+        fetchedBatches = [{ id: 'all', name: 'All Batches' }, ...response.data];
+      }
       setBatches(fetchedBatches);
       if (fetchedBatches.length > 0) {
         setSelectedBatchId(fetchedBatches[0].id);
@@ -85,7 +99,7 @@ export default function QuizResultsScreen({ navigation }) {
   const fetchResults = async () => {
     try {
       let url = '/quizzes/results/all';
-      if (selectedBatchId && selectedBatchId !== 'all') {
+      if (selectedBatchId && selectedBatchId !== 'all' && !selectedBatchId.startsWith('name:')) {
         url += `?batch_id=${selectedBatchId}`;
       } else if (selectedCourseId && selectedCourseId !== 'all') {
         url += `?course_id=${selectedCourseId}`;
@@ -102,10 +116,18 @@ export default function QuizResultsScreen({ navigation }) {
     }
   };
 
+  const filteredResults = React.useMemo(() => {
+    if (selectedBatchId && selectedBatchId.startsWith('name:')) {
+      const targetName = selectedBatchId.replace('name:', '');
+      return results.filter(r => r.batch_name === targetName);
+    }
+    return results;
+  }, [results, selectedBatchId]);
+
   const getStudentDashboardData = () => {
     const courseStats = {};
 
-    results.forEach(attempt => {
+    filteredResults.forEach(attempt => {
       const courseName = attempt.course_name || 'General / Other';
       const courseId = attempt.course_id || 'general';
 
@@ -147,14 +169,14 @@ export default function QuizResultsScreen({ navigation }) {
   };
 
   const getStaffDashboardData = () => {
-    if (results.length === 0) return null;
+    if (filteredResults.length === 0) return null;
 
     let totalEarned = 0;
     let totalMax = 0;
     const studentAverages = {};
     const quizStats = {};
 
-    results.forEach(attempt => {
+    filteredResults.forEach(attempt => {
       totalEarned += attempt.total_score;
       totalMax += attempt.max_score;
 
@@ -440,7 +462,7 @@ export default function QuizResultsScreen({ navigation }) {
       ) : activeTab === 'Scores' ? (
         <FlatList
           showsVerticalScrollIndicator={false}
-          data={results}
+          data={filteredResults}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           contentContainerStyle={styles.listContainer}

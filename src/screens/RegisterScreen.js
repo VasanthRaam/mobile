@@ -8,6 +8,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
 import { supabase } from '../utils/supabase';
 import { useAuthStore } from '../store/useAuthStore';
+import { useThemeStore } from '../store/useThemeStore';
 import apiClient from '../api/apiClient';
 import { registerForPushNotificationsAsync } from '../utils/notifications';
 import { getCache, setCache } from '../utils/cacheManager';
@@ -50,6 +51,8 @@ function validateAll({ fullName, email, phone, password, confirmPassword, role, 
 
 export default function RegisterScreen({ navigation, route }) {
   const { email: initialEmail, full_name: initialName, isGoogle: initialIsGoogle, supabaseUid: initialSupabaseUid } = route.params || {};
+
+  const { theme, isDark } = useThemeStore();
 
   const [isGoogleAuth, setIsGoogleAuth] = useState(initialIsGoogle || false);
   const [supabaseUid, setSupabaseUid] = useState(initialSupabaseUid || null);

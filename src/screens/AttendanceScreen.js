@@ -93,6 +93,7 @@ export default function AttendanceScreen({ navigation }) {
     setFetchingBatches(true);
     setSelectedBatchId(null);
     setStudents([]);
+    setAttendance({});
     try {
       const response = await apiClient.get(`/batches/?course_id=${courseId}`);
       const fetchedBatches = response.data;
@@ -150,11 +151,11 @@ export default function AttendanceScreen({ navigation }) {
   const fetchStudentsToMark = async (batchId) => {
     setFetchingStudents(true);
     try {
-      const studentsResponse = await apiClient.get(`/batches/${batchId}/students`);
+      const [studentsResponse, attendanceResponse] = await Promise.all([
+        apiClient.get(`/batches/${batchId}/students`),
+        apiClient.get(`/attendance/?batch_id=${batchId}&start_date=${selectedDate}&end_date=${selectedDate}`)
+      ]);
       const fetchedStudents = studentsResponse.data;
-      setStudents(fetchedStudents);
-      
-      const attendanceResponse = await apiClient.get(`/attendance/?batch_id=${batchId}&start_date=${selectedDate}&end_date=${selectedDate}`);
       const existingRecords = attendanceResponse.data;
       
       const recordsMap = {};
@@ -168,7 +169,9 @@ export default function AttendanceScreen({ navigation }) {
           ? recordsMap[student.id] 
           : true;
       });
+
       setAttendance(initialState);
+      setStudents(fetchedStudents);
     } catch (error) {
       console.error('Failed to fetch students:', error);
     } finally {
@@ -553,6 +556,16 @@ export default function AttendanceScreen({ navigation }) {
     );
   }
 
+  const renderSkeletonStudentItem = () => (
+    <View style={[styles.studentItem, { backgroundColor: theme.card, borderColor: theme.border }]}>
+      <View style={{ gap: 6, flex: 1 }}>
+        <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '60%', height: 16 }]} />
+        <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '30%', height: 12 }]} />
+      </View>
+      <View style={{ width: 40, height: 24, borderRadius: 12, backgroundColor: theme.chipBg, opacity: 0.5 }} />
+    </View>
+  );
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
       <View style={[styles.header, { backgroundColor: theme.card, borderBottomWidth: 1, borderBottomColor: theme.border }]}>
@@ -599,7 +612,7 @@ export default function AttendanceScreen({ navigation }) {
         </ScrollView>
       </View>
 
-          <View style={[styles.filters, { backgroundColor: theme.card }]}>
+      <View style={[styles.filters, { backgroundColor: theme.card }]}>
         <Text style={[styles.filterLabel, { color: theme.text }]}>Course:</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
           {courses.map(course => {
@@ -614,6 +627,8 @@ export default function AttendanceScreen({ navigation }) {
                 ]}
                 onPress={() => {
                   setSelectedCourseId(course.id);
+                  setStudents([]);
+                  setAttendance({});
                   fetchBatches(course.id);
                 }}
               >
@@ -640,6 +655,8 @@ export default function AttendanceScreen({ navigation }) {
                   ]}
                   onPress={() => {
                     setSelectedBatchId(batch.id);
+                    setStudents([]);
+                    setAttendance({});
                     fetchStudentsToMark(batch.id);
                   }}
                 >
@@ -653,10 +670,14 @@ export default function AttendanceScreen({ navigation }) {
         )}
       </View>
 
-      {fetchingStudents && students.length === 0 ? (
-        <View style={[styles.centered, { backgroundColor: theme.bg }]}>
-          <Text style={[styles.loadingText, { color: theme.text }]}>Fetching students...</Text>
-        </View>
+      {fetchingStudents ? (
+        <FlatList
+          style={{ backgroundColor: theme.bg }}
+          data={[1, 2, 3, 4, 5]}
+          keyExtractor={(item) => `skeleton-${item}`}
+          contentContainerStyle={styles.list}
+          renderItem={renderSkeletonStudentItem}
+        />
       ) : students.length > 0 ? (
         <FlatList
           style={{ backgroundColor: theme.bg }}
@@ -678,6 +699,10 @@ export default function AttendanceScreen({ navigation }) {
             </View>
           )}
         />
+      ) : selectedBatchId ? (
+        <View style={[styles.emptyState, { backgroundColor: theme.bg }]}>
+          <Text style={[styles.emptyText, { color: theme.subText }]}>No students registered for this batch.</Text>
+        </View>
       ) : (
         <View style={[styles.emptyState, { backgroundColor: theme.bg }]}>
           <Text style={[styles.emptyText, { color: theme.subText }]}>Select a batch to see students.</Text>
@@ -1069,6 +1094,201 @@ const styles = StyleSheet.create({
   pickerSelectedDay: {
     backgroundColor: '#6366F1',
   },
+  dateSelection: {
+    backgroundColor: '#fff',
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  dateList: {
+    paddingVertical: 5,
+  },
+  dateListContent: {
+    paddingHorizontal: 15,
+    flexDirection: 'row',
+  },
+  dateChip: {
+    width: 60,
+    height: 70,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  dateChipActive: {
+    backgroundColor: '#6366F1',
+    borderColor: '#6366F1',
+  },
+  dateChipDay: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  dateChipMonth: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#94A3B8',
+    textTransform: 'uppercase',
+  },
+  dateChipTextActive: {
+    color: '#fff',
+  },
+  holidayBtn: {
+    height: 52,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#A855F7',
+    marginTop: 10,
+  },
+  holidayBtnActive: {
+    backgroundColor: '#A855F7',
+  },
+  holidayBtnText: {
+    color: '#A855F7',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  holidayBtnTextActive: {
+    color: '#fff',
+  },
+  statusBanner: {
+    padding: 12,
+    marginHorizontal: 15,
+    marginTop: 10,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  successBanner: {
+    backgroundColor: '#DCFCE7',
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+  },
+  errorBanner: {
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  statusBannerText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  fab: { position: 'absolute', bottom: 30, right: 30, width: 60, height: 60, borderRadius: 30, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', elevation: 5, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 5, shadowOffset: { width: 0, height: 2 }, borderWidth: 2, borderColor: '#E2E8F0' },
+  fabIcon: { fontSize: 28, marginTop: -2 },
+  modalContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '90%' },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: '#1E293B', marginBottom: 20 },
+  inputLabel: { fontSize: 13, fontWeight: '700', color: '#64748B', marginBottom: 6, marginTop: 10 },
+  modalInput: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 14, fontSize: 16, color: '#1E293B' },
+  modalActions: { flexDirection: 'row', gap: 12, marginTop: 24 },
+  modalCancel: { flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center' },
+  modalCancelText: { fontSize: 16, fontWeight: '700', color: '#64748B' },
+  modalSubmit: { flex: 2, padding: 16, borderRadius: 12, backgroundColor: '#6366F1', alignItems: 'center' },
+  modalSubmitText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  dateRangeDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 15,
+  },
+  dateRangeBox: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  dateRangeLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#94A3B8',
+    marginBottom: 4,
+  },
+  dateRangeValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  dateRangeArrow: {
+    fontSize: 18,
+    color: '#94A3B8',
+    marginHorizontal: 10,
+  },
+  pickerCalendarContainer: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 15,
+  },
+  pickerCalendarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  pickerArrowBtn: {
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  pickerArrowText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  pickerMonthTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  pickerWeekDays: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  pickerWeekDayText: {
+    width: `${100 / 7}%`,
+    textAlign: 'center',
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#94A3B8',
+  },
+  pickerDaysGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  pickerDayBox: {
+    width: `${100 / 7}%`,
+    aspectRatio: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+    marginVertical: 2,
+  },
+  pickerDayText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  pickerSelectedDay: {
+    backgroundColor: '#6366F1',
+  },
   pickerSelectedDayText: {
     color: '#fff',
     fontWeight: '800',
@@ -1079,5 +1299,9 @@ const styles = StyleSheet.create({
   pickerInRangeDayText: {
     color: '#4F46E5',
     fontWeight: '700',
+  },
+  shimmerLine: {
+    height: 12,
+    borderRadius: 6,
   }
 });
