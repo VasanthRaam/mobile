@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, FlatList, 
-  TouchableOpacity, ScrollView
+  TouchableOpacity, ScrollView, Animated, ActivityIndicator, Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import apiClient from '../api/apiClient';
@@ -9,19 +9,71 @@ import { useAuthStore } from '../store/useAuthStore';
 import { getCache, setCache } from '../utils/cacheManager';
 import { useThemeStore } from '../store/useThemeStore';
 
-export default function QuizResultsScreen({ navigation }) {
+const LoadingRail = ({ loading, theme }) => {
+  const [animation] = useState(new Animated.Value(0));
+
+  useEffect(() => {
+    if (loading) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(animation, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: false,
+          }),
+          Animated.timing(animation, {
+            toValue: 0,
+            duration: 0,
+            useNativeDriver: false,
+          })
+        ])
+      ).start();
+    } else {
+      animation.setValue(0);
+    }
+  }, [loading]);
+
+  if (!loading) return <View style={{ height: 3, backgroundColor: 'transparent' }} />;
+
+  const translateX = animation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-Dimensions.get('window').width, Dimensions.get('window').width]
+  });
+
+  return (
+    <View style={{ height: 3, backgroundColor: theme.chipBg, overflow: 'hidden', width: '100%' }}>
+      <Animated.View 
+        style={{
+          width: '50%',
+          height: '100%',
+          backgroundColor: theme.accent,
+          transform: [{ translateX }]
+        }}
+      />
+    </View>
+  );
+};
+
+export default function QuizResultsScreen({ route, navigation }) {
   const { theme, isDark } = useThemeStore();
   const { user } = useAuthStore();
   const isStaff = user?.role === 'teacher' || user?.role === 'admin';
+  const quizIdParam = route?.params?.quizId;
 
   const cachedCourses = getCache('courses') || [];
   const [courses, setCourses] = useState(isStaff ? [{ id: 'all', name: 'All Courses' }, ...cachedCourses] : []);
   const [selectedCourseId, setSelectedCourseId] = useState(isStaff && courses.length > 0 ? courses[0].id : null);
   const [batches, setBatches] = useState([]);
-  const [selectedBatchId, setSelectedBatchId] = useState(null);
+  const [selectedBatchId, setSelectedBatchId] = useState('all');
   
-  const [results, setResults] = useState(getCache('quiz_results') || []);
-  const [loading, setLoading] = useState(isStaff ? !getCache('courses') : !getCache('quiz_results'));
+  const [results, setResults] = useState(() => {
+    const cached = getCache('quiz_results') || [];
+    if (quizIdParam && cached.length > 0) {
+      return cached.filter(r => r.quiz_id === quizIdParam);
+    }
+    return cached;
+  });
+  const [loading, setLoading] = useState(true);
   const [fetchingBatches, setFetchingBatches] = useState(false);
   const [activeTab, setActiveTab] = useState('Scores');
 
@@ -31,7 +83,7 @@ export default function QuizResultsScreen({ navigation }) {
     } else {
       fetchResults();
     }
-  }, []);
+  }, [quizIdParam]);
 
   useEffect(() => {
     if (selectedCourseId) {
@@ -41,9 +93,9 @@ export default function QuizResultsScreen({ navigation }) {
 
   useEffect(() => {
     if (selectedBatchId !== null) {
-      fetchResults();
+      fetchResults(selectedCourseId, selectedBatchId);
     }
-  }, [selectedBatchId]);
+  }, [selectedCourseId, selectedBatchId, quizIdParam]);
 
   const fetchCourses = async () => {
     try {
@@ -63,7 +115,6 @@ export default function QuizResultsScreen({ navigation }) {
 
   const fetchBatches = async (courseId) => {
     setFetchingBatches(true);
-    setSelectedBatchId(null);
     try {
       let url = '/batches/';
       if (courseId !== 'all') {
@@ -86,31 +137,84 @@ export default function QuizResultsScreen({ navigation }) {
         fetchedBatches = [{ id: 'all', name: 'All Batches' }, ...response.data];
       }
       setBatches(fetchedBatches);
-      if (fetchedBatches.length > 0) {
-        setSelectedBatchId(fetchedBatches[0].id);
+      
+      const newBatchId = fetchedBatches.length > 0 ? fetchedBatches[0].id : 'all';
+      if (selectedBatchId === newBatchId) {
+        fetchResults(courseId, newBatchId);
+      } else {
+        setSelectedBatchId(newBatchId);
       }
     } catch (error) {
       console.error('Failed to fetch batches:', error);
+      setBatches([{ id: 'all', name: 'All Batches' }]);
+      const newBatchId = 'all';
+      if (selectedBatchId === newBatchId) {
+        fetchResults(courseId, newBatchId);
+      } else {
+        setSelectedBatchId(newBatchId);
+      }
     } finally {
       setFetchingBatches(false);
     }
   };
 
-  const fetchResults = async () => {
+  const fetchResults = async (courseId = selectedCourseId, batchId = selectedBatchId) => {
+    if (batchId === null) return;
+    
+    setLoading(true);
+    
+    const isGlobal = batchId === 'all' && courseId === 'all' && !quizIdParam;
+    
+    // Clear old results immediately to prevent showing previous course's quizzes
+    let cacheFound = false;
+    
+    if (isGlobal) {
+      const cached = getCache('quiz_results');
+      if (cached) {
+        setResults(cached);
+        setLoading(false);
+        cacheFound = true;
+      } else {
+        setResults([]);
+      }
+    } else {
+      const cacheKey = `results_${courseId}_${batchId}_${quizIdParam || 'all'}`;
+      const cached = getCache(cacheKey);
+      if (cached) {
+        setResults(cached);
+        setLoading(false);
+        cacheFound = true;
+      } else {
+        setResults([]);
+      }
+    }
+
     try {
       let url = '/quizzes/results/all';
-      if (selectedBatchId && selectedBatchId !== 'all' && !selectedBatchId.startsWith('name:')) {
-        url += `?batch_id=${selectedBatchId}`;
-      } else if (selectedCourseId && selectedCourseId !== 'all') {
-        url += `?course_id=${selectedCourseId}`;
+      const queryParams = [];
+      if (quizIdParam) {
+        queryParams.push(`quiz_id=${quizIdParam}`);
+      }
+      if (batchId && batchId !== 'all' && !batchId.startsWith('name:')) {
+        queryParams.push(`batch_id=${batchId}`);
+      }
+      if (courseId && courseId !== 'all') {
+        queryParams.push(`course_id=${courseId}`);
+      }
+      if (queryParams.length > 0) {
+        url += `?${queryParams.join('&')}`;
       }
       const response = await apiClient.get(url);
       setResults(response.data);
-      if (!selectedBatchId && !selectedCourseId) {
+      if (isGlobal) {
         setCache('quiz_results', response.data);
+      } else {
+        const cacheKey = `results_${courseId}_${batchId}_${quizIdParam || 'all'}`;
+        setCache(cacheKey, response.data);
       }
     } catch (error) {
       console.error('Failed to fetch results:', error);
+      setResults([]);
     } finally {
       setLoading(false);
     }
@@ -353,6 +457,67 @@ export default function QuizResultsScreen({ navigation }) {
     }
   };
 
+  const renderSkeletonResultItem = () => (
+    <View style={[styles.resultCard, { backgroundColor: theme.card, opacity: 0.6 }]}>
+      <View style={styles.resultInfo}>
+        <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '70%', height: 16, borderRadius: 4, marginBottom: 8 }]} />
+        <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '40%', height: 12, borderRadius: 4, marginBottom: 6 }]} />
+        <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '35%', height: 10, borderRadius: 4 }]} />
+      </View>
+      <View style={[styles.scoreContainer, { borderLeftColor: theme.border, width: 60, alignItems: 'center', justifyContent: 'center' }]}>
+        <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '50%', height: 20, borderRadius: 4, marginBottom: 4 }]} />
+        <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '40%', height: 8, borderRadius: 4 }]} />
+      </View>
+    </View>
+  );
+
+  const renderSkeletonDashboard = () => (
+    <View style={styles.staffDashboard}>
+      <View style={styles.statsRow}>
+        <View style={[styles.statBox, { borderTopWidth: 4, borderTopColor: theme.border, backgroundColor: theme.card }]}>
+          <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '50%', height: 12, borderRadius: 4, marginBottom: 8 }]} />
+          <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '40%', height: 24, borderRadius: 4, marginBottom: 8 }]} />
+          <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '100%', height: 6, borderRadius: 3 }]} />
+        </View>
+        <View style={[styles.statBox, { borderTopWidth: 4, borderTopColor: theme.border, backgroundColor: theme.card }]}>
+          <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '60%', height: 12, borderRadius: 4, marginBottom: 8 }]} />
+          <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '30%', height: 24, borderRadius: 4, marginBottom: 8 }]} />
+          <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '50%', height: 10, borderRadius: 4 }]} />
+        </View>
+      </View>
+      <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '40%', height: 18, borderRadius: 4, marginVertical: 10 }]} />
+      <View style={[styles.cardSection, { backgroundColor: theme.card, gap: 12 }]}>
+        {[1, 2, 3].map(i => (
+          <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomColor: theme.border, borderBottomWidth: 1 }}>
+            <View style={{ flexDirection: 'row', gap: 10, flex: 1, alignItems: 'center' }}>
+              <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: 20, height: 14 }]} />
+              <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '50%', height: 14 }]} />
+            </View>
+            <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: 40, height: 14 }]} />
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+
+  const renderSkeletonStudentDashboard = () => (
+    <View style={{ gap: 20 }}>
+      {[1, 2].map(i => (
+        <View key={i} style={[styles.courseDashCard, { backgroundColor: theme.card }]}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
+            <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '45%', height: 16 }]} />
+            <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '20%', height: 16, borderRadius: 8 }]} />
+          </View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
+            <View style={{ gap: 6 }}><View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: 60, height: 10 }]} /><View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: 40, height: 18 }]} /></View>
+            <View style={{ gap: 6 }}><View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: 60, height: 10 }]} /><View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: 40, height: 18 }]} /></View>
+          </View>
+          <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '100%', height: 10, borderRadius: 5 }]} />
+        </View>
+      ))}
+    </View>
+  );
+
   const renderItem = ({ item }) => (
     <TouchableOpacity 
       style={[styles.resultCard, { backgroundColor: theme.card }]}
@@ -398,7 +563,7 @@ export default function QuizResultsScreen({ navigation }) {
                   style={[styles.chip, { backgroundColor: theme.chipBg, borderColor: theme.border }, isSelected && { backgroundColor: theme.accent, borderColor: theme.accent }]}
                   onPress={() => {
                     setSelectedCourseId(item.id);
-                    fetchBatches(item.id);
+                    setSelectedBatchId('all');
                   }}
                 >
                   <Text style={[styles.chipText, { color: theme.subText }, isSelected && { color: '#fff' }]}>
@@ -411,9 +576,7 @@ export default function QuizResultsScreen({ navigation }) {
           />
 
           <Text style={[styles.filterLabel, { marginTop: 10, color: theme.subText }]}>Select Batch</Text>
-          {fetchingBatches ? (
-            <Text style={{ marginVertical: 10, marginLeft: 20, color: theme.muted }}>Fetching batches...</Text>
-          ) : (
+          <View style={{ position: 'relative', minHeight: 40, justifyContent: 'center' }}>
             <FlatList
               horizontal
               data={batches}
@@ -432,10 +595,17 @@ export default function QuizResultsScreen({ navigation }) {
                   </TouchableOpacity>
                 );
               }}
-              style={styles.chipList}
-              ListEmptyComponent={<Text style={[styles.noDataText, { color: theme.muted }]}>No batches found</Text>}
+              style={[styles.chipList, fetchingBatches && { opacity: 0.5 }]}
+              ListEmptyComponent={!fetchingBatches && <Text style={[styles.noDataText, { color: theme.muted }]}>No batches found</Text>}
             />
-          )}
+            {fetchingBatches && (
+              <ActivityIndicator 
+                size="small" 
+                color={theme.accent} 
+                style={{ position: 'absolute', right: 20 }} 
+              />
+            )}
+          </View>
         </View>
       )}
 
@@ -455,28 +625,65 @@ export default function QuizResultsScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {loading ? (
-        <View style={[styles.loaderContainer, { backgroundColor: theme.bg }]}>
-          <Text style={[styles.loadingText, { color: theme.text }]}>Loading scores...</Text>
+      {quizIdParam && (
+        <View style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          backgroundColor: theme.chipBg,
+          paddingHorizontal: 20,
+          paddingVertical: 10,
+          borderBottomWidth: 1,
+          borderBottomColor: theme.border
+        }}>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: theme.accent, flex: 1, marginRight: 10 }} numberOfLines={1}>
+            Filtered by Quiz: "{results[0]?.quiz_title || 'Selected Quiz'}"
+          </Text>
+          <TouchableOpacity onPress={() => navigation.setParams({ quizId: undefined })}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: theme.text, textDecorationLine: 'underline' }}>Show All</Text>
+          </TouchableOpacity>
         </View>
-      ) : activeTab === 'Scores' ? (
-        <FlatList
-          showsVerticalScrollIndicator={false}
-          data={filteredResults}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContainer}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyEmoji}>📦</Text>
-              <Text style={[styles.emptyText, { color: theme.subText }]}>No results found yet. Check back soon!</Text>
-            </View>
-          }
-        />
+      )}
+
+      {activeTab === 'Scores' ? (
+        loading && filteredResults.length === 0 ? (
+          <FlatList
+            showsVerticalScrollIndicator={false}
+            data={[1, 2, 3, 4, 5]}
+            keyExtractor={(item) => `skeleton-${item}`}
+            renderItem={renderSkeletonResultItem}
+            contentContainerStyle={styles.listContainer}
+          />
+        ) : (
+          <View style={{ flex: 1 }}>
+            <LoadingRail loading={loading} theme={theme} />
+            <FlatList
+              showsVerticalScrollIndicator={false}
+              data={filteredResults}
+              keyExtractor={(item) => item.id}
+              renderItem={renderItem}
+              contentContainerStyle={styles.listContainer}
+              style={loading ? { opacity: 0.6 } : null}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyEmoji}>📦</Text>
+                  <Text style={[styles.emptyText, { color: theme.subText }]}>No results found yet. Check back soon!</Text>
+                </View>
+              }
+            />
+          </View>
+        )
       ) : (
-        <ScrollView contentContainerStyle={styles.dashboardContainer} showsVerticalScrollIndicator={false}>
-          {renderDashboard()}
-        </ScrollView>
+        <View style={{ flex: 1 }}>
+          <LoadingRail loading={loading} theme={theme} />
+          <ScrollView contentContainerStyle={styles.dashboardContainer} showsVerticalScrollIndicator={false} style={loading ? { opacity: 0.6 } : null}>
+            {loading && ((isStaff && !getStaffDashboardData()) || (!isStaff && getStudentDashboardData().length === 0)) ? (
+              isStaff ? renderSkeletonDashboard() : renderSkeletonStudentDashboard()
+            ) : (
+              renderDashboard()
+            )}
+          </ScrollView>
+        </View>
       )}
     </SafeAreaView>
   );
@@ -906,5 +1113,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#555',
     fontWeight: '600',
+  },
+  shimmerLine: {
+    height: 12,
+    borderRadius: 6,
   },
 });

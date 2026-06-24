@@ -2,14 +2,62 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   ScrollView, Modal, ActivityIndicator,
-  Dimensions, RefreshControl, TextInput, Platform, Alert
+  Dimensions, RefreshControl, TextInput, Platform, Alert, Animated
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 import apiClient from '../api/apiClient';
 import { useAuthStore } from '../store/useAuthStore';
 import { getCache, setCache } from '../utils/cacheManager';
 import { useThemeStore } from '../store/useThemeStore';
+
+const LoadingRail = ({ loading, theme }) => {
+  const [animation] = useState(new Animated.Value(0));
+
+  useEffect(() => {
+    if (loading) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(animation, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: false,
+          }),
+          Animated.timing(animation, {
+            toValue: 0,
+            duration: 0,
+            useNativeDriver: false,
+          })
+        ])
+      ).start();
+    } else {
+      animation.setValue(0);
+    }
+  }, [loading]);
+
+  if (!loading) return <View style={{ height: 3, backgroundColor: 'transparent' }} />;
+
+  const translateX = animation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-Dimensions.get('window').width, Dimensions.get('window').width]
+  });
+
+  return (
+    <View style={{ height: 3, backgroundColor: theme.chipBg, overflow: 'hidden', width: '100%' }}>
+      <Animated.View 
+        style={{
+          width: '50%',
+          height: '100%',
+          backgroundColor: theme.accent,
+          transform: [{ translateX }]
+        }}
+      />
+    </View>
+  );
+};
 
 const { width } = Dimensions.get('window');
 
@@ -32,7 +80,7 @@ export default function AdminScreen({ navigation }) {
   const [batches, setBatches] = useState([]);
   const [selectedBatchId, setSelectedBatchId] = useState('all');
   const [results, setResults] = useState(getCache('admin_quiz_results') || []);
-  const [resultsLoading, setResultsLoading] = useState(!getCache('admin_quiz_results'));
+  const [resultsLoading, setResultsLoading] = useState(true);
   const [fetchingBatches, setFetchingBatches] = useState(false);
   const [resultsRefreshing, setResultsRefreshing] = useState(false);
   const [resultsSubTab, setResultsSubTab] = useState('Scores'); // 'Scores' | 'Dashboard'
@@ -76,10 +124,10 @@ export default function AdminScreen({ navigation }) {
   }, [selectedCourseId, activeMainTab]);
 
   useEffect(() => {
-    if (activeMainTab === 'results' && selectedBatchId !== null) {
-      fetchResults();
+    if (selectedBatchId !== null) {
+      fetchResults(selectedCourseId, selectedBatchId);
     }
-  }, [selectedBatchId, activeMainTab]);
+  }, [selectedCourseId, selectedBatchId, activeMainTab]);
 
   // --- Quizzes Tab Fetcher ---
   const fetchQuizzes = async () => {
@@ -126,6 +174,7 @@ export default function AdminScreen({ navigation }) {
   const fetchBatches = async (courseId) => {
     const cacheKey = `batches_${courseId}`;
     const cached = getCache(cacheKey);
+    let cachedBatches = null;
     if (cached) {
       if (courseId === 'all') {
         const unique = [];
@@ -136,9 +185,17 @@ export default function AdminScreen({ navigation }) {
             unique.push({ id: `name:${b.name}`, name: b.name });
           }
         });
-        setBatches([{ id: 'all', name: 'All Batches' }, ...unique]);
+        cachedBatches = [{ id: 'all', name: 'All Batches' }, ...unique];
       } else {
-        setBatches([{ id: 'all', name: 'All Batches' }, ...cached]);
+        cachedBatches = [{ id: 'all', name: 'All Batches' }, ...cached];
+      }
+      setBatches(cachedBatches);
+      
+      const newBatchId = 'all';
+      if (selectedBatchId === newBatchId) {
+        fetchResults(courseId, newBatchId);
+      } else {
+        setSelectedBatchId(newBatchId);
       }
     } else {
       setFetchingBatches(true);
@@ -166,51 +223,79 @@ export default function AdminScreen({ navigation }) {
       }
       setBatches(fetchedBatches);
       setCache(cacheKey, response.data);
-      setSelectedBatchId('all');
+      
+      const newBatchId = 'all';
+      if (selectedBatchId === newBatchId) {
+        fetchResults(courseId, newBatchId);
+      } else {
+        setSelectedBatchId(newBatchId);
+      }
     } catch (error) {
       console.error('Failed to fetch batches:', error);
+      setBatches([{ id: 'all', name: 'All Batches' }]);
+      const newBatchId = 'all';
+      if (selectedBatchId === newBatchId) {
+        fetchResults(courseId, newBatchId);
+      } else {
+        setSelectedBatchId(newBatchId);
+      }
     } finally {
       setFetchingBatches(false);
     }
   };
 
-  const fetchResults = async () => {
-    const isGlobal = selectedBatchId === 'all' && selectedCourseId === 'all';
+  const fetchResults = async (courseId = selectedCourseId, batchId = selectedBatchId) => {
+    if (batchId === null) return;
+    
+    setResultsLoading(true);
+    const isGlobal = batchId === 'all' && courseId === 'all';
+    
+    // Clear old results immediately to prevent showing previous course's quizzes
+    let cacheFound = false;
+    
     if (isGlobal) {
       const cached = getCache('admin_quiz_results');
       if (cached) {
         setResults(cached);
         setResultsLoading(false);
+        cacheFound = true;
       } else {
-        setResultsLoading(true);
+        setResults([]);
       }
     } else {
-      const cacheKey = `results_${selectedCourseId}_${selectedBatchId}`;
+      const cacheKey = `results_${courseId}_${batchId}`;
       const cached = getCache(cacheKey);
       if (cached) {
         setResults(cached);
         setResultsLoading(false);
+        cacheFound = true;
       } else {
-        setResultsLoading(true);
+        setResults([]);
       }
     }
     try {
       let url = '/quizzes/results/all';
-      if (selectedBatchId && selectedBatchId !== 'all' && !selectedBatchId.startsWith('name:')) {
-        url += `?batch_id=${selectedBatchId}`;
-      } else if (selectedCourseId && selectedCourseId !== 'all') {
-        url += `?course_id=${selectedCourseId}`;
+      const queryParams = [];
+      if (batchId && batchId !== 'all' && !batchId.startsWith('name:')) {
+        queryParams.push(`batch_id=${batchId}`);
+      }
+      if (courseId && courseId !== 'all') {
+        queryParams.push(`course_id=${courseId}`);
+      }
+      if (queryParams.length > 0) {
+        url += `?${queryParams.join('&')}`;
       }
       const response = await apiClient.get(url);
       setResults(response.data);
       if (isGlobal) {
         setCache('admin_quiz_results', response.data);
       } else {
-        const cacheKey = `results_${selectedCourseId}_${selectedBatchId}`;
+        const cacheKey = `results_${courseId}_${batchId}`;
         setCache(cacheKey, response.data);
       }
     } catch (error) {
       console.error('Failed to fetch results:', error);
+      setResults([]);
     } finally {
       setResultsLoading(false);
       setResultsRefreshing(false);
@@ -365,7 +450,7 @@ export default function AdminScreen({ navigation }) {
     });
   }, [students, debouncedStudentSearch, selectedStudentCourse, studentSortBy, studentSortOrder]);
 
-  const exportToPDF = () => {
+  const exportToPDF = async () => {
     const title = `BuddyBloom Students Report - ${new Date().toLocaleDateString()}`;
     const headers = ['First Name', 'Last Name', 'Email', 'Phone', 'Registered Courses', 'Joined Date'];
     const rows = filteredAndSortedStudents.map(s => [
@@ -504,11 +589,16 @@ export default function AdminScreen({ navigation }) {
         Alert.alert('Popup Blocked', 'Please allow popups to export PDF reports.');
       }
     } else {
-      Alert.alert('PDF Exported', `PDF student report compiled for ${filteredAndSortedStudents.length} students.`);
+      try {
+        const { uri } = await Print.printToFileAsync({ html: htmlContent });
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
+      } catch (error) {
+        Alert.alert('Error', 'Failed to generate and share PDF: ' + error.message);
+      }
     }
   };
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     const title = `BuddyBloom Students Report - ${new Date().toLocaleDateString()}`;
     let html = `
       <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
@@ -584,7 +674,13 @@ export default function AdminScreen({ navigation }) {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } else {
-      Alert.alert('Excel Exported', `Student Excel report data compiled for ${filteredAndSortedStudents.length} students.`);
+      try {
+        const fileUri = FileSystem.cacheDirectory + `students_report_${new Date().toISOString().slice(0,10)}.xls`;
+        await FileSystem.writeAsStringAsync(fileUri, html, { encoding: FileSystem.EncodingType.UTF8 });
+        await Sharing.shareAsync(fileUri, { mimeType: 'application/vnd.ms-excel' });
+      } catch (error) {
+        Alert.alert('Error', 'Failed to generate Excel file: ' + error.message);
+      }
     }
   };
 
@@ -791,6 +887,49 @@ export default function AdminScreen({ navigation }) {
     );
   };
 
+  const renderSkeletonResultItem = () => (
+    <View style={[styles.resultCard, { backgroundColor: theme.card, opacity: 0.6 }]}>
+      <View style={styles.resultInfo}>
+        <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '70%', height: 16, borderRadius: 4, marginBottom: 8 }]} />
+        <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '40%', height: 12, borderRadius: 4, marginBottom: 6 }]} />
+        <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '35%', height: 10, borderRadius: 4 }]} />
+      </View>
+      <View style={[styles.scoreContainer, { borderLeftColor: theme.border, width: 60, alignItems: 'center', justifyContent: 'center' }]}>
+        <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '50%', height: 20, borderRadius: 4, marginBottom: 4 }]} />
+        <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '40%', height: 8, borderRadius: 4 }]} />
+      </View>
+    </View>
+  );
+
+  const renderSkeletonDashboard = () => (
+    <View style={styles.staffDashboard}>
+      <View style={styles.statsRow}>
+        <View style={[styles.statBox, { borderTopWidth: 4, borderTopColor: theme.border, backgroundColor: theme.card }]}>
+          <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '50%', height: 12, borderRadius: 4, marginBottom: 8 }]} />
+          <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '40%', height: 24, borderRadius: 4, marginBottom: 8 }]} />
+          <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '100%', height: 6, borderRadius: 3 }]} />
+        </View>
+        <View style={[styles.statBox, { borderTopWidth: 4, borderTopColor: theme.border, backgroundColor: theme.card }]}>
+          <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '60%', height: 12, borderRadius: 4, marginBottom: 8 }]} />
+          <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '30%', height: 24, borderRadius: 4, marginBottom: 8 }]} />
+          <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '50%', height: 10, borderRadius: 4 }]} />
+        </View>
+      </View>
+      <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '40%', height: 18, borderRadius: 4, marginVertical: 10 }]} />
+      <View style={[styles.cardSection, { backgroundColor: theme.card, gap: 12 }]}>
+        {[1, 2, 3].map(i => (
+          <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomColor: theme.border, borderBottomWidth: 1 }}>
+            <View style={{ flexDirection: 'row', gap: 10, flex: 1, alignItems: 'center' }}>
+              <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: 20, height: 14 }]} />
+              <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: '50%', height: 14 }]} />
+            </View>
+            <View style={[styles.shimmerLine, { backgroundColor: theme.chipBg, width: 40, height: 14 }]} />
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+
   const renderResultItem = ({ item }) => (
     <TouchableOpacity
       style={[styles.resultCard, { backgroundColor: theme.card }]}
@@ -829,6 +968,7 @@ export default function AdminScreen({ navigation }) {
                   style={[styles.chip, { backgroundColor: theme.chipBg, borderColor: theme.border }, isSelected && { backgroundColor: theme.accent, borderColor: theme.accent }]}
                   onPress={() => {
                     setSelectedCourseId(item.id);
+                    setSelectedBatchId('all');
                   }}
                 >
                   <Text style={[styles.chipText, { color: theme.subText }, isSelected && { color: '#fff' }]}>
@@ -841,9 +981,7 @@ export default function AdminScreen({ navigation }) {
           />
 
           <Text style={[styles.filterLabel, { marginTop: 10, color: theme.subText }]}>Select Batch</Text>
-          {fetchingBatches ? (
-            <Text style={{ marginVertical: 8, marginLeft: 20, color: theme.muted, fontSize: 13 }}>Fetching batches...</Text>
-          ) : (
+          <View style={{ position: 'relative', minHeight: 40, justifyContent: 'center' }}>
             <FlatList
               horizontal
               data={batches}
@@ -862,10 +1000,17 @@ export default function AdminScreen({ navigation }) {
                   </TouchableOpacity>
                 );
               }}
-              style={styles.chipList}
-              ListEmptyComponent={<Text style={[styles.noDataText, { color: theme.muted }]}>No batches found</Text>}
+              style={[styles.chipList, fetchingBatches && { opacity: 0.5 }]}
+              ListEmptyComponent={!fetchingBatches && <Text style={[styles.noDataText, { color: theme.muted }]}>No batches found</Text>}
             />
-          )}
+            {fetchingBatches && (
+              <ActivityIndicator 
+                size="small" 
+                color={theme.accent} 
+                style={{ position: 'absolute', right: 20 }} 
+              />
+            )}
+          </View>
         </View>
 
         {/* Results Sub Tab Bar */}
@@ -884,38 +1029,51 @@ export default function AdminScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {resultsLoading ? (
-          <View style={styles.centered}>
-            <ActivityIndicator size="large" color={theme.accent} />
-            <Text style={[styles.loadingLabel, { color: theme.subText, marginTop: 12 }]}>Loading results...</Text>
-          </View>
-        ) : resultsSubTab === 'Scores' ? (
-          <FlatList
-            showsVerticalScrollIndicator={false}
-            data={filteredResults}
-            keyExtractor={(item) => item.id}
-            renderItem={renderResultItem}
-            contentContainerStyle={styles.listContainer}
-            refreshControl={
-              <RefreshControl refreshing={resultsRefreshing} onRefresh={handleResultsRefresh} tintColor={theme.accent} />
-            }
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyEmoji}>📦</Text>
-                <Text style={[styles.emptyText, { color: theme.subText }]}>No submissions found.</Text>
-              </View>
-            }
-          />
+        {resultsSubTab === 'Scores' ? (
+          resultsLoading && filteredResults.length === 0 ? (
+            <FlatList
+              showsVerticalScrollIndicator={false}
+              data={[1, 2, 3, 4, 5]}
+              keyExtractor={(item) => `skeleton-${item}`}
+              renderItem={renderSkeletonResultItem}
+              contentContainerStyle={styles.listContainer}
+            />
+          ) : (
+            <View style={{ flex: 1 }}>
+              <LoadingRail loading={resultsLoading} theme={theme} />
+              <FlatList
+                showsVerticalScrollIndicator={false}
+                data={filteredResults}
+                keyExtractor={(item) => item.id}
+                renderItem={renderResultItem}
+                contentContainerStyle={styles.listContainer}
+                style={resultsLoading ? { opacity: 0.6 } : null}
+                refreshControl={
+                  <RefreshControl refreshing={resultsRefreshing} onRefresh={handleResultsRefresh} tintColor={theme.accent} />
+                }
+                ListEmptyComponent={
+                  <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyEmoji}>📦</Text>
+                    <Text style={[styles.emptyText, { color: theme.subText }]}>No submissions found.</Text>
+                  </View>
+                }
+              />
+            </View>
+          )
         ) : (
-          <ScrollView
-            contentContainerStyle={styles.dashboardContainer}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl refreshing={resultsRefreshing} onRefresh={handleResultsRefresh} tintColor={theme.accent} />
-            }
-          >
-            {renderDashboard()}
-          </ScrollView>
+          <View style={{ flex: 1 }}>
+            <LoadingRail loading={resultsLoading} theme={theme} />
+            <ScrollView
+              contentContainerStyle={styles.dashboardContainer}
+              showsVerticalScrollIndicator={false}
+              style={resultsLoading ? { opacity: 0.6 } : null}
+              refreshControl={
+                <RefreshControl refreshing={resultsRefreshing} onRefresh={handleResultsRefresh} tintColor={theme.accent} />
+              }
+            >
+              {resultsLoading && !getStaffDashboardData() ? renderSkeletonDashboard() : renderDashboard()}
+            </ScrollView>
+          </View>
         )}
       </View>
     );

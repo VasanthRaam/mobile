@@ -672,7 +672,7 @@ export default function AttendanceScreen({ navigation }) {
 
       {fetchingStudents ? (
         <FlatList
-          style={{ backgroundColor: theme.bg }}
+          style={{ flex: 1, backgroundColor: theme.bg }}
           data={[1, 2, 3, 4, 5]}
           keyExtractor={(item) => `skeleton-${item}`}
           contentContainerStyle={styles.list}
@@ -680,7 +680,7 @@ export default function AttendanceScreen({ navigation }) {
         />
       ) : students.length > 0 ? (
         <FlatList
-          style={{ backgroundColor: theme.bg }}
+          style={{ flex: 1, backgroundColor: theme.bg }}
           data={students}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
@@ -709,39 +709,39 @@ export default function AttendanceScreen({ navigation }) {
         </View>
       )}
 
-      {students.length > 0 && !isHoliday && (
-        <View style={[styles.footer, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
-          <TouchableOpacity 
-            style={[styles.submitBtn, submitting && styles.disabledBtn]} 
-            onPress={handleSubmitAttendance}
-            disabled={submitting}
-          >
-            <Text style={styles.submitBtnText}>
-              {submitting ? 'Updating Attendance...' : `Update Attendance for ${selectedDate}`}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {isAdmin && (
-        <View style={[styles.footer, { paddingTop: 0, backgroundColor: theme.card, borderTopColor: theme.border }]}>
-          <TouchableOpacity 
-            style={[
-              styles.holidayBtn, 
-              { borderColor: theme.accent },
-              isHoliday && { backgroundColor: theme.accent, borderColor: theme.accent }
-            ]} 
-            onPress={handleMarkHoliday}
-            disabled={submitting}
-          >
-            <Text style={[
-              styles.holidayBtnText, 
-              { color: theme.accent },
-              isHoliday && { color: '#fff' }
-            ]}>
-              {isHoliday ? '🔔 Academy Holiday (Remove)' : '🔔 Mark as Academy Holiday'}
-            </Text>
-          </TouchableOpacity>
+      {((students.length > 0 && !isHoliday) || isAdmin) && (
+        <View style={[styles.footer, { backgroundColor: theme.card, borderTopColor: theme.border, paddingVertical: 12 }]}>
+          {students.length > 0 && !isHoliday && (
+            <TouchableOpacity 
+              style={[styles.submitBtn, submitting && styles.disabledBtn]} 
+              onPress={handleSubmitAttendance}
+              disabled={submitting}
+            >
+              <Text style={styles.submitBtnText}>
+                {submitting ? 'Updating Attendance...' : `Update Attendance for ${selectedDate}`}
+              </Text>
+            </TouchableOpacity>
+          )}
+          {isAdmin && (
+            <TouchableOpacity 
+              style={[
+                styles.holidayBtn, 
+                { borderColor: theme.accent },
+                isHoliday && { backgroundColor: theme.accent, borderColor: theme.accent },
+                students.length > 0 && !isHoliday && { marginTop: 10 }
+              ]} 
+              onPress={handleMarkHoliday}
+              disabled={submitting}
+            >
+              <Text style={[
+                styles.holidayBtnText, 
+                { color: theme.accent },
+                isHoliday && { color: '#fff' }
+              ]}>
+                {isHoliday ? '🔔 Academy Holiday (Remove)' : '🔔 Mark as Academy Holiday'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
     </SafeAreaView>

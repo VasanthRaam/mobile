@@ -7,6 +7,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import apiClient from '../api/apiClient';
 import { getCache, setCache } from '../utils/cacheManager';
 import { useThemeStore } from '../store/useThemeStore';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 
 export default function RevenueScreen() {
   const [activeTab, setActiveTab] = useState('Dashboard'); // 'Dashboard', 'Income', 'Expenses'
@@ -14,6 +17,9 @@ export default function RevenueScreen() {
 
   // Global theme — shared across all screens via useThemeStore
   const { theme, isDark, toggleDark } = useThemeStore();
+
+  // Selected month detail for monthly chart
+  const [selectedChartMonth, setSelectedChartMonth] = useState(null);
 
   // Dashboard Data
   const [dashboardData, setDashboardData] = useState(getCache('revenue_dashboard') || null);
@@ -450,17 +456,35 @@ export default function RevenueScreen() {
               {dashboardData.monthly_data.map((item, idx) => {
                 const incHeight = maxMonthlyVal > 0 ? (item.income / maxMonthlyVal) * 100 : 0;
                 const expHeight = maxMonthlyVal > 0 ? (item.expense / maxMonthlyVal) * 100 : 0;
+                const isSelected = selectedChartMonth?.month === item.month;
 
                 return (
-                  <View key={idx} style={styles.chartCol}>
+                  <TouchableOpacity
+                    key={idx}
+                    style={[
+                      styles.chartCol,
+                      isSelected && {
+                        backgroundColor: theme.chipBg,
+                        borderRadius: 8,
+                      }
+                    ]}
+                    onPress={() => setSelectedChartMonth(item)}
+                    activeOpacity={0.7}
+                  >
                     <View style={[styles.barsWrap, { borderBottomColor: theme.border }]}>
                       <View style={styles.barGroup}>
                         <View style={[styles.bar, styles.incBar, { height: `${incHeight}%` }]} />
                         <View style={[styles.bar, styles.expBar, { height: `${expHeight}%` }]} />
                       </View>
                     </View>
-                    <Text style={[styles.chartLabel, { color: theme.subText }]}>{item.month.split('-')[1]}</Text>
-                  </View>
+                    <Text style={[
+                      styles.chartLabel, 
+                      { color: theme.subText },
+                      isSelected && { color: theme.accent, fontWeight: '800' }
+                    ]}>
+                      {item.month.split('-')[1]}
+                    </Text>
+                  </TouchableOpacity>
                 );
               })}
             </ScrollView>
@@ -470,6 +494,47 @@ export default function RevenueScreen() {
             <View style={styles.legendItem}><View style={[styles.dot, styles.expBar]} /><Text style={[styles.legendText, { color: theme.subText }]}>Expense</Text></View>
           </View>
         </View>
+
+        {/* Selected Month Details Breakdown */}
+        {selectedChartMonth && (
+          <View style={[styles.breakdownCard, { backgroundColor: theme.card, marginTop: -12, marginBottom: 24, padding: 16 }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={[styles.sectionTitle, { color: theme.text, fontSize: 14, marginBottom: 0 }]}>
+                📊 Details for {(() => {
+                  const [year, month] = selectedChartMonth.month.split('-');
+                  const months = [
+                    'January', 'February', 'March', 'April', 'May', 'June',
+                    'July', 'August', 'September', 'October', 'November', 'December'
+                  ];
+                  return `${months[parseInt(month, 10) - 1]} ${year}`;
+                })()}
+              </Text>
+              <TouchableOpacity onPress={() => setSelectedChartMonth(null)}>
+                <Text style={{ fontSize: 13, color: theme.subText, fontWeight: '700' }}>✕ Hide</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
+              <View style={{ flex: 1, backgroundColor: theme.bg, padding: 10, borderRadius: 12, borderLeftWidth: 4, borderLeftColor: theme.success }}>
+                <Text style={{ fontSize: 10, color: theme.subText, marginBottom: 4, fontWeight: '600' }}>Income</Text>
+                <Text style={{ fontSize: 14, fontWeight: '800', color: theme.success }}>
+                  ₹{Number(selectedChartMonth.income).toFixed(0)}
+                </Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: theme.bg, padding: 10, borderRadius: 12, borderLeftWidth: 4, borderLeftColor: theme.danger }}>
+                <Text style={{ fontSize: 10, color: theme.subText, marginBottom: 4, fontWeight: '600' }}>Expense</Text>
+                <Text style={{ fontSize: 14, fontWeight: '800', color: theme.danger }}>
+                  ₹{Number(selectedChartMonth.expense).toFixed(0)}
+                </Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: theme.bg, padding: 10, borderRadius: 12, borderLeftWidth: 4, borderLeftColor: theme.accent }}>
+                <Text style={{ fontSize: 10, color: theme.subText, marginBottom: 4, fontWeight: '600' }}>Net Profit</Text>
+                <Text style={{ fontSize: 14, fontWeight: '800', color: theme.accent }}>
+                  ₹{Number(selectedChartMonth.income - selectedChartMonth.expense).toFixed(0)}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Breakdown Sections */}
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Revenue by Course</Text>
@@ -864,7 +929,7 @@ export default function RevenueScreen() {
     return { totalPaid, totalPending, rate };
   }, [filteredFeeDetails]);
 
-  const exportToPDF = () => {
+  const exportToPDF = async () => {
     const title = `BuddyBloom Fee Details Report - ${new Date().toLocaleDateString()}`;
     let html = `
       <html>
@@ -951,11 +1016,16 @@ export default function RevenueScreen() {
         printWindow.print();
       }, 500);
     } else {
-      Alert.alert('PDF Exported', `Fee report data compiled for ${filteredFeeDetails.length} students.`);
+      try {
+        const { uri } = await Print.printToFileAsync({ html });
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
+      } catch (error) {
+        Alert.alert('Error', 'Failed to generate and share PDF: ' + error.message);
+      }
     }
   };
 
-  const exportToWord = () => {
+  const exportToWord = async () => {
     const title = `BuddyBloom Fee Details Report - ${new Date().toLocaleDateString()}`;
     let html = `
       <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
@@ -1030,7 +1100,13 @@ export default function RevenueScreen() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } else {
-      Alert.alert('Word Exported', `Word document data compiled for ${filteredFeeDetails.length} students.`);
+      try {
+        const fileUri = FileSystem.cacheDirectory + `Fee_Details_Report_${new Date().toISOString().substring(0, 10)}.doc`;
+        await FileSystem.writeAsStringAsync(fileUri, '\ufeff' + html, { encoding: FileSystem.EncodingType.UTF8 });
+        await Sharing.shareAsync(fileUri, { mimeType: 'application/msword' });
+      } catch (error) {
+        Alert.alert('Error', 'Failed to generate Word file: ' + error.message);
+      }
     }
   };
 
