@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Alert, SafeAreaView, ScrollView,
-  KeyboardAvoidingView, Platform, Animated, StatusBar, Image
+  KeyboardAvoidingView, Platform, Animated, StatusBar, Image,
+  ActivityIndicator
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
@@ -133,8 +134,11 @@ export default function RegisterScreen({ navigation, route }) {
     }
   };
 
+  // Separate state to track the initial Google OAuth loading (before form is shown)
+  const [googleCallbackLoading, setGoogleCallbackLoading] = useState(false);
+
   const handleGoogleCallback = async (access_token) => {
-    setLoading(true);
+    setGoogleCallbackLoading(true);
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser(access_token);
       if (userError) throw userError;
@@ -150,9 +154,9 @@ export default function RegisterScreen({ navigation, route }) {
         await login(access_token, userData);
       } catch (backendError) {
         if (backendError.response?.status === 404) {
-           // New user, populate fields and hide password
+           // New user, populate fields and show the registration form
            setEmail(user.email);
-           setFullName(user.user_metadata.full_name);
+           setFullName(user.user_metadata.full_name || '');
            setIsGoogleAuth(true);
            setAuthMethod('google');
            setPassword('GOOGLE_AUTH_PLACEHOLDER');
@@ -166,12 +170,12 @@ export default function RegisterScreen({ navigation, route }) {
       console.error(error);
       Alert.alert('Google Registration Failed', error.message);
     } finally {
-      setLoading(false);
+      setGoogleCallbackLoading(false);
     }
   };
 
   const handleGoogleRegistration = async () => {
-    setLoading(true);
+    setGoogleCallbackLoading(true);
     try {
       const redirectUri = Platform.OS === 'web' 
         ? window.location.origin
@@ -234,7 +238,7 @@ export default function RegisterScreen({ navigation, route }) {
       console.error(error);
       Alert.alert('Google Registration Failed', error.message);
     } finally {
-      setLoading(false);
+      setGoogleCallbackLoading(false);
     }
   };
 
@@ -266,6 +270,21 @@ export default function RegisterScreen({ navigation, route }) {
       setLoading(false);
     }
   };
+
+  // Full-screen loading overlay while Google OAuth is in progress
+  if (googleCallbackLoading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+        <View style={styles.fullScreenLoader}>
+          <View style={[styles.loaderCard, { backgroundColor: theme.card }]}>
+            <ActivityIndicator size="large" color={theme.accent} />
+            <Text style={[styles.loaderTitle, { color: theme.text }]}>Signing in with Google</Text>
+            <Text style={[styles.loaderSubtitle, { color: theme.subText }]}>Please wait while we verify your account...</Text>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (submitted) {
     return (
@@ -359,8 +378,8 @@ export default function RegisterScreen({ navigation, route }) {
               ))}
             </View>
 
-            <Field label="Full Name" value={fullName} onChangeText={setFullName} placeholder="Enter your full name" editable={authMethod !== 'google'} />
-            <Field label="Email Address" value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" editable={authMethod !== 'google'} />
+            <Field label="Full Name" value={fullName} onChangeText={setFullName} placeholder="Enter your full name" editable={true} />
+            <Field label="Email Address" value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" editable={authMethod !== 'google'} isReadOnly={authMethod === 'google'} />
             <Field label="Phone Number" value={phone} onChangeText={setPhone} placeholder="+91 9876543210" keyboardType="phone-pad" />
             
             {/* Courses & Batches Selection */}
@@ -434,13 +453,24 @@ export default function RegisterScreen({ navigation, route }) {
   );
 }
 
-function Field({ label, value, onChangeText, placeholder, ...props }) {
+function Field({ label, value, onChangeText, placeholder, isReadOnly, ...props }) {
   const { theme } = useThemeStore();
   return (
     <View style={styles.fieldWrapper}>
-      <Text style={[styles.fieldLabel, { color: theme.text }]}>{label}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+        <Text style={[styles.fieldLabel, { color: theme.text, marginBottom: 0 }]}>{label}</Text>
+        {isReadOnly && (
+          <View style={[styles.readOnlyBadge, { backgroundColor: theme.chipBg, borderColor: theme.border }]}>
+            <Text style={[styles.readOnlyText, { color: theme.muted }]}>🔒 auto-filled</Text>
+          </View>
+        )}
+      </View>
       <TextInput 
-        style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]} 
+        style={[
+          styles.input, 
+          { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text },
+          isReadOnly && { backgroundColor: theme.chipBg, color: theme.muted }
+        ]} 
         value={value} 
         onChangeText={onChangeText} 
         placeholder={placeholder} 
@@ -502,4 +532,12 @@ const styles = StyleSheet.create({
   successMsg: { fontSize: 15, color: '#64748B', textAlign: 'center', marginBottom: 24 },
   backToLoginBtn: { backgroundColor: '#6366F1', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
   backToLoginText: { color: '#fff', fontWeight: '700' },
+  // Full-screen loader
+  fullScreenLoader: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  loaderCard: { backgroundColor: '#fff', borderRadius: 28, padding: 40, alignItems: 'center', width: '100%', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.08, shadowRadius: 20, elevation: 10 },
+  loaderTitle: { fontSize: 20, fontWeight: '800', color: '#1E293B', marginTop: 20, marginBottom: 10, textAlign: 'center' },
+  loaderSubtitle: { fontSize: 14, color: '#64748B', textAlign: 'center', lineHeight: 20 },
+  // Read-only badge for auto-filled fields
+  readOnlyBadge: { marginLeft: 8, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, borderWidth: 1 },
+  readOnlyText: { fontSize: 10, fontWeight: '600' },
 });

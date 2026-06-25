@@ -1,76 +1,29 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
-  StyleSheet, Alert, SafeAreaView, KeyboardAvoidingView, Platform, Image
+  View, Text, TouchableOpacity,
+  StyleSheet, SafeAreaView, Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import apiClient from '../api/apiClient';
-
 import { useThemeStore } from '../store/useThemeStore';
-import { sendFirebaseOTP } from '../utils/firebase';
 
 export default function MobileLoginScreen({ navigation }) {
   const { theme, isDark } = useThemeStore();
-  const [phone, setPhone] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleSendOTP = async () => {
-    if (!phone || phone.length < 10) {
-      Alert.alert('Error', 'Please enter a valid phone number');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const formattedPhone = phone.startsWith('+') ? phone : `+91${phone}`;
-      let firebaseSessionInfo = null;
-      let isFirebase = false;
-
-      try {
-        console.log('Attempting Firebase Phone Auth OTP...');
-        firebaseSessionInfo = await sendFirebaseOTP(formattedPhone);
-        isFirebase = true;
-        console.log('Firebase Phone Auth OTP sent.');
-      } catch (fbError) {
-        console.warn('Firebase Phone Auth failed, using backend mock:', fbError.message);
-      }
-
-      if (isFirebase) {
-        navigation.navigate('MobileOTPVerify', { 
-          phone: formattedPhone, 
-          firebaseSessionInfo, 
-          isFirebase: true 
-        });
-      } else {
-        await apiClient.post('/auth/mobile-login-init', { phone });
-        navigation.navigate('MobileOTPVerify', { phone, isFirebase: false });
-      }
-    } catch (error) {
-      console.error(error);
-      Alert.alert('Error', error.response?.data?.detail || 'Failed to send OTP.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
       <View style={[styles.bgDecor1, { backgroundColor: isDark ? theme.accentLight : '#EEF2FF' }]} />
       <View style={[styles.bgDecor2, { backgroundColor: isDark ? theme.successLight : '#F0FDF4' }]} />
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-      >
+      <View style={styles.keyboardView}>
         <TouchableOpacity style={[styles.backButton, { backgroundColor: theme.card }]} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
 
         <View style={styles.headerSection}>
           <View style={[styles.logoCircle, { backgroundColor: theme.card }]}>
-            <Image 
-              source={require('../../assets/icon.png')} 
-              style={styles.logoImage} 
+            <Image
+              source={require('../../assets/icon.png')}
+              style={styles.logoImage}
               resizeMode="contain"
             />
           </View>
@@ -79,35 +32,28 @@ export default function MobileLoginScreen({ navigation }) {
         </View>
 
         <View style={[styles.formCard, { backgroundColor: theme.card }]}>
-          <Text style={[styles.formTitle, { color: theme.text }]}>Mobile Login</Text>
-          <Text style={[styles.formSubtitle, { color: theme.subText }]}>
-            Enter your registered phone number to receive a one-time password.
-          </Text>
-
-          <View style={styles.inputWrapper}>
-            <Text style={[styles.inputLabel, { color: theme.text }]}>Phone Number</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-              placeholder="+91 9876543210"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-              placeholderTextColor={theme.muted}
-            />
+          <View style={styles.iconWrapper}>
+            <Text style={styles.wipIcon}>🚧</Text>
           </View>
-
+          <Text style={[styles.formTitle, { color: theme.text }]}>Coming Soon</Text>
+          <Text style={[styles.formSubtitle, { color: theme.subText }]}>
+            Mobile number login is currently under development and will be available in a future update.
+          </Text>
+          <View style={[styles.infoBox, { backgroundColor: isDark ? theme.chipBg : '#FEF9C3', borderColor: isDark ? theme.border : '#FDE047' }]}>
+            <Ionicons name="information-circle-outline" size={18} color={isDark ? theme.subText : '#854D0E'} />
+            <Text style={[styles.infoText, { color: isDark ? theme.subText : '#854D0E' }]}>
+              In the meantime, please use Google or Email to sign in.
+            </Text>
+          </View>
           <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: theme.accent }, loading && styles.disabledBtn]}
-            onPress={handleSendOTP}
-            disabled={loading}
+            style={[styles.actionBtn, { backgroundColor: theme.accent }]}
+            onPress={() => navigation.goBack()}
             activeOpacity={0.8}
           >
-            <Text style={styles.actionBtnText}>
-              {loading ? 'Sending OTP...' : 'Send OTP'}
-            </Text>
+            <Text style={styles.actionBtnText}>Go Back to Login</Text>
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -200,57 +146,64 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 30,
     elevation: 20,
+    alignItems: 'center',
+  },
+  iconWrapper: {
+    marginBottom: 16,
+  },
+  wipIcon: {
+    fontSize: 56,
+    textAlign: 'center',
   },
   formTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800',
     color: '#1E293B',
     marginBottom: 12,
+    textAlign: 'center',
   },
   formSubtitle: {
     fontSize: 14,
     color: '#64748B',
-    marginBottom: 24,
-    lineHeight: 20,
+    marginBottom: 20,
+    lineHeight: 22,
+    textAlign: 'center',
   },
-  inputWrapper: {
-    marginBottom: 24,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#475569',
-    marginBottom: 8,
-    marginLeft: 4,
-  },
-  input: {
-    height: 56,
-    backgroundColor: '#F8FAFC',
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FEF9C3',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 16,
-    paddingHorizontal: 20,
-    fontSize: 16,
-    color: '#1E293B',
+    borderColor: '#FDE047',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 24,
+    gap: 10,
+    width: '100%',
+  },
+  infoText: {
+    fontSize: 13,
+    color: '#854D0E',
+    fontWeight: '500',
+    flex: 1,
+    lineHeight: 20,
   },
   actionBtn: {
     backgroundColor: '#2563EB',
-    height: 60,
+    height: 56,
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
+    width: '100%',
     shadowColor: '#2563EB',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
     shadowRadius: 15,
     elevation: 8,
   },
-  disabledBtn: {
-    backgroundColor: '#94A3B8',
-  },
   actionBtnText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
   },
 });
