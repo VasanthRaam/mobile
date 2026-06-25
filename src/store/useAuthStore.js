@@ -47,7 +47,7 @@ export const useAuthStore = create((set) => ({
 
           if (hasHardware && isEnrolled) {
             const result = await LocalAuthentication.authenticateAsync({
-              promptMessage: 'Unlock BuddyBloom',
+              promptMessage: 'Unlock VHA EduTech',
               fallbackLabel: 'Use Passcode',
               cancelLabel: 'Cancel',
               disableDeviceFallback: false,

@@ -930,7 +930,7 @@ export default function RevenueScreen() {
   }, [filteredFeeDetails]);
 
   const exportToPDF = async () => {
-    const title = `BuddyBloom Fee Details Report - ${new Date().toLocaleDateString()}`;
+    const title = `VHA EduTech Fee Details Report - ${new Date().toLocaleDateString()}`;
     let html = `
       <html>
         <head>
@@ -1026,7 +1026,7 @@ export default function RevenueScreen() {
   };
 
   const exportToWord = async () => {
-    const title = `BuddyBloom Fee Details Report - ${new Date().toLocaleDateString()}`;
+    const title = `VHA EduTech Fee Details Report - ${new Date().toLocaleDateString()}`;
     let html = `
       <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
         <head>

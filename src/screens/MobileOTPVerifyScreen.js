@@ -82,7 +82,7 @@ export default function MobileOTPVerifyScreen({ route, navigation }) {
               resizeMode="contain"
             />
           </View>
-          <Text style={[styles.title, { color: theme.text }]}>BuddyBloom</Text>
+          <Text style={[styles.title, { color: theme.text }]}>VHA EduTech</Text>
           <Text style={[styles.subtitle, { color: theme.subText }]}>Nurturing Minds, Together.</Text>
         </View>
 

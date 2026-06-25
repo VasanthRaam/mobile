@@ -23,7 +23,7 @@ export default function UnlockScreen() {
 
       if (hasHardware && isEnrolled) {
         const result = await LocalAuthentication.authenticateAsync({
-          promptMessage: 'Unlock BuddyBloom',
+          promptMessage: 'Unlock VHA EduTech',
           fallbackLabel: 'Use Passcode',
           cancelLabel: 'Cancel',
           disableDeviceFallback: false,
@@ -69,7 +69,7 @@ export default function UnlockScreen() {
         <View style={[styles.formCard, { backgroundColor: theme.card }]}>
           <Text style={[styles.formTitle, { color: theme.text }]}>App Locked</Text>
           <Text style={[styles.formSubtitle, { color: theme.subText }]}>
-            Please authenticate to continue using BuddyBloom.
+            Please authenticate to continue using VHA EduTech.
           </Text>
 
           <TouchableOpacity

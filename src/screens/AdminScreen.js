@@ -451,7 +451,7 @@ export default function AdminScreen({ navigation }) {
   }, [students, debouncedStudentSearch, selectedStudentCourse, studentSortBy, studentSortOrder]);
 
   const exportToPDF = async () => {
-    const title = `BuddyBloom Students Report - ${new Date().toLocaleDateString()}`;
+    const title = `VHA EduTech Students Report - ${new Date().toLocaleDateString()}`;
     const headers = ['First Name', 'Last Name', 'Email', 'Phone', 'Registered Courses', 'Joined Date'];
     const rows = filteredAndSortedStudents.map(s => [
       s.first_name || 'N/A',
@@ -552,7 +552,7 @@ export default function AdminScreen({ navigation }) {
         <body>
           <div class="header-container">
             <div>
-              <h1 class="title">BuddyBloom</h1>
+              <h1 class="title">VHA EduTech</h1>
               <div class="subtitle">Students Directory Report</div>
             </div>
             <div>
@@ -571,7 +571,7 @@ export default function AdminScreen({ navigation }) {
             </tbody>
           </table>
           <div class="footer-info">
-            BuddyBloom Administrator Console • Confidential Report • Page 1 of 1
+            VHA EduTech Administrator Console • Confidential Report • Page 1 of 1
           </div>
         </body>
       </html>
@@ -599,7 +599,7 @@ export default function AdminScreen({ navigation }) {
   };
 
   const exportToExcel = async () => {
-    const title = `BuddyBloom Students Report - ${new Date().toLocaleDateString()}`;
+    const title = `VHA EduTech Students Report - ${new Date().toLocaleDateString()}`;
     let html = `
       <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
         <head>
@@ -1337,7 +1337,7 @@ export default function AdminScreen({ navigation }) {
                 <View style={styles.infoRow}>
                   <Ionicons name="calendar-outline" size={18} color={theme.muted} />
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.infoTextSub, { color: theme.muted }]}>Joined BuddyBloom</Text>
+                    <Text style={[styles.infoTextSub, { color: theme.muted }]}>Joined VHA EduTech</Text>
                     <Text style={[styles.infoText, { color: theme.text, marginTop: 2 }]}>{formattedJoinDate}</Text>
                   </View>
                 </View>

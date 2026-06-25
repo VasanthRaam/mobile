@@ -64,7 +64,7 @@ export default function PendingApprovalsScreen({ navigation }) {
     try {
       if (tab === 'registrations') {
         await apiClient.post(`/auth/approve/${item.id}`);
-        Alert.alert('✅ Approved!', `${item.full_name} can now log in to BuddyBloom.`);
+        Alert.alert('✅ Approved!', `${item.full_name} can now log in to VHA EduTech.`);
       } else if (tab === 'enrollments') {
         await apiClient.post(`/enrollments/${item.id}/approve`);
         Alert.alert('✅ Approved!', `Enrollment for ${item.student_name} approved.`);

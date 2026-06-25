@@ -321,7 +321,7 @@ export default function RegisterScreen({ navigation, route }) {
               />
             </View>
             <Text style={[styles.title, { color: theme.text }]}>Create Account</Text>
-            <Text style={[styles.subtitle, { color: theme.subText }]}>Fill in your details to join BuddyBloom</Text>
+            <Text style={[styles.subtitle, { color: theme.subText }]}>Fill in your details to join VHA EduTech</Text>
           </View>
 
           <View style={[styles.card, { backgroundColor: theme.card }]}>

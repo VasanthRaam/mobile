@@ -191,7 +191,7 @@ export default function LoginScreen({ navigation }) {
               resizeMode="contain"
             />
           </View>
-          <Text style={[styles.title, { color: theme.text }]}>BuddyBloom</Text>
+          <Text style={[styles.title, { color: theme.text }]}>VHA EduTech</Text>
           <Text style={[styles.subtitle, { color: theme.subText }]}>Nurturing Minds, Together.</Text>
         </View>
 
@@ -230,7 +230,7 @@ export default function LoginScreen({ navigation }) {
           </TouchableOpacity>
 
           <View style={styles.linkRow}>
-            <Text style={[styles.footerText, { color: theme.subText }]}>New to BuddyBloom?</Text>
+            <Text style={[styles.footerText, { color: theme.subText }]}>New to VHA EduTech?</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
               <Text style={[styles.registerLinkText, { color: theme.accent }]}>Create Account</Text>
             </TouchableOpacity>
@@ -238,8 +238,9 @@ export default function LoginScreen({ navigation }) {
         </View>
 
         <View style={styles.footer}>
-          <Text style={[styles.footerVersion, { color: theme.muted }]}>Version 1.0.0 • Vasanth Academy</Text>
+          <Text style={[styles.footerVersion, { color: theme.muted }]}>Version 1.0.0 • VHA EduTech</Text>
         </View>
+
 
         {/* ── Server Status Banner ── */}
         {serverStatus !== 'ready' && (
