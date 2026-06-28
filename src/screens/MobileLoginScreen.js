@@ -3,14 +3,13 @@ import {
   View, Text, TouchableOpacity, TextInput,
   StyleSheet, SafeAreaView, Image, Alert,
   ActivityIndicator, KeyboardAvoidingView,
-  ScrollView, Platform, TouchableWithoutFeedback,
-  Keyboard, Animated
+  ScrollView, Platform, Keyboard, Animated
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '../store/useThemeStore';
 import { useAuthStore } from '../store/useAuthStore';
 import apiClient from '../api/apiClient';
-import { sendFirebaseOTP, verifyFirebaseOTP } from '../utils/firebase';
+import auth from '@react-native-firebase/auth';
 
 export default function MobileLoginScreen({ navigation }) {
   const { theme, isDark } = useThemeStore();
@@ -20,7 +19,7 @@ export default function MobileLoginScreen({ navigation }) {
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState(1); // 1: Enter Phone, 2: Enter OTP
   const [loading, setLoading] = useState(false);
-  const [sessionInfo, setSessionInfo] = useState(null);
+  const [confirm, setConfirm] = useState(null);
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -55,8 +54,9 @@ export default function MobileLoginScreen({ navigation }) {
 
     setLoading(true);
     try {
-      const info = await sendFirebaseOTP(formattedPhone);
-      setSessionInfo(info);
+      // Trigger native Firebase Phone Auth
+      const confirmation = await auth().signInWithPhoneNumber(formattedPhone);
+      setConfirm(confirmation);
       Alert.alert('OTP Sent', 'A 6-digit verification code has been sent to your number.');
       transitionToStep(2);
     } catch (error) {
@@ -76,10 +76,17 @@ export default function MobileLoginScreen({ navigation }) {
 
     setLoading(true);
     try {
-      // 1. Verify OTP with Firebase and get ID Token
-      const idToken = await verifyFirebaseOTP(sessionInfo, cleanOtp);
+      if (!confirm) {
+        throw new Error('Verification session lost. Please request a new OTP.');
+      }
 
-      // 2. Send Firebase ID Token to backend to match/sync user profiles
+      // 1. Verify OTP with Firebase
+      await confirm.confirm(cleanOtp);
+
+      // 2. Get current Firebase ID Token (JWT)
+      const idToken = await auth().currentUser.getIdToken(true);
+
+      // 3. Send Firebase ID Token to backend to match/sync user profiles
       const response = await apiClient.post('/auth/firebase-login-verify', {
         id_token: idToken,
       });
@@ -114,113 +121,112 @@ export default function MobileLoginScreen({ navigation }) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <TouchableOpacity
+            style={[styles.backButton, { backgroundColor: theme.card }]}
+            onPress={() => (step === 2 ? transitionToStep(1) : navigation.goBack())}
           >
-            <TouchableOpacity
-              style={[styles.backButton, { backgroundColor: theme.card }]}
-              onPress={() => (step === 2 ? transitionToStep(1) : navigation.goBack())}
-            >
-              <Ionicons name="arrow-back" size={24} color={theme.text} />
-            </TouchableOpacity>
+            <Ionicons name="arrow-back" size={24} color={theme.text} />
+          </TouchableOpacity>
 
-            <View style={styles.headerSection}>
-              <View style={[styles.logoCircle, { backgroundColor: theme.card }]}>
-                <Image
-                  source={require('../../assets/icon.png')}
-                  style={styles.logoImage}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text style={[styles.title, { color: theme.text }]}>VHA EduTech</Text>
-              <Text style={[styles.subtitle, { color: theme.subText }]}>Nurturing Minds, Together.</Text>
+          <View style={styles.headerSection}>
+            <View style={[styles.logoCircle, { backgroundColor: theme.card }]}>
+              <Image
+                source={require('../../assets/icon.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
             </View>
+            <Text style={[styles.title, { color: theme.text }]}>VHA EduTech</Text>
+            <Text style={[styles.subtitle, { color: theme.subText }]}>Nurturing Minds, Together.</Text>
+          </View>
 
-            <Animated.View style={[styles.formCard, { backgroundColor: theme.card, opacity: fadeAnim, borderColor: theme.border, borderWidth: isDark ? 1 : 0 }]}>
-              {step === 1 ? (
-                // STEP 1: Enter Mobile Number
-                <>
-                  <Text style={[styles.formTitle, { color: theme.text }]}>Sign In with Mobile</Text>
-                  <Text style={[styles.formSubtitle, { color: theme.subText }]}>
-                    Enter your registered mobile number to receive a secure Firebase OTP.
-                  </Text>
+          <Animated.View style={[styles.formCard, { backgroundColor: theme.card, opacity: fadeAnim, borderColor: theme.border, borderWidth: isDark ? 1 : 0 }]}>
+            {step === 1 ? (
+              // STEP 1: Enter Mobile Number
+              <>
+                <Text style={[styles.formTitle, { color: theme.text }]}>Sign In with Mobile</Text>
+                <Text style={[styles.formSubtitle, { color: theme.subText }]}>
+                  Enter your registered mobile number to receive a secure Firebase OTP.
+                </Text>
 
-                  <View style={[styles.inputContainer, { borderColor: theme.border, backgroundColor: theme.chipBg }]}>
-                    <Ionicons name="call-outline" size={20} color={theme.muted} style={styles.inputIcon} />
-                    <TextInput
-                      style={[styles.textInput, { color: theme.text }]}
-                      placeholder="Mobile Number (e.g. 9876543210)"
-                      placeholderTextColor={theme.muted}
-                      keyboardType="phone-pad"
-                      maxLength={15}
-                      value={phone}
-                      onChangeText={setPhone}
-                      editable={!loading}
-                    />
-                  </View>
+                <View style={[styles.inputContainer, { borderColor: theme.border, backgroundColor: theme.chipBg }]}>
+                  <Ionicons name="call-outline" size={20} color={theme.muted} style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.textInput, { color: theme.text }]}
+                    placeholder="Mobile Number"
+                    placeholderTextColor={theme.muted}
+                    keyboardType="phone-pad"
+                    maxLength={15}
+                    value={phone}
+                    onChangeText={setPhone}
+                    editable={!loading}
+                  />
+                </View>
 
-                  <TouchableOpacity
-                    style={[styles.actionBtn, { backgroundColor: theme.accent }]}
-                    onPress={handleSendOTP}
-                    disabled={loading}
-                    activeOpacity={0.8}
-                  >
-                    {loading ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <Text style={styles.actionBtnText}>Send OTP</Text>
-                    )}
-                  </TouchableOpacity>
-                </>
-              ) : (
-                // STEP 2: Enter OTP Code
-                <>
-                  <Text style={[styles.formTitle, { color: theme.text }]}>Enter OTP</Text>
-                  <Text style={[styles.formSubtitle, { color: theme.subText }]}>
-                    We have sent a 6-digit verification code to your phone.
-                  </Text>
+                <TouchableOpacity
+                  style={[styles.actionBtn, { backgroundColor: theme.accent }]}
+                  onPress={handleSendOTP}
+                  disabled={loading}
+                  activeOpacity={0.8}
+                >
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.actionBtnText}>Send OTP</Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            ) : (
+              // STEP 2: Enter OTP Code
+              <>
+                <Text style={[styles.formTitle, { color: theme.text }]}>Enter OTP</Text>
+                <Text style={[styles.formSubtitle, { color: theme.subText }]}>
+                  We have sent a 6-digit verification code to your phone.
+                </Text>
 
-                  <View style={[styles.inputContainer, { borderColor: theme.border, backgroundColor: theme.chipBg }]}>
-                    <Ionicons name="shield-checkmark-outline" size={20} color={theme.muted} style={styles.inputIcon} />
-                    <TextInput
-                      style={[styles.textInput, { color: theme.text }]}
-                      placeholder="Enter 6-Digit OTP"
-                      placeholderTextColor={theme.muted}
-                      keyboardType="number-pad"
-                      maxLength={6}
-                      value={otp}
-                      onChangeText={setOtp}
-                      editable={!loading}
-                    />
-                  </View>
+                <View style={[styles.inputContainer, { borderColor: theme.border, backgroundColor: theme.chipBg }]}>
+                  <Ionicons name="shield-checkmark-outline" size={20} color={theme.muted} style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.textInput, { color: theme.text }]}
+                    placeholder="Enter 6-Digit OTP"
+                    placeholderTextColor={theme.muted}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    value={otp}
+                    onChangeText={setOtp}
+                    editable={!loading}
+                  />
+                </View>
 
-                  <TouchableOpacity
-                    style={[styles.actionBtn, { backgroundColor: theme.accent }]}
-                    onPress={handleVerifyOTP}
-                    disabled={loading}
-                    activeOpacity={0.8}
-                  >
-                    {loading ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <Text style={styles.actionBtnText}>Verify & Login</Text>
-                    )}
-                  </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionBtn, { backgroundColor: theme.accent }]}
+                  onPress={handleVerifyOTP}
+                  disabled={loading}
+                  activeOpacity={0.8}
+                >
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.actionBtnText}>Verify & Login</Text>
+                  )}
+                </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={styles.resendBtn}
-                    onPress={handleSendOTP}
-                    disabled={loading}
-                  >
-                    <Text style={[styles.resendText, { color: theme.accent }]}>Resend OTP Code</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </Animated.View>
-          </ScrollView>
-        </TouchableWithoutFeedback>
+                <TouchableOpacity
+                  style={styles.resendBtn}
+                  onPress={handleSendOTP}
+                  disabled={loading}
+                >
+                  <Text style={[styles.resendText, { color: theme.accent }]}>Resend OTP Code</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </Animated.View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
