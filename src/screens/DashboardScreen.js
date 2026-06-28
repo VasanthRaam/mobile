@@ -360,6 +360,13 @@ export default function DashboardScreen({ navigation }) {
                   'Review new registration requests'
                 )
               )}
+              {role === 'admin' && (
+                renderCard(
+                  'Website Enquiries', '📬', '#3B82F6', 
+                  () => navigation.navigate('Enquiries'),
+                  'View and manage website enquiries'
+                )
+              )}
               {role !== 'admin' && (
                 renderCard(
                   role === 'parent' ? "Kid's Results" : "Quiz Results", '📊', '#8B5CF6', 
