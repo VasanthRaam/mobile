@@ -30,9 +30,17 @@ export default function EmailLoginScreen({ navigation }) {
         password,
       });
 
-      const { access_token, user: userData } = response.data;
-      await login(access_token, userData);
-
+      if (response.data.type === 'multiple_profiles') {
+        navigation.navigate('ProfileSelection', {
+          profiles: response.data.profiles,
+          loginType: 'email',
+          email,
+          password,
+        });
+      } else {
+        const { access_token, user: userData } = response.data;
+        await login(access_token, userData);
+      }
     } catch (error) {
       console.error(error);
       Alert.alert('Login Failed', error.response?.data?.detail || 'An error occurred');

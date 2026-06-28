@@ -11,7 +11,10 @@ import { useThemeStore } from '../store/useThemeStore';
 
 export default function ProfileSelectionScreen({ route, navigation }) {
   const { theme, isDark } = useThemeStore();
-  const { profiles, phone, otp, isFirebase, idToken } = route.params;
+  const { 
+    profiles, phone, otp, isFirebase, idToken, 
+    loginType, email, password, access_token, full_name 
+  } = route.params;
   const [loadingId, setLoadingId] = useState(null);
   const login = useAuthStore((state) => state.login);
 
@@ -19,7 +22,20 @@ export default function ProfileSelectionScreen({ route, navigation }) {
     setLoadingId(profileId);
     try {
       let response;
-      if (isFirebase) {
+      if (loginType === 'email') {
+        response = await apiClient.post('/auth/login', {
+          email,
+          password,
+          selected_profile_id: profileId,
+        });
+      } else if (loginType === 'google') {
+        response = await apiClient.post('/auth/google-sync', {
+          access_token,
+          email,
+          full_name,
+          selected_profile_id: profileId,
+        });
+      } else if (loginType === 'firebase' || isFirebase) {
         response = await apiClient.post('/auth/firebase-login-verify', {
           id_token: idToken,
           selected_profile_id: profileId,
@@ -32,9 +48,11 @@ export default function ProfileSelectionScreen({ route, navigation }) {
         });
       }
 
-      if (response.data.type === 'login_success') {
-        const { access_token, user: userData } = response.data;
-        await login(access_token, userData);
+      // Check if it is login success or type matches
+      if (response.data.type === 'login_success' || response.data.access_token) {
+        const tokenToUse = response.data.access_token || access_token;
+        const userData = response.data.user;
+        await login(tokenToUse, userData);
         // Navigation is handled automatically by the auth state change
       } else {
         throw new Error('Unexpected response format.');
@@ -42,9 +60,16 @@ export default function ProfileSelectionScreen({ route, navigation }) {
     } catch (error) {
       console.error(error);
       Alert.alert('Error', error.response?.data?.detail || 'Failed to login with selected profile.');
-      // If OTP expired during selection, go back to login
-      if (error.response?.status === 400) {
-        navigation.navigate('MobileLogin');
+      
+      // If error occurs during selection, return to correct login entry screen
+      if (error.response?.status === 400 || error.response?.status === 401) {
+        if (loginType === 'email') {
+          navigation.navigate('EmailLogin');
+        } else if (loginType === 'google') {
+          navigation.navigate('Login');
+        } else {
+          navigation.navigate('MobileLogin');
+        }
       }
     } finally {
       setLoadingId(null);

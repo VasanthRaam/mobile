@@ -23,17 +23,6 @@ export default function LoginScreen({ navigation }) {
   const bannerOpacity = useRef(new Animated.Value(1)).current;
   const login = useAuthStore((state) => state.login);
 
-  if (loading) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.bg, justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={theme.accent} />
-        <Text style={[styles.subtitle, { color: theme.text, marginTop: 16, fontWeight: '700' }]}>
-          Connecting to Google...
-        </Text>
-      </SafeAreaView>
-    );
-  }
-
   // Web-specific OAuth hash listener
   React.useEffect(() => {
     if (Platform.OS === 'web') {
@@ -101,8 +90,19 @@ export default function LoginScreen({ navigation }) {
         full_name: user.user_metadata.full_name,
       });
       
-      const { user: userData } = backendRes.data;
-      await login(access_token, userData);
+      if (backendRes.data.type === 'multiple_profiles') {
+        navigation.navigate('ProfileSelection', {
+          profiles: backendRes.data.profiles,
+          loginType: 'google',
+          access_token,
+          email: user.email,
+          full_name: user.user_metadata.full_name,
+        });
+      } else {
+        const tokenToUse = backendRes.data.access_token || access_token;
+        const userData = backendRes.data.user;
+        await login(tokenToUse, userData);
+      }
     } catch (error) {
       if (error.response?.status === 404 && user) {
         // User exists in Supabase but not in our DB -> New Google User
@@ -255,6 +255,14 @@ export default function LoginScreen({ navigation }) {
 
 
       </View>
+      {loading && (
+        <View style={[styles.loadingOverlay, { backgroundColor: isDark ? 'rgba(15, 23, 42, 0.85)' : 'rgba(255, 255, 255, 0.85)' }]}>
+          <ActivityIndicator size="large" color={theme.accent} />
+          <Text style={[styles.loadingOverlayText, { color: theme.text }]}>
+            Connecting to Google...
+          </Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -416,5 +424,16 @@ const styles = StyleSheet.create({
     color: '#475569',
     fontWeight: '500',
     flex: 1,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  loadingOverlayText: {
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
