@@ -242,23 +242,6 @@ export default function LoginScreen({ navigation }) {
         </View>
 
 
-        {/* ── Server Status Banner ── */}
-        {serverStatus !== 'ready' && (
-          <Animated.View style={[
-            styles.serverBanner, 
-            { opacity: bannerOpacity, backgroundColor: isDark ? theme.accentLight : 'rgba(99, 102, 241, 0.1)', borderColor: theme.border },
-            serverStatus === 'cold' && [styles.serverBannerCold, { backgroundColor: isDark ? theme.warningLight : 'rgba(245, 158, 11, 0.1)', borderColor: theme.border }]
-          ]}>
-            <Text style={styles.serverBannerDot}>
-              {serverStatus === 'cold' ? '🔄' : '🟡'}
-            </Text>
-            <Text style={[styles.serverBannerText, { color: theme.subText }]}>
-              {serverStatus === 'cold'
-                ? 'Server is starting up, this may take a moment…'
-                : 'Connecting to server…'}
-            </Text>
-          </Animated.View>
-        )}
       </View>
     </SafeAreaView>
   );

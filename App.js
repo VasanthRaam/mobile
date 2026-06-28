@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet, Text, Animated, Easing } from 'react-native';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useAuthStore } from './src/store/useAuthStore';
 import * as Notifications from 'expo-notifications';
@@ -30,6 +30,28 @@ if (Platform.OS === 'android') {
 
 export default function App() {
   const { restoreSession, isLoading, isAuthenticated } = useAuthStore();
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (isLoading) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 0.5,
+            duration: 1000,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    }
+  }, [isLoading, pulseAnim]);
 
   useEffect(() => {
     const initialize = async () => {
@@ -119,10 +141,11 @@ export default function App() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <View style={styles.iconContainer}>
-          <Ionicons name="lock-closed" size={48} color="#166534" />
-        </View>
-        <Text style={styles.loadingText}>Securing BuddyBloom...</Text>
+        <Animated.Image
+          source={require('./assets/icon.png')}
+          style={[styles.animatedLogo, { opacity: pulseAnim }]}
+          resizeMode="contain"
+        />
       </View>
     );
   }
@@ -150,6 +173,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
+  },
+  animatedLogo: {
+    width: 150,
+    height: 150,
   },
   loadingText: {
     fontSize: 18,
