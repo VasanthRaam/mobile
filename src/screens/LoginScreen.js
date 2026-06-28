@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity,
   StyleSheet, Alert, SafeAreaView,
-  Dimensions, Platform, Image, Animated
+  Dimensions, Platform, Image, Animated,
+  ActivityIndicator
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
@@ -21,6 +22,17 @@ export default function LoginScreen({ navigation }) {
   const [serverStatus, setServerStatus] = useState('connecting'); // 'connecting' | 'cold' | 'ready'
   const bannerOpacity = useRef(new Animated.Value(1)).current;
   const login = useAuthStore((state) => state.login);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.bg, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={theme.accent} />
+        <Text style={[styles.subtitle, { color: theme.text, marginTop: 16, fontWeight: '700' }]}>
+          Connecting to Google...
+        </Text>
+      </SafeAreaView>
+    );
+  }
 
   // Web-specific OAuth hash listener
   React.useEffect(() => {
