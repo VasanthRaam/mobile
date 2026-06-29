@@ -13,6 +13,7 @@ import { useThemeStore } from '../store/useThemeStore';
 import apiClient from '../api/apiClient';
 import { registerForPushNotificationsAsync } from '../utils/notifications';
 import { getCache, setCache } from '../utils/cacheManager';
+import * as ImagePicker from 'expo-image-picker';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -66,6 +67,14 @@ export default function RegisterScreen({ navigation, route }) {
   const [role, setRole] = useState('student');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // Extra fields
+  const [motherName, setMotherName] = useState('');
+  const [fatherName, setFatherName] = useState('');
+  const [dob, setDob] = useState('');
+  const [educationQualification, setEducationQualification] = useState('');
+  const [profilePicture, setProfilePicture] = useState(null);
+
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   
@@ -136,6 +145,21 @@ export default function RegisterScreen({ navigation, route }) {
 
   // Separate state to track the initial Google OAuth loading (before form is shown)
   const [googleCallbackLoading, setGoogleCallbackLoading] = useState(false);
+
+  const pickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+      base64: true,
+    });
+    
+    if (!result.canceled && result.assets && result.assets[0].base64) {
+      const base64Img = `data:image/jpeg;base64,${result.assets[0].base64}`;
+      setProfilePicture(base64Img);
+    }
+  };
 
   const handleGoogleCallback = async (access_token) => {
     setGoogleCallbackLoading(true);
@@ -268,6 +292,11 @@ export default function RegisterScreen({ navigation, route }) {
         batch_ids: selectedBatches,
         push_token: pushToken,
         supabase_uid: supabaseUid,
+        mother_name: role === 'student' ? motherName.trim() : null,
+        father_name: role === 'student' ? fatherName.trim() : null,
+        dob: dob.trim() || null,
+        education_qualification: educationQualification.trim() || null,
+        profile_picture: profilePicture,
       });
       setSubmitted(true);
     } catch (error) {
@@ -385,7 +414,32 @@ export default function RegisterScreen({ navigation, route }) {
               ))}
             </View>
 
+            {/* Profile Picture */}
+            <View style={{ alignItems: 'center', marginBottom: 20, marginTop: 10 }}>
+              <TouchableOpacity onPress={pickImage} style={[styles.avatarPicker, { backgroundColor: theme.chipBg, borderColor: theme.border }]}>
+                {profilePicture ? (
+                  <Image source={{ uri: profilePicture }} style={styles.avatarImage} />
+                ) : (
+                  <View style={{ alignItems: 'center' }}>
+                    <Text style={{ fontSize: 32 }}>📸</Text>
+                    <Text style={{ color: theme.subText, fontSize: 12, marginTop: 4 }}>Add Photo</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+
             <Field label="Full Name" value={fullName} onChangeText={setFullName} placeholder="Enter your full name" editable={true} />
+            
+            {role === 'student' && (
+              <>
+                <Field label="Mother's Name" value={motherName} onChangeText={setMotherName} placeholder="Enter mother's name" />
+                <Field label="Father's Name" value={fatherName} onChangeText={setFatherName} placeholder="Enter father's name" />
+              </>
+            )}
+            
+            <Field label="Date of Birth" value={dob} onChangeText={setDob} placeholder="YYYY-MM-DD" />
+            <Field label="Educational Qualification" value={educationQualification} onChangeText={setEducationQualification} placeholder="e.g. 5th std, B.Sc" />
+
             <Field label="Email Address" value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" editable={authMethod !== 'google'} isReadOnly={authMethod === 'google'} />
             <Field label="Phone Number" value={phone} onChangeText={setPhone} placeholder="+91 9876543210" keyboardType="phone-pad" />
             
@@ -517,6 +571,8 @@ const styles = StyleSheet.create({
   fieldWrapper: { marginBottom: 16 },
   fieldLabel: { fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 },
   input: { height: 50, backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 16, borderWidth: 1, borderColor: '#E2E8F0', color: '#1E293B' },
+  avatarPicker: { width: 100, height: 100, borderRadius: 50, borderWidth: 1, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderStyle: 'dashed' },
+  avatarImage: { width: '100%', height: '100%' },
   selectionArea: { marginBottom: 20 },
   courseBlock: { marginBottom: 10, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#E2E8F0' },
   courseHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, backgroundColor: '#F8FAFC' },
