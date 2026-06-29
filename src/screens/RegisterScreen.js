@@ -71,6 +71,7 @@ export default function RegisterScreen({ navigation, route }) {
   // Extra fields
   const [motherName, setMotherName] = useState('');
   const [fatherName, setFatherName] = useState('');
+  const [parentPhoneNumber, setParentPhoneNumber] = useState('');
   const [dob, setDob] = useState('');
   const [educationQualification, setEducationQualification] = useState('');
   const [profilePicture, setProfilePicture] = useState(null);
@@ -294,6 +295,7 @@ export default function RegisterScreen({ navigation, route }) {
         supabase_uid: supabaseUid,
         mother_name: role === 'student' ? motherName.trim() : null,
         father_name: role === 'student' ? fatherName.trim() : null,
+        parent_phone_number: role === 'student' ? parentPhoneNumber.trim() : null,
         dob: dob.trim() || null,
         education_qualification: educationQualification.trim() || null,
         profile_picture: profilePicture,
@@ -434,6 +436,7 @@ export default function RegisterScreen({ navigation, route }) {
               <>
                 <Field label="Mother's Name" value={motherName} onChangeText={setMotherName} placeholder="Enter mother's name" />
                 <Field label="Father's Name" value={fatherName} onChangeText={setFatherName} placeholder="Enter father's name" />
+                <Field label="Parent's Phone Number" value={parentPhoneNumber} onChangeText={setParentPhoneNumber} placeholder="Enter parent's phone number" keyboardType="phone-pad" />
               </>
             )}
             
