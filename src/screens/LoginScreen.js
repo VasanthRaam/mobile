@@ -83,11 +83,14 @@ export default function LoginScreen({ navigation }) {
       if (userError) throw userError;
       user = supabaseUser;
 
+      const userEmail = user.email || '';
+      const userFullName = user.user_metadata?.full_name || user.user_metadata?.name || userEmail.split('@')[0] || 'Google User';
+
       // Sync with backend
       const backendRes = await apiClient.post('/auth/google-sync', {
         access_token,
-        email: user.email,
-        full_name: user.user_metadata.full_name,
+        email: userEmail,
+        full_name: userFullName,
       });
       
       if (backendRes.data.type === 'multiple_profiles') {
@@ -95,8 +98,8 @@ export default function LoginScreen({ navigation }) {
           profiles: backendRes.data.profiles,
           loginType: 'google',
           access_token,
-          email: user.email,
-          full_name: user.user_metadata.full_name,
+          email: userEmail,
+          full_name: userFullName,
         });
       } else {
         const tokenToUse = backendRes.data.access_token || access_token;
@@ -105,10 +108,12 @@ export default function LoginScreen({ navigation }) {
       }
     } catch (error) {
       if (error.response?.status === 404 && user) {
+        const userEmail = user.email || '';
+        const userFullName = user.user_metadata?.full_name || user.user_metadata?.name || userEmail.split('@')[0] || 'Google User';
         // User exists in Supabase but not in our DB -> New Google User
         navigation.navigate('Register', { 
-          email: user.email, 
-          full_name: user.user_metadata.full_name,
+          email: userEmail, 
+          full_name: userFullName,
           isGoogle: true,
           supabaseUid: user.id
         });
@@ -151,6 +156,10 @@ export default function LoginScreen({ navigation }) {
       });
 
       if (error) throw error;
+
+      if (!data || !data.url) {
+        throw new Error('No authentication URL was returned from the authentication server.');
+      }
 
       const res = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
 

@@ -686,7 +686,11 @@ export default function AttendanceScreen({ navigation }) {
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
-            <View style={[styles.studentItem, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              onPress={() => handleToggleAttendance(item.id)}
+              style={[styles.studentItem, { backgroundColor: theme.card, borderColor: theme.border }]}
+            >
               <View>
                 <Text style={[styles.studentName, { color: theme.text }]}>{item.first_name} {item.last_name}</Text>
                 <Text style={[styles.statusText, { color: theme.subText }]}>{attendance[item.id] ? 'Present' : 'Absent'}</Text>
@@ -696,7 +700,7 @@ export default function AttendanceScreen({ navigation }) {
                 onValueChange={() => handleToggleAttendance(item.id)}
                 trackColor={{ false: '#EF4444', true: '#10B981' }}
               />
-            </View>
+            </TouchableOpacity>
           )}
         />
       ) : selectedBatchId ? (
@@ -751,16 +755,16 @@ export default function AttendanceScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
-  header: { padding: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
-  title: { fontSize: 24, fontWeight: '900', color: '#1E293B' },
-  subtitle: { fontSize: 14, color: '#64748B', marginTop: 4 },
-  loadingText: { marginTop: 12, fontSize: 14, color: '#64748B' },
-  filters: { padding: 15, backgroundColor: '#fff', gap: 10 },
-  filterLabel: { fontSize: 13, fontWeight: '700', color: '#475569', marginTop: 5 },
-  chipScroll: { paddingVertical: 5 },
-  chip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#F1F5F9', marginRight: 10, borderWidth: 1, borderColor: '#E2E8F0' },
+  header: { paddingVertical: 10, paddingHorizontal: 15, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  title: { fontSize: 20, fontWeight: '900', color: '#1E293B' },
+  subtitle: { fontSize: 12, color: '#64748B', marginTop: 2 },
+  loadingText: { marginTop: 8, fontSize: 13, color: '#64748B' },
+  filters: { paddingVertical: 8, paddingHorizontal: 15, backgroundColor: '#fff', gap: 6 },
+  filterLabel: { fontSize: 12, fontWeight: '700', color: '#475569', marginTop: 3 },
+  chipScroll: { paddingVertical: 4 },
+  chip: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, backgroundColor: '#F1F5F9', marginRight: 8, borderWidth: 1, borderColor: '#E2E8F0' },
   chipActive: { backgroundColor: '#6366F1', borderColor: '#6366F1' },
-  chipText: { fontSize: 13, fontWeight: '600', color: '#64748B' },
+  chipText: { fontSize: 12, fontWeight: '600', color: '#64748B' },
   chipTextActive: { color: '#fff' },
   emptyFilterText: { fontSize: 13, color: '#94A3B8', fontStyle: 'italic', paddingVertical: 5 },
   list: { padding: 15 },
@@ -901,25 +905,25 @@ const styles = StyleSheet.create({
   },
   dateSelection: {
     backgroundColor: '#fff',
-    paddingVertical: 15,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
   dateList: {
-    paddingVertical: 5,
+    paddingVertical: 2,
   },
   dateListContent: {
     paddingHorizontal: 15,
     flexDirection: 'row',
   },
   dateChip: {
-    width: 60,
-    height: 70,
+    width: 44,
+    height: 48,
     backgroundColor: '#F8FAFC',
-    borderRadius: 18,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: 8,
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
@@ -928,12 +932,12 @@ const styles = StyleSheet.create({
     borderColor: '#6366F1',
   },
   dateChipDay: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '800',
     color: '#1E293B',
   },
   dateChipMonth: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '700',
     color: '#94A3B8',
     textTransform: 'uppercase',
@@ -1096,25 +1100,25 @@ const styles = StyleSheet.create({
   },
   dateSelection: {
     backgroundColor: '#fff',
-    paddingVertical: 15,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
   dateList: {
-    paddingVertical: 5,
+    paddingVertical: 2,
   },
   dateListContent: {
     paddingHorizontal: 15,
     flexDirection: 'row',
   },
   dateChip: {
-    width: 60,
-    height: 70,
+    width: 44,
+    height: 48,
     backgroundColor: '#F8FAFC',
-    borderRadius: 18,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: 8,
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
@@ -1123,12 +1127,12 @@ const styles = StyleSheet.create({
     borderColor: '#6366F1',
   },
   dateChipDay: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '800',
     color: '#1E293B',
   },
   dateChipMonth: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '700',
     color: '#94A3B8',
     textTransform: 'uppercase',

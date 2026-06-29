@@ -143,11 +143,14 @@ export default function RegisterScreen({ navigation, route }) {
       const { data: { user }, error: userError } = await supabase.auth.getUser(access_token);
       if (userError) throw userError;
 
+      const userEmail = user.email || '';
+      const userFullName = user.user_metadata?.full_name || user.user_metadata?.name || userEmail.split('@')[0] || 'Google User';
+
       try {
         const backendRes = await apiClient.post('/auth/google-sync', {
           access_token,
-          email: user.email,
-          full_name: user.user_metadata.full_name,
+          email: userEmail,
+          full_name: userFullName,
         });
         // If success, they are already registered and approved! Log them in.
         const { user: userData } = backendRes.data;
@@ -155,15 +158,15 @@ export default function RegisterScreen({ navigation, route }) {
       } catch (backendError) {
         if (backendError.response?.status === 404) {
            // New user, populate fields and show the registration form
-           setEmail(user.email);
-           setFullName(user.user_metadata.full_name || '');
+           setEmail(userEmail);
+           setFullName(userFullName);
            setIsGoogleAuth(true);
            setAuthMethod('google');
            setPassword('GOOGLE_AUTH_PLACEHOLDER');
            setConfirmPassword('GOOGLE_AUTH_PLACEHOLDER');
            setSupabaseUid(user.id);
         } else {
-          throw backendError;
+           throw backendError;
         }
       }
     } catch (error) {
@@ -204,6 +207,10 @@ export default function RegisterScreen({ navigation, route }) {
       });
 
       if (error) throw error;
+
+      if (!data || !data.url) {
+        throw new Error('No authentication URL was returned from the authentication server.');
+      }
 
       const res = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
 

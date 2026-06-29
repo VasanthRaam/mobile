@@ -40,8 +40,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "bcdae01d-74c3-45c4-8f8f-a170446f806f"
+        "projectId": "82ce1a25-8ad1-4016-a55c-63dba49ed567"
       }
-    }
+    },
+    "owner": "vasanthraam"
   }
 }

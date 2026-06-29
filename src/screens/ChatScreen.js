@@ -14,6 +14,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import apiClient from '../api/apiClient';
 import { getCache, setCache } from '../utils/cacheManager';
 import { useThemeStore } from '../store/useThemeStore';
+import { useAuthStore } from '../store/useAuthStore';
 
 /**
  * @typedef {Object} Message
@@ -24,14 +25,27 @@ import { useThemeStore } from '../store/useThemeStore';
 
 const ChatScreen = ({ navigation }) => {
   const { theme, isDark } = useThemeStore();
-  const [messages, setMessages] = useState(getCache('chat_history') || [
-    { id: 'initial-msg', text: 'Namaste! I am the Academy AI Teacher. How can I help you today?', isUser: false }
-  ]);
+  const user = useAuthStore((state) => state.user);
+  const cacheKey = user?.id ? `chat_history_${user.id}` : 'chat_history';
+
+  const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const flatListRef = useRef(null);
 
   const [isFetchingHistory, setIsFetchingHistory] = useState(false);
+
+  // Initialize messages from cache when cacheKey (user) changes
+  useEffect(() => {
+    const cached = getCache(cacheKey);
+    if (cached && cached.length > 0) {
+      setMessages(cached);
+    } else {
+      setMessages([
+        { id: 'initial-msg', text: 'Namaste! I am the Academy AI Teacher. How can I help you today?', isUser: false }
+      ]);
+    }
+  }, [cacheKey]);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -45,7 +59,7 @@ const ChatScreen = ({ navigation }) => {
             isUser: msg.role === 'user'
           }));
           setMessages(formatted);
-          setCache('chat_history', formatted);
+          setCache(cacheKey, formatted);
         }
       } catch (error) {
         console.error('Failed to load chat history:', error);
@@ -54,7 +68,7 @@ const ChatScreen = ({ navigation }) => {
       }
     };
     fetchHistory();
-  }, []);
+  }, [cacheKey]);
 
   useEffect(() => {
     const scrollTimeout = setTimeout(() => {
@@ -76,7 +90,7 @@ const ChatScreen = ({ navigation }) => {
 
     const updatedMessages = [...messages, newUserMsg];
     setMessages(updatedMessages);
-    setCache('chat_history', updatedMessages);
+    setCache(cacheKey, updatedMessages);
     setInputText('');
     setIsLoading(true);
 
@@ -91,7 +105,7 @@ const ChatScreen = ({ navigation }) => {
 
       const finalMessages = [...updatedMessages, botMessage];
       setMessages(finalMessages);
-      setCache('chat_history', finalMessages);
+      setCache(cacheKey, finalMessages);
     } catch (error) {
       console.error('Chat API Error:', error);
       const errorMsg = {
@@ -101,7 +115,7 @@ const ChatScreen = ({ navigation }) => {
       };
       const finalErrorMessages = [...updatedMessages, errorMsg];
       setMessages(finalErrorMessages);
-      setCache('chat_history', finalErrorMessages);
+      setCache(cacheKey, finalErrorMessages);
     } finally {
       setIsLoading(false);
     }
