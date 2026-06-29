@@ -440,7 +440,7 @@ export default function RegisterScreen({ navigation, route }) {
               </>
             )}
             
-            <Field label="Date of Birth" value={dob} onChangeText={setDob} placeholder="YYYY-MM-DD" />
+            <Field label="Date of Birth" value={dob} onChangeText={setDob} placeholder="YYYY-MM-DD" type="date" />
             <Field label="Educational Qualification" value={educationQualification} onChangeText={setEducationQualification} placeholder="e.g. 5th std, B.Sc" />
 
             <Field label="Email Address" value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" editable={authMethod !== 'google'} isReadOnly={authMethod === 'google'} />
@@ -517,8 +517,10 @@ export default function RegisterScreen({ navigation, route }) {
   );
 }
 
-function Field({ label, value, onChangeText, placeholder, isReadOnly, ...props }) {
+function Field({ label, value, onChangeText, placeholder, isReadOnly, type, ...props }) {
   const { theme } = useThemeStore();
+  const isWebDate = Platform.OS === 'web' && type === 'date';
+  
   return (
     <View style={styles.fieldWrapper}>
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
@@ -529,18 +531,43 @@ function Field({ label, value, onChangeText, placeholder, isReadOnly, ...props }
           </View>
         )}
       </View>
-      <TextInput 
-        style={[
-          styles.input, 
-          { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text },
-          isReadOnly && { backgroundColor: theme.chipBg, color: theme.muted }
-        ]} 
-        value={value} 
-        onChangeText={onChangeText} 
-        placeholder={placeholder} 
-        placeholderTextColor={theme.muted} 
-        {...props} 
-      />
+      {isWebDate ? (
+        <input
+          type="date"
+          value={value || ''}
+          onChange={(e) => onChangeText(e.target.value)}
+          placeholder={placeholder}
+          style={{
+            height: 50,
+            backgroundColor: theme.inputBg,
+            borderColor: theme.border,
+            color: theme.text,
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderRadius: 12,
+            paddingLeft: 16,
+            paddingRight: 16,
+            fontSize: 14,
+            width: '100%',
+            boxSizing: 'border-box',
+            outline: 'none',
+            fontFamily: 'System',
+          }}
+        />
+      ) : (
+        <TextInput 
+          style={[
+            styles.input, 
+            { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text },
+            isReadOnly && { backgroundColor: theme.chipBg, color: theme.muted }
+          ]} 
+          value={value} 
+          onChangeText={onChangeText} 
+          placeholder={placeholder} 
+          placeholderTextColor={theme.muted} 
+          {...props} 
+        />
+      )}
     </View>
   );
 }

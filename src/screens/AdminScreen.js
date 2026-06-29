@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   ScrollView, Modal, ActivityIndicator,
-  Dimensions, RefreshControl, TextInput, Platform, Alert, Animated
+  Dimensions, RefreshControl, TextInput, Platform, Alert, Animated, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -1313,11 +1313,15 @@ export default function AdminScreen({ navigation }) {
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScrollContent}>
               {/* Profile Initials / Avatar */}
               <View style={styles.avatarSection}>
-                <View style={[styles.avatarCircle, { backgroundColor: theme.accent }]}>
-                  <Text style={styles.avatarLetter}>
-                    {selectedStudent.first_name ? selectedStudent.first_name[0].toUpperCase() : 'S'}
-                  </Text>
-                </View>
+                {selectedStudent.profile_picture ? (
+                  <Image source={{ uri: selectedStudent.profile_picture }} style={styles.avatarImageLarge} />
+                ) : (
+                  <View style={[styles.avatarCircle, { backgroundColor: theme.accent }]}>
+                    <Text style={styles.avatarLetter}>
+                      {selectedStudent.first_name ? selectedStudent.first_name[0].toUpperCase() : 'S'}
+                    </Text>
+                  </View>
+                )}
                 <Text style={[styles.detailName, { color: theme.text }]}>
                   {selectedStudent.first_name} {selectedStudent.last_name}
                 </Text>
@@ -1341,7 +1345,63 @@ export default function AdminScreen({ navigation }) {
                     <Text style={[styles.infoText, { color: theme.text, marginTop: 2 }]}>{formattedJoinDate}</Text>
                   </View>
                 </View>
+                {selectedStudent.date_of_birth && (
+                  <View style={styles.infoRow}>
+                    <Ionicons name="gift-outline" size={18} color={theme.muted} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.infoTextSub, { color: theme.muted }]}>Date of Birth</Text>
+                      <Text style={[styles.infoText, { color: theme.text, marginTop: 2 }]}>
+                        {new Date(selectedStudent.date_of_birth).toLocaleDateString()}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+                {selectedStudent.education_qualification && (
+                  <View style={styles.infoRow}>
+                    <Ionicons name="school-outline" size={18} color={theme.muted} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.infoTextSub, { color: theme.muted }]}>Qualification / Standard</Text>
+                      <Text style={[styles.infoText, { color: theme.text, marginTop: 2 }]}>
+                        {selectedStudent.education_qualification}
+                      </Text>
+                    </View>
+                  </View>
+                )}
               </View>
+
+              {/* Parent Details */}
+              {(selectedStudent.mother_name || selectedStudent.father_name || selectedStudent.parent_phone_number) && (
+                <View style={[styles.infoSection, { borderBottomColor: theme.border }]}>
+                  <Text style={[styles.sectionHeading, { color: theme.text, marginBottom: 12 }]}>Parent Details</Text>
+                  {selectedStudent.mother_name && (
+                    <View style={styles.infoRow}>
+                      <Ionicons name="woman-outline" size={18} color={theme.muted} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.infoTextSub, { color: theme.muted }]}>Mother's Name</Text>
+                        <Text style={[styles.infoText, { color: theme.text, marginTop: 2 }]}>{selectedStudent.mother_name}</Text>
+                      </View>
+                    </View>
+                  )}
+                  {selectedStudent.father_name && (
+                    <View style={styles.infoRow}>
+                      <Ionicons name="man-outline" size={18} color={theme.muted} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.infoTextSub, { color: theme.muted }]}>Father's Name</Text>
+                        <Text style={[styles.infoText, { color: theme.text, marginTop: 2 }]}>{selectedStudent.father_name}</Text>
+                      </View>
+                    </View>
+                  )}
+                  {selectedStudent.parent_phone_number && (
+                    <View style={styles.infoRow}>
+                      <Ionicons name="call-outline" size={18} color={theme.muted} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.infoTextSub, { color: theme.muted }]}>Parent's Phone Number</Text>
+                        <Text style={[styles.infoText, { color: theme.text, marginTop: 2 }]}>{selectedStudent.parent_phone_number}</Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              )}
 
               {/* Reconciled Stats Section */}
               <View style={styles.statsSection}>
@@ -1934,6 +1994,12 @@ const styles = StyleSheet.create({
   avatarSection: {
     alignItems: 'center',
     marginBottom: 20,
+  },
+  avatarImageLarge: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    marginBottom: 12,
   },
   avatarCircle: {
     width: 72,
