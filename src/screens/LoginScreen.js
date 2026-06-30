@@ -27,13 +27,16 @@ export default function LoginScreen({ navigation }) {
   React.useEffect(() => {
     if (Platform.OS === 'web') {
       const hash = window.location.hash || window.location.search;
+      console.log("[GOOGLE-LOGIN] Web hash/search detected:", hash);
       if (hash) {
         const params = new URLSearchParams(hash.replace('#', '?'));
         const access_token = params.get('access_token');
+        const refresh_token = params.get('refresh_token');
         if (access_token) {
+          console.log("[GOOGLE-LOGIN] Access token found in URL hash. Launching callback sync...");
           // Clear hash so it doesn't trigger again
           window.history.replaceState(null, null, ' ');
-          handleGoogleCallback(access_token);
+          handleGoogleCallback(access_token, refresh_token);
         }
       }
     }
@@ -75,23 +78,35 @@ export default function LoginScreen({ navigation }) {
   }, []);
 
 
-  const handleGoogleCallback = async (access_token) => {
+  const handleGoogleCallback = async (access_token, refresh_token) => {
+    console.log("[GOOGLE-LOGIN] Starting handleGoogleCallback...");
     setLoading(true);
     let user = null;
     try {
-      const { data: { user: supabaseUser }, error: userError } = await supabase.auth.getUser(access_token);
+      console.log("[GOOGLE-LOGIN] Setting session in Supabase client...");
+      const { data: sessionData, error: userError } = await supabase.auth.setSession({
+        access_token,
+        refresh_token: refresh_token || '',
+      });
+      console.log("[GOOGLE-LOGIN] Supabase setSession finished. Error:", userError, "User:", sessionData?.user);
       if (userError) throw userError;
-      user = supabaseUser;
+      user = sessionData?.user;
+
+      if (!user) {
+        throw new Error("No user profile returned from Supabase session.");
+      }
 
       const userEmail = user.email || '';
       const userFullName = user.user_metadata?.full_name || user.user_metadata?.name || userEmail.split('@')[0] || 'Google User';
 
+      console.log("[GOOGLE-LOGIN] Syncing with local backend for email:", userEmail);
       // Sync with backend
       const backendRes = await apiClient.post('/auth/google-sync', {
         access_token,
         email: userEmail,
         full_name: userFullName,
       });
+      console.log("[GOOGLE-LOGIN] Backend sync finished. Res type:", backendRes.data.type);
       
       if (backendRes.data.type === 'multiple_profiles') {
         navigation.navigate('ProfileSelection', {
@@ -104,13 +119,15 @@ export default function LoginScreen({ navigation }) {
       } else {
         const tokenToUse = backendRes.data.access_token || access_token;
         const userData = backendRes.data.user;
+        console.log("[GOOGLE-LOGIN] Local login successfully matching user:", userData.email);
         await login(tokenToUse, userData);
       }
     } catch (error) {
+      console.error("[GOOGLE-LOGIN] Error occurred:", error);
       if (error.response?.status === 404 && user) {
         const userEmail = user.email || '';
         const userFullName = user.user_metadata?.full_name || user.user_metadata?.name || userEmail.split('@')[0] || 'Google User';
-        // User exists in Supabase but not in our DB -> New Google User
+        console.log("[GOOGLE-LOGIN] User not registered locally. Redirecting to RegisterScreen.");
         navigation.navigate('Register', { 
           email: userEmail, 
           full_name: userFullName,
@@ -118,10 +135,10 @@ export default function LoginScreen({ navigation }) {
           supabaseUid: user.id
         });
       } else {
-        console.error(error);
         Alert.alert('Google Sync Failed', error.message || 'An error occurred during authentication.');
       }
     } finally {
+      console.log("[GOOGLE-LOGIN] Setting loading = false");
       setLoading(false);
     }
   };
