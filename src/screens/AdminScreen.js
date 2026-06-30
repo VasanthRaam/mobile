@@ -47,7 +47,7 @@ const LoadingRail = ({ loading, theme }) => {
 
   return (
     <View style={{ height: 3, backgroundColor: theme.chipBg, overflow: 'hidden', width: '100%' }}>
-      <Animated.View 
+      <Animated.View
         style={{
           width: '50%',
           height: '100%',
@@ -64,7 +64,7 @@ const { width } = Dimensions.get('window');
 export default function AdminScreen({ navigation }) {
   const { theme, isDark } = useThemeStore();
   const { user } = useAuthStore();
-  
+
   // Top Tabs: 'quizzes' | 'results' | 'students'
   const [activeMainTab, setActiveMainTab] = useState('quizzes');
 
@@ -89,7 +89,7 @@ export default function AdminScreen({ navigation }) {
   const [students, setStudents] = useState(getCache('admin_students') || []);
   const [studentsLoading, setStudentsLoading] = useState(!getCache('admin_students'));
   const [studentsRefreshing, setStudentsRefreshing] = useState(false);
-  
+
   // Student detail modal (Reconcile pattern)
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [studentStats, setStudentStats] = useState(null);
@@ -106,7 +106,7 @@ export default function AdminScreen({ navigation }) {
   // ─────────────────────────────────────────────────────────────────────────────
   // EFFECTS & FETCHERS
   // ─────────────────────────────────────────────────────────────────────────────
-  
+
   useEffect(() => {
     if (activeMainTab === 'quizzes') {
       fetchQuizzes();
@@ -190,7 +190,7 @@ export default function AdminScreen({ navigation }) {
         cachedBatches = [{ id: 'all', name: 'All Batches' }, ...cached];
       }
       setBatches(cachedBatches);
-      
+
       const newBatchId = 'all';
       if (selectedBatchId === newBatchId) {
         fetchResults(courseId, newBatchId);
@@ -206,7 +206,7 @@ export default function AdminScreen({ navigation }) {
         url += `?course_id=${courseId}`;
       }
       const response = await apiClient.get(url);
-      
+
       let fetchedBatches;
       if (courseId === 'all') {
         const unique = [];
@@ -223,7 +223,7 @@ export default function AdminScreen({ navigation }) {
       }
       setBatches(fetchedBatches);
       setCache(cacheKey, response.data);
-      
+
       const newBatchId = 'all';
       if (selectedBatchId === newBatchId) {
         fetchResults(courseId, newBatchId);
@@ -246,13 +246,13 @@ export default function AdminScreen({ navigation }) {
 
   const fetchResults = async (courseId = selectedCourseId, batchId = selectedBatchId) => {
     if (batchId === null) return;
-    
+
     setResultsLoading(true);
     const isGlobal = batchId === 'all' && courseId === 'all';
-    
+
     // Clear old results immediately to prevent showing previous course's quizzes
     let cacheFound = false;
-    
+
     if (isGlobal) {
       const cached = getCache('admin_quiz_results');
       if (cached) {
@@ -336,7 +336,7 @@ export default function AdminScreen({ navigation }) {
   // Reconcile/Background Fetch for Student Details
   const handleStudentClick = (student) => {
     setSelectedStudent(student);
-    
+
     // Phase 0: Optimistic state with existing data
     const optimisticStats = {
       email: student.email || 'N/A',
@@ -346,10 +346,10 @@ export default function AdminScreen({ navigation }) {
       quizCount: null,
       progressVal: null,
     };
-    
+
     setStudentStats(optimisticStats);
     setDetailModalVisible(true);
-    
+
     // Check if we can fetch summary details
     const userId = student.user_id;
     if (!userId) return;
@@ -361,9 +361,9 @@ export default function AdminScreen({ navigation }) {
         const data = res.data;
         setStudentStats(prev => ({
           ...prev,
-          attendanceRate: data.attendance?.rate ?? 90,
+          attendanceRate: data.attendance?.rate ?? 100,
           quizCount: data.quiz?.count ?? 0,
-          progressVal: data.quiz?.avg_pct ?? 80,
+          progressVal: data.quiz?.avg_pct ?? 0,
           joinedDate: data.joined_date ?? prev.joinedDate,
         }));
       })
@@ -422,13 +422,13 @@ export default function AdminScreen({ navigation }) {
       const email = (s.email || '').toLowerCase();
       const phone = (s.phone || '').toLowerCase();
       const query = debouncedStudentSearch.toLowerCase().trim();
-      
-      const matchesSearch = !query || 
-        fullName.includes(query) || 
-        email.includes(query) || 
+
+      const matchesSearch = !query ||
+        fullName.includes(query) ||
+        email.includes(query) ||
         phone.includes(query);
 
-      const matchesCourse = selectedStudentCourse === 'all' || 
+      const matchesCourse = selectedStudentCourse === 'all' ||
         (s.courses && s.courses.includes(selectedStudentCourse));
 
       return matchesSearch && matchesCourse;
@@ -668,14 +668,14 @@ export default function AdminScreen({ navigation }) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `students_report_${new Date().toISOString().slice(0,10)}.xls`;
+      a.download = `students_report_${new Date().toISOString().slice(0, 10)}.xls`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } else {
       try {
-        const fileUri = FileSystem.cacheDirectory + `students_report_${new Date().toISOString().slice(0,10)}.xls`;
+        const fileUri = FileSystem.cacheDirectory + `students_report_${new Date().toISOString().slice(0, 10)}.xls`;
         await FileSystem.writeAsStringAsync(fileUri, html, { encoding: FileSystem.EncodingType.UTF8 });
         await Sharing.shareAsync(fileUri, { mimeType: 'application/vnd.ms-excel' });
       } catch (error) {
@@ -687,7 +687,7 @@ export default function AdminScreen({ navigation }) {
   // ─────────────────────────────────────────────────────────────────────────────
   // QUIZZES TAB RENDERING
   // ─────────────────────────────────────────────────────────────────────────────
-  
+
   const renderQuizItem = ({ item }) => (
     <View style={[styles.quizCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
       <View style={styles.cardHeader}>
@@ -730,7 +730,7 @@ export default function AdminScreen({ navigation }) {
         </View>
       );
     }
-    
+
     return (
       <View style={{ flex: 1 }}>
         <FlatList
@@ -1004,10 +1004,10 @@ export default function AdminScreen({ navigation }) {
               ListEmptyComponent={!fetchingBatches && <Text style={[styles.noDataText, { color: theme.muted }]}>No batches found</Text>}
             />
             {fetchingBatches && (
-              <ActivityIndicator 
-                size="small" 
-                color={theme.accent} 
-                style={{ position: 'absolute', right: 20 }} 
+              <ActivityIndicator
+                size="small"
+                color={theme.accent}
+                style={{ position: 'absolute', right: 20 }}
               />
             )}
           </View>
@@ -1090,7 +1090,7 @@ export default function AdminScreen({ navigation }) {
     }) : 'N/A';
 
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.tableRow, { borderBottomColor: theme.border }]}
         onPress={() => handleStudentClick(item)}
       >
@@ -1102,7 +1102,7 @@ export default function AdminScreen({ navigation }) {
             {item.email || 'No Email'}
           </Text>
         </View>
-        
+
         <View style={[styles.tableCol, { flex: 1.5 }]}>
           {item.courses && item.courses.length > 0 ? (
             <View style={styles.badgeRow}>
@@ -1144,19 +1144,19 @@ export default function AdminScreen({ navigation }) {
       <View style={{ flex: 1, backgroundColor: theme.bg }}>
         {/* Search Bar & Export Buttons Card */}
         <View style={[styles.studentFilterCard, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-          
+
           {/* Export Buttons Row */}
           <View style={styles.studentExportRow}>
-            <TouchableOpacity 
-              style={[styles.studentExportBtn, { borderColor: theme.accent, borderWidth: 1 }]} 
+            <TouchableOpacity
+              style={[styles.studentExportBtn, { borderColor: theme.accent, borderWidth: 1 }]}
               onPress={exportToPDF}
             >
               <Ionicons name="document-text-outline" size={16} color={theme.accent} />
               <Text style={[styles.studentExportBtnText, { color: theme.accent }]}>Export PDF</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.studentExportBtn, { borderColor: theme.success, borderWidth: 1 }]} 
+
+            <TouchableOpacity
+              style={[styles.studentExportBtn, { borderColor: theme.success, borderWidth: 1 }]}
               onPress={exportToExcel}
             >
               <Ionicons name="grid-outline" size={16} color={theme.success} />
@@ -1214,36 +1214,36 @@ export default function AdminScreen({ navigation }) {
 
         {/* Table Header with interactive Sorting */}
         <View style={[styles.tableHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-          <TouchableOpacity 
-            style={[styles.tableCol, { flex: 1.5, flexDirection: 'row', alignItems: 'center' }]} 
+          <TouchableOpacity
+            style={[styles.tableCol, { flex: 1.5, flexDirection: 'row', alignItems: 'center' }]}
             onPress={() => handleSort('name')}
             activeOpacity={0.7}
           >
             <Text style={[styles.headerColText, { color: theme.subText }]}>Student</Text>
             {studentSortBy === 'name' && (
-              <Ionicons 
-                name={studentSortOrder === 'asc' ? 'arrow-up' : 'arrow-down'} 
-                size={12} 
-                color={theme.accent} 
-                style={{ marginLeft: 4 }} 
+              <Ionicons
+                name={studentSortOrder === 'asc' ? 'arrow-up' : 'arrow-down'}
+                size={12}
+                color={theme.accent}
+                style={{ marginLeft: 4 }}
               />
             )}
           </TouchableOpacity>
           <View style={[styles.tableCol, { flex: 1.5 }]}>
             <Text style={[styles.headerColText, { color: theme.subText }]}>Registered Courses</Text>
           </View>
-          <TouchableOpacity 
-            style={[styles.tableCol, { flex: 1, alignItems: 'flex-end', flexDirection: 'row', justifyContent: 'flex-end' }]} 
+          <TouchableOpacity
+            style={[styles.tableCol, { flex: 1, alignItems: 'flex-end', flexDirection: 'row', justifyContent: 'flex-end' }]}
             onPress={() => handleSort('date')}
             activeOpacity={0.7}
           >
             <Text style={[styles.headerColText, { color: theme.subText }]}>Joined</Text>
             {studentSortBy === 'date' && (
-              <Ionicons 
-                name={studentSortOrder === 'asc' ? 'arrow-up' : 'arrow-down'} 
-                size={12} 
-                color={theme.accent} 
-                style={{ marginLeft: 4 }} 
+              <Ionicons
+                name={studentSortOrder === 'asc' ? 'arrow-up' : 'arrow-down'}
+                size={12}
+                color={theme.accent}
+                style={{ marginLeft: 4 }}
               />
             )}
           </TouchableOpacity>
@@ -1280,13 +1280,13 @@ export default function AdminScreen({ navigation }) {
   const renderStudentDetailModal = () => {
     if (!selectedStudent || !studentStats) return null;
 
-    const formattedJoinDate = studentStats.joinedDate 
+    const formattedJoinDate = studentStats.joinedDate
       ? new Date(studentStats.joinedDate).toLocaleDateString(undefined, {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        })
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })
       : 'N/A';
 
     return (
@@ -1406,7 +1406,7 @@ export default function AdminScreen({ navigation }) {
               {/* Reconciled Stats Section */}
               <View style={styles.statsSection}>
                 <Text style={[styles.sectionHeading, { color: theme.text }]}>Academy Performance Summary</Text>
-                
+
                 {statsLoading && studentStats.attendanceRate === null ? (
                   // Reconcile loading skeleton
                   <View style={{ gap: 15, marginTop: 10 }}>
@@ -1505,7 +1505,7 @@ export default function AdminScreen({ navigation }) {
             Quizzes
           </Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
           style={[styles.mainTabBtn, activeMainTab === 'results' && { borderBottomColor: theme.accent }]}
           onPress={() => setActiveMainTab('results')}
