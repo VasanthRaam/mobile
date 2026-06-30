@@ -83,14 +83,31 @@ export default function LoginScreen({ navigation }) {
     setLoading(true);
     let user = null;
     try {
-      console.log("[GOOGLE-LOGIN] Setting session in Supabase client...");
-      const { data: sessionData, error: userError } = await supabase.auth.setSession({
-        access_token,
-        refresh_token: refresh_token || '',
-      });
-      console.log("[GOOGLE-LOGIN] Supabase setSession finished. Error:", userError, "User:", sessionData?.user);
-      if (userError) throw userError;
-      user = sessionData?.user;
+      if (access_token && refresh_token) {
+        try {
+          console.log("[GOOGLE-LOGIN] Setting session in Supabase client...");
+          const { data: sessionData, error: userError } = await supabase.auth.setSession({
+            access_token,
+            refresh_token,
+          });
+          if (!userError && sessionData?.user) {
+            user = sessionData.user;
+            console.log("[GOOGLE-LOGIN] Supabase setSession succeeded. User:", user.email);
+          } else if (userError) {
+            console.warn("[GOOGLE-LOGIN] Supabase setSession failed, will try fallback:", userError.message);
+          }
+        } catch (sessErr) {
+          console.warn("[GOOGLE-LOGIN] Supabase setSession exception, will try fallback:", sessErr);
+        }
+      }
+
+      if (!user) {
+        console.log("[GOOGLE-LOGIN] Getting user profile via getUser fallback...");
+        const { data: { user: supabaseUser }, error: userError } = await supabase.auth.getUser(access_token);
+        console.log("[GOOGLE-LOGIN] Supabase getUser finished. Error:", userError, "User:", supabaseUser?.email);
+        if (userError) throw userError;
+        user = supabaseUser;
+      }
 
       if (!user) {
         throw new Error("No user profile returned from Supabase session.");
@@ -192,6 +209,7 @@ export default function LoginScreen({ navigation }) {
         }
 
         let access_token = params.access_token || null;
+        let refresh_token = params.refresh_token || null;
         const code = params.code || null;
 
         if (code) {
@@ -199,10 +217,11 @@ export default function LoginScreen({ navigation }) {
           const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
           if (exchangeError) throw exchangeError;
           access_token = exchangeData.session?.access_token || null;
+          refresh_token = exchangeData.session?.refresh_token || null;
         }
 
         if (access_token) {
-          await handleGoogleCallback(access_token);
+          await handleGoogleCallback(access_token, refresh_token);
         } else {
           Alert.alert('Authentication Failed', 'No access token or authorization code found in redirect URL.');
         }

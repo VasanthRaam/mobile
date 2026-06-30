@@ -104,9 +104,10 @@ export default function RegisterScreen({ navigation, route }) {
       if (hash) {
         const params = new URLSearchParams(hash.replace('#', '?'));
         const access_token = params.get('access_token');
+        const refresh_token = params.get('refresh_token');
         if (access_token) {
           window.history.replaceState(null, null, ' ');
-          handleGoogleCallback(access_token);
+          handleGoogleCallback(access_token, refresh_token);
         }
       }
     }
@@ -162,11 +163,33 @@ export default function RegisterScreen({ navigation, route }) {
     }
   };
 
-  const handleGoogleCallback = async (access_token) => {
+  const handleGoogleCallback = async (access_token, refresh_token) => {
     setGoogleCallbackLoading(true);
+    let user = null;
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser(access_token);
-      if (userError) throw userError;
+      if (access_token && refresh_token) {
+        try {
+          const { data: sessionData, error: userError } = await supabase.auth.setSession({
+            access_token,
+            refresh_token,
+          });
+          if (!userError && sessionData?.user) {
+            user = sessionData.user;
+          }
+        } catch (sessErr) {
+          console.warn("[GOOGLE-REG] Supabase setSession error, falling back:", sessErr);
+        }
+      }
+
+      if (!user) {
+        const { data: { user: supabaseUser }, error: userError } = await supabase.auth.getUser(access_token);
+        if (userError) throw userError;
+        user = supabaseUser;
+      }
+
+      if (!user) {
+        throw new Error("No user profile returned from Supabase session.");
+      }
 
       const userEmail = user.email || '';
       const userFullName = user.user_metadata?.full_name || user.user_metadata?.name || userEmail.split('@')[0] || 'Google User';
@@ -251,6 +274,7 @@ export default function RegisterScreen({ navigation, route }) {
         }
 
         let access_token = params.access_token || null;
+        let refresh_token = params.refresh_token || null;
         const code = params.code || null;
 
         if (code) {
@@ -258,10 +282,11 @@ export default function RegisterScreen({ navigation, route }) {
           const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
           if (exchangeError) throw exchangeError;
           access_token = exchangeData.session?.access_token || null;
+          refresh_token = exchangeData.session?.refresh_token || null;
         }
 
         if (access_token) {
-          await handleGoogleCallback(access_token);
+          await handleGoogleCallback(access_token, refresh_token);
         } else {
           Alert.alert('Authentication Failed', 'No access token or authorization code found in redirect URL.');
         }
