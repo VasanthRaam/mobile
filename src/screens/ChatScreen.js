@@ -108,9 +108,10 @@ const ChatScreen = ({ navigation }) => {
       setCache(cacheKey, finalMessages);
     } catch (error) {
       console.error('Chat API Error:', error);
+      const serverErrorMessage = error.response?.data?.detail || "I'm sorry, I encountered an error connecting to the academy systems. Please try again later.";
       const errorMsg = {
         id: Date.now().toString() + '-error',
-        text: "I'm sorry, I encountered an error connecting to the academy systems. Please try again later.",
+        text: serverErrorMessage,
         isUser: false,
       };
       const finalErrorMessages = [...updatedMessages, errorMsg];

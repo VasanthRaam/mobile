@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, FlatList, StyleSheet, SafeAreaView,
+  View, Text, FlatList, StyleSheet,
   TouchableOpacity, ActivityIndicator, Linking, RefreshControl,
   TextInput
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '../store/useThemeStore';
 import apiClient from '../api/apiClient';
@@ -101,7 +102,7 @@ export default function EnquiriesScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.detailsContainer}>
+        <View style={[styles.detailsContainer, { borderTopColor: theme.border }]}>
           <View style={styles.detailRow}>
             <Text style={[styles.label, { color: theme.subText }]}>Course: </Text>
             <Text style={[styles.value, { color: theme.text }]}>{item.course}</Text>
@@ -113,7 +114,7 @@ export default function EnquiriesScreen({ navigation }) {
             </Text>
           </View>
           {item.message ? (
-            <View style={styles.messageBox}>
+            <View style={[styles.messageBox, { backgroundColor: theme.inputBg }]}>
               <Text style={[styles.label, { color: theme.subText, marginBottom: 4 }]}>Message:</Text>
               <Text style={[styles.messageText, { color: theme.text }]}>{item.message}</Text>
             </View>
