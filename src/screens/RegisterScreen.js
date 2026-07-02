@@ -56,6 +56,14 @@ export default function RegisterScreen({ navigation, route }) {
 
   const { theme, isDark } = useThemeStore();
 
+  const showAlert = (title, message) => {
+    if (Platform.OS === 'web') {
+      alert(`${title}\n\n${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
   const [isGoogleAuth, setIsGoogleAuth] = useState(initialIsGoogle || false);
   const [supabaseUid, setSupabaseUid] = useState(initialSupabaseUid || null);
   const [authMethod, setAuthMethod] = useState(initialIsGoogle ? 'google' : null);
@@ -120,7 +128,7 @@ export default function RegisterScreen({ navigation, route }) {
       setCache('courses_batches', res.data);
     } catch (e) {
       console.error(e);
-      Alert.alert('Error', 'Failed to load courses and batches.');
+      showAlert('Error', 'Failed to load courses and batches.');
     } finally {
       setFetchingData(false);
     }
@@ -219,7 +227,7 @@ export default function RegisterScreen({ navigation, route }) {
       }
     } catch (error) {
       console.error(error);
-      Alert.alert('Google Registration Failed', error.message);
+      showAlert('Google Registration Failed', error.message);
     } finally {
       setGoogleCallbackLoading(false);
     }
@@ -288,12 +296,12 @@ export default function RegisterScreen({ navigation, route }) {
         if (access_token) {
           await handleGoogleCallback(access_token, refresh_token);
         } else {
-          Alert.alert('Authentication Failed', 'No access token or authorization code found in redirect URL.');
+          showAlert('Authentication Failed', 'No access token or authorization code found in redirect URL.');
         }
       }
     } catch (error) {
       console.error(error);
-      Alert.alert('Google Registration Failed', error.message);
+      showAlert('Google Registration Failed', error.message);
     } finally {
       setGoogleCallbackLoading(false);
     }
@@ -302,7 +310,7 @@ export default function RegisterScreen({ navigation, route }) {
   const handleRegister = async () => {
     const err = validateAll({ fullName, email, phone, password, confirmPassword, role, selectedBatches, isGoogle: isGoogleAuth });
     if (err) {
-      Alert.alert('Incomplete Form', err);
+      showAlert('Incomplete Form', err);
       return;
     }
 
@@ -328,7 +336,7 @@ export default function RegisterScreen({ navigation, route }) {
       setSubmitted(true);
     } catch (error) {
       const detail = error.response?.data?.detail || 'Registration failed.';
-      Alert.alert('Registration Failed', detail);
+      showAlert('Registration Failed', detail);
     } finally {
       setLoading(false);
     }
