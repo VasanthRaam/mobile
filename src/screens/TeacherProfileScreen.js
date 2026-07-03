@@ -123,20 +123,26 @@ export default function TeacherProfileScreen({ navigation }) {
   }
 
   const handleLogout = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
+    if (Platform.OS === 'web') {
+      if (window.confirm('Are you sure you want to sign out?')) {
+        logout();
+      }
+    } else {
+      Alert.alert(
+        'Sign Out',
+        'Are you sure you want to sign out?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Sign Out',
+            style: 'destructive',
+            onPress: async () => {
+              await logout();
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const walletPct = profile ? Math.round((profile.wallet_remaining / profile.wallet_total) * 100) : 100;

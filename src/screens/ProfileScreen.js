@@ -172,20 +172,26 @@ export default function ProfileScreen({ navigation }) {
   const progressWidth = profile ? Math.round((profile.progress_pct || 0) * 100) : 0;
 
   const handleLogout = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
+    if (Platform.OS === 'web') {
+      if (window.confirm('Are you sure you want to sign out?')) {
+        logout();
+      }
+    } else {
+      Alert.alert(
+        'Sign Out',
+        'Are you sure you want to sign out?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Sign Out',
+            style: 'destructive',
+            onPress: async () => {
+              await logout();
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   if (loading) {
