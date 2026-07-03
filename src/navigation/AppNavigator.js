@@ -45,7 +45,7 @@ function DashboardProfileIcon({ navigation }) {
 
   return (
     <TouchableOpacity
-      style={{ marginLeft: Platform.OS === 'ios' ? 0 : 4, position: 'relative' }}
+      style={{ marginLeft: Platform.OS === 'ios' ? 0 : 4, marginRight: 12, position: 'relative' }}
       onPress={() => {
         if (role === 'teacher') navigation.navigate('TeacherProfile');
         else if (role === 'student') navigation.navigate('Profile');
@@ -77,6 +77,17 @@ function DashboardProfileIcon({ navigation }) {
           </Text>
         </View>
       )}
+      <View style={{
+        position: 'absolute',
+        bottom: -1,
+        right: -1,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: '#10B981',
+        borderWidth: 1.5,
+        borderColor: isDark ? '#1E293B' : '#FFFFFF',
+      }} />
     </TouchableOpacity>
   );
 }
@@ -131,7 +142,7 @@ export default function AppNavigator() {
               name="Dashboard" 
               component={DashboardScreen} 
               options={({ navigation }) => ({
-                headerTitle: "Academy Hub",
+                headerTitle: "VHA Edutech",
                 headerLeft: () => <DashboardProfileIcon navigation={navigation} />,
               })}
             />
