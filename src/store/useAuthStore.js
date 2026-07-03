@@ -88,12 +88,16 @@ export const useAuthStore = create((set) => ({
   // Call this function to log out
   logout: async () => {
     try {
-      await supabase.auth.signOut();
+      await Promise.all([deleteToken(), deleteUser()]);
     } catch (error) {
-      console.warn('Supabase signout failed', error);
+      console.warn('Storage cleanup failed', error);
     }
-    await Promise.all([deleteToken(), deleteUser()]);
     set({ token: null, user: null, isAuthenticated: false, requiresUnlock: false });
+    
+    // Background Supabase sign out without blocking UI
+    supabase.auth.signOut().catch(error => {
+      console.warn('Supabase signout failed', error);
+    });
   },
 }));
 
