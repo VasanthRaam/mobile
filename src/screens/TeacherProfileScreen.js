@@ -150,10 +150,12 @@ export default function TeacherProfileScreen({ navigation }) {
       >
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <Text style={{ color: '#fff', fontSize: 22 }}>←</Text>
-          </TouchableOpacity>
           <Animated.View style={[styles.headerContent, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+            {/* Back button */}
+            <TouchableOpacity style={styles.backBtnInline} onPress={() => navigation.goBack()}>
+              <Text style={{ color: '#fff', fontSize: 24, fontWeight: '700' }}>←</Text>
+            </TouchableOpacity>
+
             <View style={[styles.avatar, { backgroundColor: '#ffffff30', justifyContent: 'center', alignItems: 'center' }]}>
               {profile?.profile_picture ? (
                 <Image source={{ uri: profile.profile_picture }} style={[StyleSheet.absoluteFill, { borderRadius: AVATAR_SIZE / 2 }]} />
@@ -331,19 +333,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#7C3AED',
     paddingBottom: 16,
     paddingTop: 12,
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
   },
-  backBtn: {
-    position: 'absolute',
-    top: Platform.OS === 'android' ? 16 : 12,
-    left: 16,
-    zIndex: 10,
+  backBtnInline: {
     padding: 8,
+    marginRight: 4,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
   },
   avatar: {
     width: AVATAR_SIZE,

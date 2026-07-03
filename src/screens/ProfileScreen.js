@@ -218,12 +218,12 @@ export default function ProfileScreen({ navigation }) {
         <View style={styles.header}>
           <View style={[StyleSheet.absoluteFill, styles.headerGradient]} />
 
-          {/* Back button */}
-          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <Text style={{ color: '#fff', fontSize: 22 }}>←</Text>
-          </TouchableOpacity>
-
           <Animated.View style={[styles.headerContent, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+            {/* Back button */}
+            <TouchableOpacity style={styles.backBtnInline} onPress={() => navigation.goBack()}>
+              <Text style={{ color: '#fff', fontSize: 24, fontWeight: '700' }}>←</Text>
+            </TouchableOpacity>
+
             {/* Avatar */}
             <TouchableOpacity onPress={handlePhotoChange} style={styles.avatarContainer} activeOpacity={0.8}>
               {uploadingPhoto ? (
@@ -389,19 +389,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#4F46E5',
     // Simulated gradient with overlay (no linear-gradient dependency)
   },
-  backBtn: {
-    position: 'absolute',
-    top: Platform.OS === 'android' ? 16 : 12,
-    left: 16,
-    zIndex: 10,
+  backBtnInline: {
     padding: 8,
+    marginRight: 4,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 24,
-    gap: 16,
+    paddingHorizontal: 12,
+    paddingBottom: 16,
+    gap: 12,
   },
   avatarContainer: {
     marginBottom: 0,
