@@ -78,7 +78,7 @@ function InfoRow({ label, value, theme, editable = false, onEdit }) {
 }
 
 export default function ProfileScreen({ navigation }) {
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const { theme, isDark } = useThemeStore();
 
   const [profile, setProfile] = useState(null);
