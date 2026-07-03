@@ -171,6 +171,23 @@ export default function ProfileScreen({ navigation }) {
   const levelColor = profile ? (LEVEL_COLORS[profile.level_label] || '#6366F1') : '#6366F1';
   const progressWidth = profile ? Math.round((profile.progress_pct || 0) * 100) : 0;
 
+  const handleLogout = () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            await logout();
+          },
+        },
+      ]
+    );
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
