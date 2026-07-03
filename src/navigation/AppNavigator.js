@@ -48,7 +48,7 @@ function DashboardProfileIcon({ navigation }) {
       style={{ marginLeft: Platform.OS === 'ios' ? 0 : 4, marginRight: 12, position: 'relative' }}
       onPress={() => {
         if (role === 'teacher') navigation.navigate('TeacherProfile');
-        else if (role === 'student') navigation.navigate('Profile');
+        else navigation.navigate('Profile');
       }}
       activeOpacity={0.8}
     >

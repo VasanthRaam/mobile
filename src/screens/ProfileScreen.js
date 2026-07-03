@@ -246,8 +246,10 @@ export default function ProfileScreen({ navigation }) {
 
             <View style={styles.headerInfoCol}>
               <Text style={styles.headerName} numberOfLines={2}>{profile?.full_name || user?.full_name}</Text>
-              <View style={[styles.levelBadge, { backgroundColor: levelColor }]}>
-                <Text style={styles.levelBadgeText}>⭐ {profile?.level_label || 'Beginner'}</Text>
+              <View style={[styles.levelBadge, { backgroundColor: user?.role === 'student' ? levelColor : '#4F46E5' }]}>
+                <Text style={styles.levelBadgeText}>
+                  {user?.role === 'student' ? `⭐ ${profile?.level_label || 'Beginner'}` : user?.role?.toUpperCase()}
+                </Text>
               </View>
             </View>
           </Animated.View>
@@ -255,57 +257,59 @@ export default function ProfileScreen({ navigation }) {
 
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }], padding: 20 }}>
 
-          {/* ── XP Summary ─────────────────────────────────────────────────── */}
-          <SectionCard title="XP Points" icon="⭐" theme={theme}>
-            <View style={styles.xpGrid}>
-              <View style={[styles.xpStat, { backgroundColor: isDark ? '#1E293B' : '#F8FAFF' }]}>
-                <Text style={[styles.xpVal, { color: levelColor }]}>{profile?.current_points?.toLocaleString() || 0}</Text>
-                <Text style={[styles.xpLabel, { color: theme.subText }]}>Current</Text>
+          {user?.role === 'student' && (
+            /* ── XP Summary ─────────────────────────────────────────────────── */
+            <SectionCard title="XP Points" icon="⭐" theme={theme}>
+              <View style={styles.xpGrid}>
+                <View style={[styles.xpStat, { backgroundColor: isDark ? '#1E293B' : '#F8FAFF' }]}>
+                  <Text style={[styles.xpVal, { color: levelColor }]}>{profile?.current_points?.toLocaleString() || 0}</Text>
+                  <Text style={[styles.xpLabel, { color: theme.subText }]}>Current</Text>
+                </View>
+                <View style={[styles.xpStat, { backgroundColor: isDark ? '#1E293B' : '#F8FAFF' }]}>
+                  <Text style={[styles.xpVal, { color: '#10B981' }]}>{profile?.lifetime_points?.toLocaleString() || 0}</Text>
+                  <Text style={[styles.xpLabel, { color: theme.subText }]}>Lifetime</Text>
+                </View>
+                <View style={[styles.xpStat, { backgroundColor: isDark ? '#1E293B' : '#F8FAFF' }]}>
+                  <Text style={[styles.xpVal, { color: '#F59E0B' }]}>#{profile?.rank || '—'}</Text>
+                  <Text style={[styles.xpLabel, { color: theme.subText }]}>Rank</Text>
+                </View>
               </View>
-              <View style={[styles.xpStat, { backgroundColor: isDark ? '#1E293B' : '#F8FAFF' }]}>
-                <Text style={[styles.xpVal, { color: '#10B981' }]}>{profile?.lifetime_points?.toLocaleString() || 0}</Text>
-                <Text style={[styles.xpLabel, { color: theme.subText }]}>Lifetime</Text>
-              </View>
-              <View style={[styles.xpStat, { backgroundColor: isDark ? '#1E293B' : '#F8FAFF' }]}>
-                <Text style={[styles.xpVal, { color: '#F59E0B' }]}>#{profile?.rank || '—'}</Text>
-                <Text style={[styles.xpLabel, { color: theme.subText }]}>Rank</Text>
-              </View>
-            </View>
 
-            {/* Points breakdown */}
-            <View style={styles.pointsBreakdown}>
-              <View style={styles.breakdownRow}>
-                <Text style={[styles.breakdownLabel, { color: theme.subText }]}>📝 Quiz Points</Text>
-                <Text style={[styles.breakdownVal, { color: theme.text }]}>{profile?.quiz_points?.toLocaleString() || 0}</Text>
+              {/* Points breakdown */}
+              <View style={styles.pointsBreakdown}>
+                <View style={styles.breakdownRow}>
+                  <Text style={[styles.breakdownLabel, { color: theme.subText }]}>📝 Quiz Points</Text>
+                  <Text style={[styles.breakdownVal, { color: theme.text }]}>{profile?.quiz_points?.toLocaleString() || 0}</Text>
+                </View>
+                <View style={styles.breakdownRow}>
+                  <Text style={[styles.breakdownLabel, { color: theme.subText }]}>🎁 Teacher Bonus</Text>
+                  <Text style={[styles.breakdownVal, { color: theme.text }]}>{profile?.teacher_bonus_points?.toLocaleString() || 0}</Text>
+                </View>
               </View>
-              <View style={styles.breakdownRow}>
-                <Text style={[styles.breakdownLabel, { color: theme.subText }]}>🎁 Teacher Bonus</Text>
-                <Text style={[styles.breakdownVal, { color: theme.text }]}>{profile?.teacher_bonus_points?.toLocaleString() || 0}</Text>
-              </View>
-            </View>
 
-            {/* Level progress bar */}
-            <View style={styles.progressSection}>
-              <View style={styles.progressLabelRow}>
-                <Text style={[styles.progressLabel, { color: theme.subText }]}>Level {profile?.level || 1}</Text>
-                <Text style={[styles.progressLabel, { color: theme.subText }]}>{progressWidth}% to Level {(profile?.level || 1) + 1}</Text>
+              {/* Level progress bar */}
+              <View style={styles.progressSection}>
+                <View style={styles.progressLabelRow}>
+                  <Text style={[styles.progressLabel, { color: theme.subText }]}>Level {profile?.level || 1}</Text>
+                  <Text style={[styles.progressLabel, { color: theme.subText }]}>{progressWidth}% to Level {(profile?.level || 1) + 1}</Text>
+                </View>
+                <View style={[styles.progressTrack, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                  <View style={[styles.progressFill, { width: `${progressWidth}%`, backgroundColor: levelColor }]} />
+                </View>
+                <Text style={[styles.nextLevelText, { color: theme.muted }]}>
+                  {profile?.next_level_points?.toLocaleString()} pts to next level
+                </Text>
               </View>
-              <View style={[styles.progressTrack, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]}>
-                <View style={[styles.progressFill, { width: `${progressWidth}%`, backgroundColor: levelColor }]} />
-              </View>
-              <Text style={[styles.nextLevelText, { color: theme.muted }]}>
-                {profile?.next_level_points?.toLocaleString()} pts to next level
-              </Text>
-            </View>
 
-            {/* Leaderboard button */}
-            <TouchableOpacity
-              style={[styles.leaderboardBtn, { backgroundColor: levelColor + '1A', borderColor: levelColor }]}
-              onPress={() => navigation.navigate('Leaderboard')}
-            >
-              <Text style={[styles.leaderboardBtnText, { color: levelColor }]}>🏆 View Leaderboard</Text>
-            </TouchableOpacity>
-          </SectionCard>
+              {/* Leaderboard button */}
+              <TouchableOpacity
+                style={[styles.leaderboardBtn, { backgroundColor: levelColor + '1A', borderColor: levelColor }]}
+                onPress={() => navigation.navigate('Leaderboard')}
+              >
+                <Text style={[styles.leaderboardBtnText, { color: levelColor }]}>🏆 View Leaderboard</Text>
+              </TouchableOpacity>
+            </SectionCard>
+          )}
 
           {/* ── Personal Details ───────────────────────────────────────────── */}
           <SectionCard title="Personal Details" icon="👤" theme={theme}>

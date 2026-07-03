@@ -50,8 +50,7 @@ export async function syncPushTokenWithBackend(token, retryCount = 0) {
       device_type: Platform.OS
     });
     console.log('[PUSH-DIAG] Token sync success:', response.data);
-    // Success alert for verification
-    Alert.alert('Push Registered', 'Successfully linked this device for real-time notifications!');
+    // Success logged internally, no popup needed in production
   } catch (error) {
     const errMsg = error.response?.data?.detail || error.message;
     console.error('[PUSH-DIAG] Failed to sync push token:', errMsg);
