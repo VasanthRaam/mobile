@@ -29,7 +29,7 @@ function Skeleton({ width: w, height: h, style }) {
 }
 
 export default function TeacherProfileScreen({ navigation }) {
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const { theme, isDark } = useThemeStore();
 
   const [profile, setProfile] = useState(null);
@@ -121,6 +121,23 @@ export default function TeacherProfileScreen({ navigation }) {
       </SafeAreaView>
     );
   }
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            await logout();
+          },
+        },
+      ]
+    );
+  };
 
   const walletPct = profile ? Math.round((profile.wallet_remaining / profile.wallet_total) * 100) : 100;
 
@@ -220,6 +237,20 @@ export default function TeacherProfileScreen({ navigation }) {
           </View>
 
         </Animated.View>
+
+        {/* ── Account Actions ────────────────────────────────────────────── */}
+        <Animated.View style={{ opacity: fadeAnim, paddingHorizontal: 20, paddingBottom: 40 }}>
+          <TouchableOpacity
+            style={[styles.logoutBtn, { borderColor: '#EF4444' }]}
+            onPress={handleLogout}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.logoutIcon}>🚪</Text>
+            <Text style={styles.logoutText}>Sign Out</Text>
+          </TouchableOpacity>
+          <Text style={[styles.appVersion, { color: theme.muted }]}>BuddyBloom Academy · v1.0</Text>
+        </Animated.View>
+
       </ScrollView>
 
       {/* ── Reward Student Modal ────────────────────────────────────────────── */}
@@ -429,4 +460,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   submitBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  logoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 20,
+    gap: 8,
+  },
+  logoutIcon: {
+    fontSize: 16,
+  },
+  logoutText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#EF4444',
+  },
+  appVersion: {
+    fontSize: 11,
+    textAlign: 'center',
+    marginTop: 16,
+    fontWeight: '500',
+  },
 });

@@ -490,4 +490,28 @@ const styles = StyleSheet.create({
     backgroundColor: '#4F46E5',
     height: 160,
   },
+  logoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 20,
+    gap: 8,
+  },
+  logoutIcon: {
+    fontSize: 16,
+  },
+  logoutText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#EF4444',
+  },
+  appVersion: {
+    fontSize: 11,
+    textAlign: 'center',
+    marginTop: 16,
+    fontWeight: '500',
+  },
 });

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { 
-  View, Text, StyleSheet, TouchableOpacity, 
+import {
+  View, Text, StyleSheet, TouchableOpacity,
   ScrollView, Dimensions, Animated,
   Alert
 } from 'react-native';
@@ -113,8 +113,8 @@ export default function DashboardScreen({ navigation }) {
 
   const renderCard = (title, icon, color, onPress, subtitle) => (
     <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-      <TouchableOpacity 
-        style={[styles.card, { borderLeftColor: color, backgroundColor: theme.card }]} 
+      <TouchableOpacity
+        style={[styles.card, { borderLeftColor: color, backgroundColor: theme.card }]}
         onPress={onPress}
         activeOpacity={0.7}
       >
@@ -187,20 +187,45 @@ export default function DashboardScreen({ navigation }) {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
       <View style={[styles.bgDecor1, { backgroundColor: isDark ? theme.accentLight : '#E0E7FF' }]} />
       <View style={[styles.bgDecor2, { backgroundColor: isDark ? theme.successLight : '#F0FDF4' }]} />
-      
-      <ScrollView 
+
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* ── Top Header ─────────────────────────────────────────────────── */}
         <View style={styles.header}>
-          <View style={{ flex: 1, marginRight: 16 }}>
-            <Text style={[styles.welcomeText, { color: theme.subText }]}>Academy Hub</Text>
-            <Text style={[styles.nameText, { color: theme.text }]} numberOfLines={2}>
-              {user?.full_name || 'Teacher'} 👋
+          {/* Left: Profile Avatar → navigates to profile */}
+          <TouchableOpacity
+            style={styles.avatarBtn}
+            onPress={() => {
+              if (role === 'teacher') navigation.navigate('TeacherProfile');
+              else if (role === 'student') navigation.navigate('Profile');
+            }}
+            activeOpacity={0.8}
+          >
+            {user?.profile_picture ? (
+              <Image source={{ uri: user.profile_picture }} style={styles.headerAvatar} />
+            ) : (
+              <View style={[styles.headerAvatar, styles.headerAvatarFallback, { backgroundColor: isDark ? '#334155' : '#E0E7FF' }]}>
+                <Text style={[styles.avatarInitial, { color: isDark ? '#A5B4FC' : '#4F46E5' }]}>
+                  {(user?.full_name || 'U')[0].toUpperCase()}
+                </Text>
+              </View>
+            )}
+            <View style={[styles.onlineDot, { borderColor: theme.bg }]} />
+          </TouchableOpacity>
+
+          {/* Centre: Greeting */}
+          <View style={styles.headerCenter}>
+            <Text style={[styles.welcomeText, { color: theme.subText }]}>Welcome back 👋</Text>
+            <Text style={[styles.nameText, { color: theme.text }]} numberOfLines={1}>
+              {user?.full_name?.split(' ')[0] || 'User'}
             </Text>
           </View>
-          <View style={[styles.roleBadgeHeader, { backgroundColor: theme.accentLight, borderColor: theme.border }]}>
-            <Text style={[styles.roleBadgeText, { color: theme.accent }]}>{role?.toUpperCase()}</Text>
+
+          {/* Right: Role Badge */}
+          <View style={[styles.roleBadgeHeader, { backgroundColor: isDark ? '#1E1B4B' : '#EEF2FF', borderColor: isDark ? '#4338CA' : '#C7D2FE' }]}>
+            <Text style={[styles.roleBadgeText, { color: isDark ? '#A5B4FC' : '#4F46E5' }]}>{role?.toUpperCase()}</Text>
           </View>
         </View>
 
@@ -211,9 +236,9 @@ export default function DashboardScreen({ navigation }) {
             <Text style={{ color: theme.subText, fontWeight: '600' }}>Loading stats...</Text>
           </View>
         ) : (
-          role === 'admin' ? renderAdminStats() : 
-          role === 'teacher' ? renderTeacherStats() : 
-          renderGenericStats()
+          role === 'admin' ? renderAdminStats() :
+            role === 'teacher' ? renderTeacherStats() :
+              renderGenericStats()
         )}
 
         {role === 'teacher' && (
@@ -223,14 +248,14 @@ export default function DashboardScreen({ navigation }) {
                 <Text style={[styles.sectionTitle, { color: theme.text }]}>Weekly Engagement 📊</Text>
                 <Text style={[styles.viewAllText, { color: theme.accent }]}>Live View</Text>
               </View>
-              
+
               <View style={styles.chartContainer}>
                 <View style={styles.chartYAxis}>
                   <Text style={[styles.yAxisText, { color: theme.subText }]}>100%</Text>
                   <Text style={[styles.yAxisText, { color: theme.subText }]}>50%</Text>
                   <Text style={[styles.yAxisText, { color: theme.subText }]}>0%</Text>
                 </View>
-                
+
                 <View style={[styles.chartContent, { borderColor: theme.border }]}>
                   {[
                     { day: 'Mon', val: 65, color: '#6366F1' },
@@ -251,7 +276,7 @@ export default function DashboardScreen({ navigation }) {
                   ))}
                 </View>
               </View>
-              
+
               <View style={[styles.legend, { borderTopColor: theme.border }]}>
                 <View style={styles.legendItem}>
                   <View style={[styles.dot, { backgroundColor: '#6366F1' }]} />
@@ -264,17 +289,17 @@ export default function DashboardScreen({ navigation }) {
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Daily Operations 📋</Text>
             <View style={styles.grid}>
               {renderCard(
-                'Mark Attendance', '✅', '#6366F1', 
+                'Mark Attendance', '✅', '#6366F1',
                 () => navigation.navigate('Attendance'),
                 'Check in your students for today'
               )}
               {renderCard(
-                'Assign Homework', '📚', '#EC4899', 
+                'Assign Homework', '📚', '#EC4899',
                 () => navigation.navigate('AssignHomework'),
                 'Send new tasks to students/batches'
               )}
               {renderCard(
-                'Leave Approvals', '🔔', '#F59E0B', 
+                'Leave Approvals', '🔔', '#F59E0B',
                 () => navigation.navigate('PendingApprovals'),
                 'Review student leave requests'
               )}
@@ -283,17 +308,17 @@ export default function DashboardScreen({ navigation }) {
             <Text style={[styles.sectionTitle, { marginTop: 24, color: theme.text }]}>Assessments & Tracking 📈</Text>
             <View style={styles.grid}>
               {renderCard(
-                'Create Quiz', '➕', '#10B981', 
+                'Create Quiz', '➕', '#10B981',
                 () => navigation.navigate('CreateQuiz'),
                 'Build new tests and assignments'
               )}
               {renderCard(
-                'View All Quizzes', '📝', '#F59E0B', 
+                'View All Quizzes', '📝', '#F59E0B',
                 () => navigation.navigate('QuizList'),
                 'Manage existing questionnaires'
               )}
               {renderCard(
-                'Performance Results', '📊', '#8B5CF6', 
+                'Performance Results', '📊', '#8B5CF6',
                 () => navigation.navigate('QuizResults'),
                 'Analyze student marks and trends'
               )}
@@ -307,76 +332,76 @@ export default function DashboardScreen({ navigation }) {
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Quick Access</Text>
             <View style={styles.grid}>
               {renderCard(
-                'Attendance', '📅', '#4F46E5', 
+                'Attendance', '📅', '#4F46E5',
                 () => navigation.navigate('Attendance'),
                 'Track your daily presence'
               )}
               {(role === 'student' || role === 'admin') && (
                 renderCard(
-                  'Fees & Payments', '💸', '#10B981', 
+                  'Fees & Payments', '💸', '#10B981',
                   () => navigation.navigate('Fees'),
                   'Manage your fee records'
                 )
               )}
               {role === 'admin' && (
                 renderCard(
-                  'Revenue Tracker', '📈', '#8B5CF6', 
+                  'Revenue Tracker', '📈', '#8B5CF6',
                   () => navigation.navigate('Revenue'),
                   'Income, expenses, and analytics'
                 )
               )}
               {role === 'student' && (
                 renderCard(
-                  'Take a Quiz', '📝', '#F59E0B', 
+                  'Take a Quiz', '📝', '#F59E0B',
                   () => navigation.navigate('QuizList'),
                   'Challenge your knowledge'
                 )
               )}
               {role === 'admin' && (
                 renderCard(
-                  'Admin Portal', '🛠️', '#F59E0B', 
+                  'Admin Portal', '🛠️', '#F59E0B',
                   () => navigation.navigate('Admin'),
                   'Manage quizzes, results, and students'
                 )
               )}
               {role === 'student' && (
                 renderCard(
-                  'My Homework', '📚', '#EC4899', 
+                  'My Homework', '📚', '#EC4899',
                   () => navigation.navigate('HomeworkList'),
                   'View and submit your assignments'
                 )
               )}
               {role === 'admin' && (
                 renderCard(
-                  'Create Quiz', '➕', '#10B981', 
+                  'Create Quiz', '➕', '#10B981',
                   () => navigation.navigate('CreateQuiz'),
                   'Design new assessments'
                 )
               )}
               {role === 'admin' && (
                 renderCard(
-                  'Pending Approvals', '🔔', '#EF4444', 
+                  'Pending Approvals', '🔔', '#EF4444',
                   () => navigation.navigate('PendingApprovals'),
                   'Review new registration requests'
                 )
               )}
               {role === 'admin' && (
                 renderCard(
-                  'Website Enquiries', '📬', '#3B82F6', 
+                  'Website Enquiries', '📬', '#3B82F6',
                   () => navigation.navigate('Enquiries'),
                   'View and manage website enquiries'
                 )
               )}
               {role !== 'admin' && (
                 renderCard(
-                  role === 'parent' ? "Kid's Results" : "Quiz Results", '📊', '#8B5CF6', 
+                  role === 'parent' ? "Kid's Results" : "Quiz Results", '📊', '#8B5CF6',
                   () => navigation.navigate('QuizResults'),
                   'Monitor performance metrics'
                 )
               )}
               {role === 'student' && (
                 renderCard(
-                  'My Courses', '🏛️', '#10B981', 
+                  'My Courses', '🏛️', '#10B981',
                   () => navigation.navigate('MyCourses'),
                   'Enrolled programs and batches'
                 )
@@ -442,25 +467,55 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   scrollContent: {
-    padding: 24,
+    padding: 20,
+    paddingTop: 12,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 30,
-    marginTop: 10,
+    alignItems: 'center',
+    marginBottom: 20,
+    marginTop: 4,
+    gap: 12,
+  },
+  avatarBtn: {
+    position: 'relative',
+  },
+  headerAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: '#6366F1',
+  },
+  headerAvatarFallback: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarInitial: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  onlineDot: {
+    position: 'absolute',
+    bottom: 1,
+    right: 1,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#10B981',
+    borderWidth: 2,
+  },
+  headerCenter: {
+    flex: 1,
   },
   welcomeText: {
-    fontSize: 16,
-    color: '#64748B',
+    fontSize: 12,
     fontWeight: '500',
+    marginBottom: 2,
   },
   nameText: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '800',
-    color: '#1E293B',
-    marginTop: 4,
   },
   roleBadgeHeader: {
     backgroundColor: '#EEF2FF',
