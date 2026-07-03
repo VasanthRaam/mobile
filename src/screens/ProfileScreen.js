@@ -12,7 +12,7 @@ import { useThemeStore } from '../store/useThemeStore';
 import apiClient from '../api/apiClient';
 
 const { width } = Dimensions.get('window');
-const AVATAR_SIZE = 100;
+const AVATAR_SIZE = 70;
 
 // ── Level colour mapping ──────────────────────────────────────────────────────
 const LEVEL_COLORS = {
@@ -325,7 +325,13 @@ export default function ProfileScreen({ navigation }) {
               })
             } />
             <InfoRow label="Date of Birth" value={profile?.dob} theme={theme} />
-            <InfoRow label="Education" value={profile?.education_qualification} theme={theme} />
+            <InfoRow label="Standard" value={profile?.education_qualification} theme={theme} editable onEdit={() =>
+              Alert.prompt('Edit Standard', 'Enter your standard/class:', async (val) => {
+                if (!val) return;
+                await apiClient.put('/profile/me', { education_qualification: val });
+                setProfile(prev => ({ ...prev, education_qualification: val }));
+              })
+            } />
           </SectionCard>
 
           {/* ── Family Details ─────────────────────────────────────────────── */}
@@ -375,7 +381,7 @@ const styles = StyleSheet.create({
 
   // ── Header ────────────────────────────────────────────────────────────────
   header: {
-    height: 200,
+    height: 140,
     justifyContent: 'flex-end',
     overflow: 'hidden',
   },

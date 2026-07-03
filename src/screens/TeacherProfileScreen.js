@@ -12,7 +12,7 @@ import { useThemeStore } from '../store/useThemeStore';
 import apiClient from '../api/apiClient';
 
 const { width } = Dimensions.get('window');
-const AVATAR_SIZE = 90;
+const AVATAR_SIZE = 70;
 
 function Skeleton({ width: w, height: h, style }) {
   const shimmer = useRef(new Animated.Value(0)).current;
@@ -156,7 +156,7 @@ export default function TeacherProfileScreen({ navigation }) {
           <Animated.View style={[styles.headerContent, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
             <View style={[styles.avatar, { backgroundColor: '#ffffff30', justifyContent: 'center', alignItems: 'center' }]}>
               {profile?.profile_picture ? (
-                <Image source={{ uri: profile.profile_picture }} style={[StyleSheet.absoluteFill, { borderRadius: 45 }]} />
+                <Image source={{ uri: profile.profile_picture }} style={[StyleSheet.absoluteFill, { borderRadius: AVATAR_SIZE / 2 }]} />
               ) : (
                 <Text style={{ fontSize: 34, color: '#fff' }}>{profile?.full_name?.[0] || '?'}</Text>
               )}
@@ -329,8 +329,8 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
     backgroundColor: '#7C3AED',
-    paddingBottom: 24,
-    paddingTop: 48,
+    paddingBottom: 16,
+    paddingTop: 12,
     paddingHorizontal: 20,
   },
   backBtn: {
