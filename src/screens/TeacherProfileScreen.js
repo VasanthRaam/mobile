@@ -91,7 +91,7 @@ export default function TeacherProfileScreen({ navigation }) {
         points: pts,
         reason: rewardReason.trim(),
       });
-      Alert.alert('⭐ Points Sent!', `Successfully awarded ${pts} StarSpark points to ${selectedStudent.name}!`);
+      Alert.alert('⭐ Points Sent!', `Successfully awarded ${pts} XP to ${selectedStudent.name}!`);
       setRewardModalVisible(false);
       setSelectedStudent(null);
       setRewardPoints('');
@@ -197,10 +197,10 @@ export default function TeacherProfileScreen({ navigation }) {
             </View>
           )}
 
-          {/* ── StarSpark Monthly Wallet ──────────────────────────────────── */}
+          {/* ── XP Monthly Wallet ─────────────────────────────────────────── */}
           <View style={[styles.card, styles.walletCard, { backgroundColor: '#7C3AED' }]}>
             <View style={styles.walletHeader}>
-              <Text style={styles.walletTitle}>⭐ StarSpark Monthly Wallet</Text>
+              <Text style={styles.walletTitle}>⭐ XP Monthly Wallet</Text>
               <View style={styles.walletBadge}>
                 <Text style={styles.walletBadgeText}>{profile?.wallet_month || '—'}</Text>
               </View>

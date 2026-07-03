@@ -23,7 +23,7 @@ const LEVEL_COLORS = {
   Champion: '#F59E0B',
   Legend: '#F97316',
   'Grand Master': '#EF4444',
-  'StarSpark Elite': '#EC4899',
+  'XP Elite': '#EC4899',
 };
 
 // ── Skeleton Component ────────────────────────────────────────────────────────
@@ -236,20 +236,20 @@ export default function ProfileScreen({ navigation }) {
 
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }], padding: 20 }}>
 
-          {/* ── StarSpark Summary ──────────────────────────────────────────── */}
-          <SectionCard title="StarSpark Points" icon="⭐" theme={theme}>
-            <View style={styles.starsparkGrid}>
-              <View style={[styles.starsparkStat, { backgroundColor: isDark ? '#1E293B' : '#F8FAFF' }]}>
-                <Text style={[styles.starsparkVal, { color: levelColor }]}>{profile?.current_points?.toLocaleString() || 0}</Text>
-                <Text style={[styles.starsparkLabel, { color: theme.subText }]}>Current</Text>
+          {/* ── XP Summary ─────────────────────────────────────────────────── */}
+          <SectionCard title="XP Points" icon="⭐" theme={theme}>
+            <View style={styles.xpGrid}>
+              <View style={[styles.xpStat, { backgroundColor: isDark ? '#1E293B' : '#F8FAFF' }]}>
+                <Text style={[styles.xpVal, { color: levelColor }]}>{profile?.current_points?.toLocaleString() || 0}</Text>
+                <Text style={[styles.xpLabel, { color: theme.subText }]}>Current</Text>
               </View>
-              <View style={[styles.starsparkStat, { backgroundColor: isDark ? '#1E293B' : '#F8FAFF' }]}>
-                <Text style={[styles.starsparkVal, { color: '#10B981' }]}>{profile?.lifetime_points?.toLocaleString() || 0}</Text>
-                <Text style={[styles.starsparkLabel, { color: theme.subText }]}>Lifetime</Text>
+              <View style={[styles.xpStat, { backgroundColor: isDark ? '#1E293B' : '#F8FAFF' }]}>
+                <Text style={[styles.xpVal, { color: '#10B981' }]}>{profile?.lifetime_points?.toLocaleString() || 0}</Text>
+                <Text style={[styles.xpLabel, { color: theme.subText }]}>Lifetime</Text>
               </View>
-              <View style={[styles.starsparkStat, { backgroundColor: isDark ? '#1E293B' : '#F8FAFF' }]}>
-                <Text style={[styles.starsparkVal, { color: '#F59E0B' }]}>#{profile?.rank || '—'}</Text>
-                <Text style={[styles.starsparkLabel, { color: theme.subText }]}>Rank</Text>
+              <View style={[styles.xpStat, { backgroundColor: isDark ? '#1E293B' : '#F8FAFF' }]}>
+                <Text style={[styles.xpVal, { color: '#F59E0B' }]}>#{profile?.rank || '—'}</Text>
+                <Text style={[styles.xpLabel, { color: theme.subText }]}>Rank</Text>
               </View>
             </View>
 
@@ -435,20 +435,20 @@ const styles = StyleSheet.create({
   infoValue: { fontSize: 13, fontWeight: '600', textAlign: 'right', flex: 1 },
   editBtn: { marginLeft: 10, padding: 4 },
 
-  // ── StarSpark ─────────────────────────────────────────────────────────────
-  starsparkGrid: {
+  // ── XP ────────────────────────────────────────────────────────────────────
+  xpGrid: {
     flexDirection: 'row',
     padding: 12,
     gap: 8,
   },
-  starsparkStat: {
+  xpStat: {
     flex: 1,
     borderRadius: 12,
     padding: 12,
     alignItems: 'center',
   },
-  starsparkVal: { fontSize: 20, fontWeight: '800', marginBottom: 2 },
-  starsparkLabel: { fontSize: 11, fontWeight: '600' },
+  xpVal: { fontSize: 20, fontWeight: '800', marginBottom: 2 },
+  xpLabel: { fontSize: 11, fontWeight: '600' },
   pointsBreakdown: { paddingHorizontal: 16, marginBottom: 12 },
   breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   breakdownLabel: { fontSize: 13 },

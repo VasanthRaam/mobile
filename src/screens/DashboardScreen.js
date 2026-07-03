@@ -410,8 +410,8 @@ export default function DashboardScreen({ navigation }) {
           </>
         )}
 
-        {/* ── StarSpark Profile & Leaderboard ─────────────────────────── */}
-        <Text style={[styles.sectionTitle, { color: theme.text, marginTop: 8 }]}>⭐ StarSpark</Text>
+        {/* ── XP Profile & Leaderboard ─────────────────────────────────── */}
+        <Text style={[styles.sectionTitle, { color: theme.text, marginTop: 8 }]}>⭐ XP System</Text>
         <View style={styles.grid}>
           {role === 'student' && (
             renderCard(

@@ -299,7 +299,7 @@ export default function LeaderboardScreen({ navigation }) {
           )}
           ListHeaderComponent={() => (
             <View style={styles.rewardHeader}>
-              <Text style={[styles.rewardHeaderTitle, { color: theme.text }]}>⭐ StarSpark Rewards</Text>
+              <Text style={[styles.rewardHeaderTitle, { color: theme.text }]}>⭐ XP Rewards</Text>
               {user?.role === 'student' && (
                 <Text style={[styles.rewardHeaderSub, { color: '#6366F1' }]}>Your balance: {studentBalance.toLocaleString()} pts</Text>
               )}
