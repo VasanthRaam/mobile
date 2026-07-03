@@ -227,9 +227,11 @@ export default function ProfileScreen({ navigation }) {
               </View>
             </TouchableOpacity>
 
-            <Text style={styles.headerName}>{profile?.full_name || user?.full_name}</Text>
-            <View style={[styles.levelBadge, { backgroundColor: levelColor }]}>
-              <Text style={styles.levelBadgeText}>⭐ {profile?.level_label || 'Beginner'}</Text>
+            <View style={styles.headerInfoCol}>
+              <Text style={styles.headerName} numberOfLines={2}>{profile?.full_name || user?.full_name}</Text>
+              <View style={[styles.levelBadge, { backgroundColor: levelColor }]}>
+                <Text style={styles.levelBadgeText}>⭐ {profile?.level_label || 'Beginner'}</Text>
+              </View>
             </View>
           </Animated.View>
         </View>
@@ -334,6 +336,18 @@ export default function ProfileScreen({ navigation }) {
           )}
 
         </Animated.View>
+
+        {/* ── Account Actions ────────────────────────────────────────────── */}
+        <Animated.View style={{ opacity: fadeAnim, paddingHorizontal: 20, paddingBottom: 40 }}>
+          <TouchableOpacity
+            style={[styles.logoutBtn, { backgroundColor: isDark ? '#ef444415' : '#fef2f2', borderColor: '#ef4444' }]}
+            onPress={handleLogout}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+          <Text style={[styles.appVersion, { color: theme.muted }]}>BuddyBloom Academy · v1.0</Text>
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -344,7 +358,7 @@ const styles = StyleSheet.create({
 
   // ── Header ────────────────────────────────────────────────────────────────
   header: {
-    height: 260,
+    height: 200,
     justifyContent: 'flex-end',
     overflow: 'hidden',
   },
@@ -360,11 +374,14 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   headerContent: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 20,
     paddingBottom: 24,
+    gap: 16,
   },
   avatarContainer: {
-    marginBottom: 12,
+    marginBottom: 0,
   },
   avatar: {
     width: AVATAR_SIZE,
@@ -386,11 +403,16 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#fff',
   },
+  headerInfoCol: {
+    flex: 1,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
   headerName: {
     fontSize: 20,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   levelBadge: {
     paddingHorizontal: 14,

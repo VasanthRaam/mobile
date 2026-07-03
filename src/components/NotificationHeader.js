@@ -64,28 +64,6 @@ export default function NotificationHeader() {
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity 
-        onPress={() => {
-          if (Platform.OS === 'web') {
-            if (window.confirm("Are you sure you want to logout?")) {
-              logout();
-            }
-          } else {
-            Alert.alert(
-              "Logout",
-              "Are you sure you want to logout?",
-              [
-                { text: "Cancel", style: "cancel" },
-                { text: "Logout", onPress: () => logout(), style: 'destructive' }
-              ]
-            );
-          }
-        }} 
-        style={[styles.logoutButton, { backgroundColor: isDark ? '#4c1d24' : '#FFF1F2' }]}
-      >
-        <Text style={styles.logoutEmoji}>🚪</Text>
-      </TouchableOpacity>
-
       <Modal
         visible={showModal}
         transparent={true}

@@ -1,4 +1,5 @@
 import React from 'react';
+import { View, Text, Image, TouchableOpacity, Platform } from 'react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuthStore } from '../store/useAuthStore';
@@ -34,6 +35,51 @@ import EnquiriesScreen from '../screens/EnquiriesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import TeacherProfileScreen from '../screens/TeacherProfileScreen';
 import LeaderboardScreen from '../screens/LeaderboardScreen';
+
+function DashboardProfileIcon({ navigation }) {
+  const { user } = useAuthStore();
+  const { isDark } = useThemeStore();
+  const role = user?.role;
+
+  if (!user) return null;
+
+  return (
+    <TouchableOpacity
+      style={{ marginLeft: Platform.OS === 'ios' ? 0 : 4, position: 'relative' }}
+      onPress={() => {
+        if (role === 'teacher') navigation.navigate('TeacherProfile');
+        else if (role === 'student') navigation.navigate('Profile');
+      }}
+      activeOpacity={0.8}
+    >
+      {user.profile_picture ? (
+        <Image
+          source={{ uri: user.profile_picture }}
+          style={{ width: 34, height: 34, borderRadius: 17, borderWidth: 1.5, borderColor: '#6366F1' }}
+        />
+      ) : (
+        <View style={{
+          width: 34,
+          height: 34,
+          borderRadius: 17,
+          backgroundColor: isDark ? '#334155' : '#E0E7FF',
+          justifyContent: 'center',
+          alignItems: 'center',
+          borderWidth: 1.5,
+          borderColor: '#6366F1',
+        }}>
+          <Text style={{
+            fontSize: 13,
+            fontWeight: '800',
+            color: isDark ? '#A5B4FC' : '#4F46E5',
+          }}>
+            {user.full_name ? user.full_name[0].toUpperCase() : 'U'}
+          </Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+}
 
 const Stack = createNativeStackNavigator();
 
@@ -81,7 +127,14 @@ export default function AppNavigator() {
             headerShown: true,
             headerRight: () => <NotificationHeader />,
           }}>
-            <Stack.Screen name="Dashboard" component={DashboardScreen} />
+            <Stack.Screen 
+              name="Dashboard" 
+              component={DashboardScreen} 
+              options={({ navigation }) => ({
+                headerTitle: "Academy Hub",
+                headerLeft: () => <DashboardProfileIcon navigation={navigation} />,
+              })}
+            />
             <Stack.Screen name="Attendance" component={AttendanceScreen} />
             <Stack.Screen name="QuizList" component={QuizListScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Quiz" component={QuizScreen} options={{ headerShown: false }} />

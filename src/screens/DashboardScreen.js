@@ -194,27 +194,6 @@ export default function DashboardScreen({ navigation }) {
       >
         {/* ── Top Header ─────────────────────────────────────────────────── */}
         <View style={styles.header}>
-          {/* Left: Profile Avatar → navigates to profile */}
-          <TouchableOpacity
-            style={styles.avatarBtn}
-            onPress={() => {
-              if (role === 'teacher') navigation.navigate('TeacherProfile');
-              else if (role === 'student') navigation.navigate('Profile');
-            }}
-            activeOpacity={0.8}
-          >
-            {user?.profile_picture ? (
-              <Image source={{ uri: user.profile_picture }} style={styles.headerAvatar} />
-            ) : (
-              <View style={[styles.headerAvatar, styles.headerAvatarFallback, { backgroundColor: isDark ? '#334155' : '#E0E7FF' }]}>
-                <Text style={[styles.avatarInitial, { color: isDark ? '#A5B4FC' : '#4F46E5' }]}>
-                  {(user?.full_name || 'U')[0].toUpperCase()}
-                </Text>
-              </View>
-            )}
-            <View style={[styles.onlineDot, { borderColor: theme.bg }]} />
-          </TouchableOpacity>
-
           {/* Centre: Greeting */}
           <View style={styles.headerCenter}>
             <Text style={[styles.welcomeText, { color: theme.subText }]}>Welcome back 👋</Text>

@@ -161,8 +161,10 @@ export default function TeacherProfileScreen({ navigation }) {
                 <Text style={{ fontSize: 34, color: '#fff' }}>{profile?.full_name?.[0] || '?'}</Text>
               )}
             </View>
-            <Text style={styles.headerName}>{profile?.full_name || user?.full_name}</Text>
-            <Text style={styles.headerRole}>👩‍🏫 Teacher</Text>
+            <View style={styles.headerInfoCol}>
+              <Text style={styles.headerName} numberOfLines={2}>{profile?.full_name || user?.full_name}</Text>
+              <Text style={styles.headerRole}>👩‍🏫 Teacher</Text>
+            </View>
           </Animated.View>
         </View>
 
@@ -241,12 +243,11 @@ export default function TeacherProfileScreen({ navigation }) {
         {/* ── Account Actions ────────────────────────────────────────────── */}
         <Animated.View style={{ opacity: fadeAnim, paddingHorizontal: 20, paddingBottom: 40 }}>
           <TouchableOpacity
-            style={[styles.logoutBtn, { borderColor: '#EF4444' }]}
+            style={[styles.logoutBtn, { backgroundColor: isDark ? '#ef444415' : '#fef2f2', borderColor: '#ef4444' }]}
             onPress={handleLogout}
             activeOpacity={0.8}
           >
-            <Text style={styles.logoutIcon}>🚪</Text>
-            <Text style={styles.logoutText}>Sign Out</Text>
+            <Text style={styles.logoutText}>Logout</Text>
           </TouchableOpacity>
           <Text style={[styles.appVersion, { color: theme.muted }]}>BuddyBloom Academy · v1.0</Text>
         </Animated.View>
@@ -328,9 +329,9 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
     backgroundColor: '#7C3AED',
-    paddingBottom: 28,
-    alignItems: 'center',
-    paddingTop: 16,
+    paddingBottom: 24,
+    paddingTop: 48,
+    paddingHorizontal: 20,
   },
   backBtn: {
     position: 'absolute',
@@ -339,15 +340,23 @@ const styles = StyleSheet.create({
     zIndex: 10,
     padding: 8,
   },
-  headerContent: { alignItems: 'center' },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
   avatar: {
     width: AVATAR_SIZE,
     height: AVATAR_SIZE,
     borderRadius: AVATAR_SIZE / 2,
     borderWidth: 3,
     borderColor: '#ffffff60',
-    marginBottom: 12,
     overflow: 'hidden',
+  },
+  headerInfoCol: {
+    flex: 1,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
   },
   headerName: { fontSize: 20, fontWeight: '700', color: '#fff', marginBottom: 4 },
   headerRole: { fontSize: 13, color: '#ffffff90' },
