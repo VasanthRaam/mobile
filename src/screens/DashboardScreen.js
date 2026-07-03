@@ -303,6 +303,15 @@ export default function DashboardScreen({ navigation }) {
               )}
             </View>
 
+            <Text style={[styles.sectionTitle, { marginTop: 24, color: theme.text }]}>Management 🎓</Text>
+            <View style={styles.grid}>
+              {renderCard(
+                'Teacher Console', '🖥️', '#7C3AED',
+                () => navigation.navigate('TeacherConsole'),
+                'Quizzes, analytics, and your students'
+              )}
+            </View>
+
           </>
         )}
 

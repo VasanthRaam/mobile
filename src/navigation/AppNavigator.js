@@ -35,6 +35,7 @@ import EnquiriesScreen from '../screens/EnquiriesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import TeacherProfileScreen from '../screens/TeacherProfileScreen';
 import LeaderboardScreen from '../screens/LeaderboardScreen';
+import TeacherConsoleScreen from '../screens/TeacherConsoleScreen';
 
 function DashboardProfileIcon({ navigation }) {
   const { user } = useAuthStore();
@@ -168,6 +169,7 @@ export default function AppNavigator() {
             <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
             <Stack.Screen name="TeacherProfile" component={TeacherProfileScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Leaderboard" component={LeaderboardScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="TeacherConsole" component={TeacherConsoleScreen} options={{ headerShown: false }} />
           </Stack.Group>
         )}
       </Stack.Navigator>

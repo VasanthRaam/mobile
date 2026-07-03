@@ -40,6 +40,8 @@ export default function NotificationHeader() {
         navigation.navigate('MyCourses');
       } else if (notification.link_to === 'Fees') {
         navigation.navigate('Fees');
+      } else if (notification.link_to === 'Leaderboard') {
+        navigation.navigate('Leaderboard');
       }
     }
   };

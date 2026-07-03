@@ -103,6 +103,15 @@ export default function AdminScreen({ navigation }) {
   const [studentSortBy, setStudentSortBy] = useState('name'); // 'name' | 'date'
   const [studentSortOrder, setStudentSortOrder] = useState('asc'); // 'asc' | 'desc'
 
+  // ─── ADMIN REWARD MODAL STATES ────────────────────────────────────────────────
+  const [rewardModalVisible, setRewardModalVisible] = useState(false);
+  const [rewardStudents, setRewardStudents] = useState([]);
+  const [selectedRewardStudent, setSelectedRewardStudent] = useState(null);
+  const [rewardPoints, setRewardPoints] = useState('');
+  const [rewardReason, setRewardReason] = useState('');
+  const [givingReward, setGivingReward] = useState(false);
+  const [rewardStudentSearch, setRewardStudentSearch] = useState('');
+
   // ─────────────────────────────────────────────────────────────────────────────
   // EFFECTS & FETCHERS
   // ─────────────────────────────────────────────────────────────────────────────
@@ -1479,6 +1488,174 @@ export default function AdminScreen({ navigation }) {
     );
   };
 
+  // ─── Admin Reward Modal Logic ───────────────────────────────────────────────
+  const openRewardModal = async () => {
+    try {
+      const res = await apiClient.get('/rewards/teacher/students');
+      setRewardStudents(res.data.students || []);
+      setRewardModalVisible(true);
+    } catch (e) {
+      Alert.alert('Error', 'Could not load students.');
+    }
+  };
+
+  const handleGiveReward = async () => {
+    if (!selectedRewardStudent) {
+      if (Platform.OS === 'web') window.alert('Please select a student first.');
+      else Alert.alert('Select Student', 'Please choose a student first.');
+      return;
+    }
+    const pts = parseInt(rewardPoints, 10);
+    if (!pts || pts <= 0) {
+      if (Platform.OS === 'web') window.alert('Enter a valid points amount.');
+      else Alert.alert('Invalid Points', 'Enter a valid points amount.');
+      return;
+    }
+    if (!rewardReason.trim()) {
+      if (Platform.OS === 'web') window.alert('Please add a reason.');
+      else Alert.alert('Add Reason', 'Please add a reason for the reward.');
+      return;
+    }
+
+    setGivingReward(true);
+    try {
+      await apiClient.post('/rewards/teacher/give', {
+        student_id: selectedRewardStudent.id,
+        points: pts,
+        reason: rewardReason.trim(),
+      });
+      if (Platform.OS === 'web') window.alert(`Successfully awarded ${pts} XP to ${selectedRewardStudent.name}!`);
+      else Alert.alert('⭐ Points Sent!', `Successfully awarded ${pts} XP to ${selectedRewardStudent.name}!`);
+      setRewardModalVisible(false);
+      setSelectedRewardStudent(null);
+      setRewardPoints('');
+      setRewardReason('');
+      setRewardStudentSearch('');
+    } catch (e) {
+      const msg = e.response?.data?.detail || 'Could not award points.';
+      if (Platform.OS === 'web') window.alert(msg);
+      else Alert.alert('Failed', msg);
+    } finally {
+      setGivingReward(false);
+    }
+  };
+
+  const filteredRewardStudents = rewardStudents.filter(s =>
+    s.name.toLowerCase().includes(rewardStudentSearch.toLowerCase())
+  );
+
+  const renderAdminRewardModal = () => (
+    <Modal
+      visible={rewardModalVisible}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => setRewardModalVisible(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modalCard, { backgroundColor: theme.card, maxHeight: '85%' }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
+            <Text style={[styles.modalHeaderTitle, { color: theme.text }]}>🎁 Reward Student</Text>
+            <TouchableOpacity
+              style={[styles.closeBtn, { backgroundColor: theme.chipBg }]}
+              onPress={() => setRewardModalVisible(false)}
+            >
+              <Ionicons name="close" size={20} color={theme.text} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, gap: 16 }}>
+            {/* Student Search */}
+            <View>
+              <Text style={[styles.rewardLabel, { color: theme.subText }]}>Select Student</Text>
+              <View style={[styles.studentSearchWrapper, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
+                <Ionicons name="search-outline" size={16} color={theme.muted} style={{ marginRight: 6 }} />
+                <TextInput
+                  style={[styles.studentSearchInput, { color: theme.text }]}
+                  placeholder="Search students..."
+                  placeholderTextColor={theme.muted}
+                  value={rewardStudentSearch}
+                  onChangeText={setRewardStudentSearch}
+                />
+              </View>
+              <View style={{ maxHeight: 160, marginTop: 8 }}>
+                <FlatList
+                  data={filteredRewardStudents}
+                  keyExtractor={(s) => s.id}
+                  nestedScrollEnabled
+                  renderItem={({ item: s }) => (
+                    <TouchableOpacity
+                      style={[
+                        styles.rewardStudentRow,
+                        { borderColor: theme.border },
+                        selectedRewardStudent?.id === s.id && { borderColor: theme.accent, backgroundColor: theme.accentLight },
+                      ]}
+                      onPress={() => setSelectedRewardStudent(s)}
+                    >
+                      {s.profile_picture ? (
+                        <Image source={{ uri: s.profile_picture }} style={{ width: 32, height: 32, borderRadius: 16 }} />
+                      ) : (
+                        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: theme.accent + '20', justifyContent: 'center', alignItems: 'center' }}>
+                          <Text style={{ color: theme.accent, fontWeight: '700', fontSize: 13 }}>{s.name?.[0] || '?'}</Text>
+                        </View>
+                      )}
+                      <View style={{ flex: 1, marginLeft: 10 }}>
+                        <Text style={{ color: theme.text, fontWeight: '600', fontSize: 13 }}>{s.name}</Text>
+                        <Text style={{ color: theme.subText, fontSize: 11 }}>⭐ {s.current_points?.toLocaleString() || 0} pts</Text>
+                      </View>
+                      {selectedRewardStudent?.id === s.id && (
+                        <Ionicons name="checkmark-circle" size={20} color={theme.accent} />
+                      )}
+                    </TouchableOpacity>
+                  )}
+                  ListEmptyComponent={<Text style={{ color: theme.muted, textAlign: 'center', padding: 12 }}>No students found</Text>}
+                />
+              </View>
+            </View>
+
+            {/* Points Input */}
+            <View>
+              <Text style={[styles.rewardLabel, { color: theme.subText }]}>Points (Unlimited)</Text>
+              <TextInput
+                style={[styles.rewardInput, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]}
+                value={rewardPoints}
+                onChangeText={setRewardPoints}
+                keyboardType="number-pad"
+                placeholder="e.g. 50"
+                placeholderTextColor={theme.muted}
+              />
+            </View>
+
+            {/* Reason Input */}
+            <View>
+              <Text style={[styles.rewardLabel, { color: theme.subText }]}>Reason</Text>
+              <TextInput
+                style={[styles.rewardInput, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border, minHeight: 70, textAlignVertical: 'top' }]}
+                value={rewardReason}
+                onChangeText={setRewardReason}
+                placeholder="e.g. Excellent participation in class"
+                placeholderTextColor={theme.muted}
+                multiline
+              />
+            </View>
+
+            {/* Give Button */}
+            <TouchableOpacity
+              style={[styles.rewardGiveBtn, { backgroundColor: theme.accent, opacity: givingReward ? 0.6 : 1 }]}
+              onPress={handleGiveReward}
+              disabled={givingReward}
+            >
+              {givingReward ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>⭐ Award Points</Text>
+              )}
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+
   // ─────────────────────────────────────────────────────────────────────────────
   // MAIN SCREEN BODY RENDER
   // ─────────────────────────────────────────────────────────────────────────────
@@ -1534,8 +1711,21 @@ export default function AdminScreen({ navigation }) {
         {activeMainTab === 'students' && renderStudentsTab()}
       </View>
 
+      {/* Reward Student FAB (Students tab only) */}
+      {activeMainTab === 'students' && (
+        <TouchableOpacity
+          style={[styles.fab, { backgroundColor: '#F59E0B', right: 20, bottom: 20 }]}
+          onPress={openRewardModal}
+        >
+          <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>🎁</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Student Detail Modal */}
       {renderStudentDetailModal()}
+
+      {/* Admin Reward Modal */}
+      {renderAdminRewardModal()}
     </SafeAreaView>
   );
 }
@@ -2146,5 +2336,35 @@ const styles = StyleSheet.create({
   studentFilterChipText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+
+  // ── Admin Reward Modal ──────────────────────────────────────────────────────
+  rewardLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  rewardInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+  },
+  rewardStudentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderWidth: 1.5,
+    borderRadius: 12,
+    marginBottom: 6,
+  },
+  rewardGiveBtn: {
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

@@ -10,6 +10,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../store/useAuthStore';
 import { useThemeStore } from '../store/useThemeStore';
 import apiClient from '../api/apiClient';
+import { getCache, setCache } from '../utils/cacheManager';
 
 const { width } = Dimensions.get('window');
 const AVATAR_SIZE = 70;
@@ -81,19 +82,22 @@ export default function ProfileScreen({ navigation }) {
   const { user, logout } = useAuthStore();
   const { theme, isDark } = useThemeStore();
 
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // ── Reconcile: cache-first, background fetch, merge ────────────────────────
+  const cachedProfile = getCache('user_profile');
+  const [profile, setProfile] = useState(cachedProfile);
+  const [loading, setLoading] = useState(!cachedProfile);
   const [refreshing, setRefreshing] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(20)).current;
+  const fadeAnim = useRef(new Animated.Value(cachedProfile ? 1 : 0)).current;
+  const slideAnim = useRef(new Animated.Value(cachedProfile ? 0 : 20)).current;
 
   const fetchProfile = useCallback(async (isRefresh = false) => {
-    if (!isRefresh) setLoading(true);
+    if (!isRefresh && !cachedProfile) setLoading(true);
     try {
       const res = await apiClient.get('/profile/me');
       setProfile(res.data);
+      setCache('user_profile', res.data);
       Animated.parallel([
         Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
         Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
@@ -107,8 +111,18 @@ export default function ProfileScreen({ navigation }) {
   }, []);
 
   useFocusEffect(useCallback(() => {
-    fadeAnim.setValue(0);
-    slideAnim.setValue(20);
+    // Phase 1: If cached, show immediately (no skeleton)
+    const cached = getCache('user_profile');
+    if (cached) {
+      setProfile(cached);
+      setLoading(false);
+      fadeAnim.setValue(1);
+      slideAnim.setValue(0);
+    } else {
+      fadeAnim.setValue(0);
+      slideAnim.setValue(20);
+    }
+    // Phase 2: Background fetch fresh data
     fetchProfile();
   }, []));
 
@@ -214,7 +228,7 @@ export default function ProfileScreen({ navigation }) {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right']}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={theme.accent} />}
@@ -391,13 +405,12 @@ const styles = StyleSheet.create({
 
   // ── Header ────────────────────────────────────────────────────────────────
   header: {
-    height: 140,
+    height: 100,
     justifyContent: 'flex-end',
     overflow: 'hidden',
   },
   headerGradient: {
     backgroundColor: '#4F46E5',
-    // Simulated gradient with overlay (no linear-gradient dependency)
   },
   backBtnInline: {
     padding: 8,
@@ -407,8 +420,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingBottom: 16,
-    gap: 12,
+    paddingBottom: 8,
+    gap: 8,
   },
   avatarContainer: {
     marginBottom: 0,

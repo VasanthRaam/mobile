@@ -9,6 +9,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useThemeStore } from '../store/useThemeStore';
 import { useAuthStore } from '../store/useAuthStore';
 import apiClient from '../api/apiClient';
+import { getCache, setCache } from '../utils/cacheManager';
 
 const { width } = Dimensions.get('window');
 const TABS = ['Overall', 'Monthly', 'Rewards'];
@@ -83,7 +84,7 @@ function LeaderboardRow({ entry, index, theme, isDark }) {
       {entry.profile_picture ? (
         <Image source={{ uri: entry.profile_picture }} style={styles.rowAvatar} />
       ) : (
-        <View style={[styles.rowAvatar, { backgroundColor: '#6366F120', justifyContent: 'center', alignItems: 'center' }]}>
+        <View style={[styles.rowAvatar, { backgroundColor: isDark ? '#334155' : '#6366F120', justifyContent: 'center', alignItems: 'center' }]}>
           <Text style={{ color: '#6366F1', fontWeight: '700' }}>{entry.student_name?.[0] || '?'}</Text>
         </View>
       )}
@@ -151,10 +152,10 @@ export default function LeaderboardScreen({ navigation }) {
   const { user } = useAuthStore();
 
   const [activeTab, setActiveTab] = useState(0);
-  const [entries, setEntries] = useState([]);
-  const [catalog, setCatalog] = useState([]);
+  const [entries, setEntries] = useState(getCache('leaderboard_overall') || []);
+  const [catalog, setCatalog] = useState(getCache('leaderboard_catalog') || []);
   const [studentBalance, setStudentBalance] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!getCache('leaderboard_overall'));
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
@@ -165,7 +166,20 @@ export default function LeaderboardScreen({ navigation }) {
   const tabAnim = useRef(new Animated.Value(0)).current;
   const searchTimeout = useRef(null);
 
+  // ── Reconcile: render cache first, then background-fetch live data ──────────
   useFocusEffect(useCallback(() => {
+    // Phase 1: Show cached data immediately (already set in useState initializer)
+    const cacheKey = activeTab === 0 ? 'leaderboard_overall' : activeTab === 1 ? 'leaderboard_monthly' : 'leaderboard_catalog';
+    const cached = getCache(cacheKey);
+    if (cached && activeTab < 2) {
+      setEntries(cached);
+      setLoading(false);
+    } else if (cached && activeTab === 2) {
+      setCatalog(cached);
+      setLoading(false);
+    }
+
+    // Phase 2: Background fetch and reconcile
     fetchData(1, true);
   }, [activeTab, searchDebounce]));
 
@@ -176,23 +190,35 @@ export default function LeaderboardScreen({ navigation }) {
   };
 
   const fetchData = useCallback(async (pageNum = 1, reset = false) => {
-    if (reset) setLoading(true);
-    else setLoadingMore(true);
+    if (reset && !getCache(activeTab === 0 ? 'leaderboard_overall' : activeTab === 1 ? 'leaderboard_monthly' : 'leaderboard_catalog')) {
+      setLoading(true);
+    }
+    if (!reset) setLoadingMore(true);
 
     try {
       if (activeTab < 2) {
         const period = activeTab === 1 ? 'monthly' : 'all';
-        const params = { page: pageNum, page_size: 20, period, search: searchDebounce };
+        const params = { page: pageNum, page_size: 50, period, search: searchDebounce };
         const res = await apiClient.get('/rewards/leaderboard', { params });
         const newEntries = res.data.entries || [];
-        setEntries(reset ? newEntries : [...entries, ...newEntries]);
-        setHasMore(newEntries.length === 20);
+
+        if (reset) {
+          setEntries(newEntries);
+          // Cache for reconcile
+          const cacheKey = activeTab === 0 ? 'leaderboard_overall' : 'leaderboard_monthly';
+          setCache(cacheKey, newEntries);
+        } else {
+          setEntries(prev => [...prev, ...newEntries]);
+        }
+        setHasMore(newEntries.length === 50);
         setPage(pageNum);
       } else {
         // Rewards tab
         const catRes = await apiClient.get('/rewards/catalog');
-        setCatalog(catRes.data.items || []);
+        const items = catRes.data.items || [];
+        setCatalog(items);
         setStudentBalance(catRes.data.student_balance || 0);
+        setCache('leaderboard_catalog', items);
       }
     } catch (e) {
       console.error('Leaderboard fetch error:', e);
@@ -201,13 +227,27 @@ export default function LeaderboardScreen({ navigation }) {
       setRefreshing(false);
       setLoadingMore(false);
     }
-  }, [activeTab, searchDebounce, entries]);
+  }, [activeTab, searchDebounce]);
 
   const switchTab = (idx) => {
     setActiveTab(idx);
     setEntries([]);
     setPage(1);
-    setLoading(true);
+    setHasMore(true);
+
+    // Try cache-first for new tab
+    const cacheKey = idx === 0 ? 'leaderboard_overall' : idx === 1 ? 'leaderboard_monthly' : 'leaderboard_catalog';
+    const cached = getCache(cacheKey);
+    if (cached && idx < 2) {
+      setEntries(cached);
+      setLoading(false);
+    } else if (cached && idx === 2) {
+      setCatalog(cached);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
     Animated.timing(tabAnim, { toValue: idx, duration: 200, useNativeDriver: false }).start();
   };
 
@@ -217,11 +257,11 @@ export default function LeaderboardScreen({ navigation }) {
     }
   };
 
+  // Show ALL entries in the list — top 3 are also rendered in the podium above
   const top3 = entries.slice(0, 3);
-  const rest = entries.slice(3);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: isDark ? '#1E293B' : '#4F46E5' }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
@@ -311,8 +351,8 @@ export default function LeaderboardScreen({ navigation }) {
       ) : (
         // ── Leaderboard Tab ─────────────────────────────────────────────────────
         <FlatList
-          data={rest}
-          keyExtractor={i => i.student_id}
+          data={entries}
+          keyExtractor={(i, idx) => `${i.student_id}_${idx}`}
           contentContainerStyle={{ padding: 16, paddingTop: 8 }}
           onEndReached={loadMore}
           onEndReachedThreshold={0.3}
