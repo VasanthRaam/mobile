@@ -385,6 +385,30 @@ export default function DashboardScreen({ navigation }) {
           </>
         )}
 
+        {/* ── StarSpark Profile & Leaderboard ─────────────────────────── */}
+        <Text style={[styles.sectionTitle, { color: theme.text, marginTop: 8 }]}>⭐ StarSpark</Text>
+        <View style={styles.grid}>
+          {role === 'student' && (
+            renderCard(
+              'My Profile ⭐', '👤', '#6366F1',
+              () => navigation.navigate('Profile'),
+              'View your points, level & info'
+            )
+          )}
+          {role === 'teacher' && (
+            renderCard(
+              'My Profile 👩‍🏫', '👤', '#7C3AED',
+              () => navigation.navigate('TeacherProfile'),
+              'View wallet & reward students'
+            )
+          )}
+          {renderCard(
+            'Leaderboard 🏆', '🏅', '#F59E0B',
+            () => navigation.navigate('Leaderboard'),
+            'See top students & rewards'
+          )}
+        </View>
+
       </ScrollView>
       <ChatFAB />
     </SafeAreaView>

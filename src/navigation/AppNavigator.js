@@ -31,6 +31,9 @@ import RevenueScreen from '../screens/RevenueScreen';
 import ChatScreen from '../screens/ChatScreen';
 import AdminScreen from '../screens/AdminScreen';
 import EnquiriesScreen from '../screens/EnquiriesScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import TeacherProfileScreen from '../screens/TeacherProfileScreen';
+import LeaderboardScreen from '../screens/LeaderboardScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -98,6 +101,9 @@ export default function AppNavigator() {
             <Stack.Screen name="Revenue" component={RevenueScreen} options={{ title: 'Revenue Tracker' }} />
             <Stack.Screen name="Enquiries" component={EnquiriesScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'Academy AI Teacher' }} />
+            <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="TeacherProfile" component={TeacherProfileScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="Leaderboard" component={LeaderboardScreen} options={{ headerShown: false }} />
           </Stack.Group>
         )}
       </Stack.Navigator>
