@@ -148,34 +148,39 @@ export default function ProfileScreen({ navigation }) {
 
       if (result.canceled || !result.assets?.length) return;
 
-      const imageUri = result.assets[0].uri;
+      const asset = result.assets[0];
       setUploadingPhoto(true);
 
       // Get signed upload URL from backend
       const urlRes = await apiClient.post('/profile/photo-upload-url');
       const { upload_url, public_url } = urlRes.data;
 
-      // Upload directly to Supabase Storage
-      const formData = new FormData();
-      formData.append('file', {
-        uri: imageUri,
-        type: 'image/jpeg',
-        name: 'profile.jpg',
-      });
+      // Read file as blob and upload raw binary to Supabase Storage
+      const fileResponse = await fetch(asset.uri);
+      const blob = await fileResponse.blob();
 
       const uploadRes = await fetch(upload_url, {
         method: 'PUT',
-        headers: { 'Content-Type': 'image/jpeg' },
-        body: formData,
+        headers: {
+          'Content-Type': 'image/jpeg',
+          'x-upsert': 'true',
+        },
+        body: blob,
       });
 
-      if (!uploadRes.ok) throw new Error('Upload failed');
+      if (!uploadRes.ok) {
+        const errText = await uploadRes.text();
+        throw new Error(`Upload failed: ${uploadRes.status} – ${errText}`);
+      }
 
       // Save public URL to profile
       await apiClient.put('/profile/me', { profile_picture: public_url });
       setProfile(prev => ({ ...prev, profile_picture: public_url }));
+      // Also update cache
+      setCache('user_profile', { ...profile, profile_picture: public_url });
       Alert.alert('✅ Success', 'Profile photo updated!');
     } catch (err) {
+      console.error('Photo upload error:', err);
       Alert.alert('Upload Failed', err.message || 'Something went wrong. Please try again.');
     } finally {
       setUploadingPhoto(false);

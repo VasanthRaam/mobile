@@ -291,16 +291,6 @@ export default function DashboardScreen({ navigation }) {
                 () => navigation.navigate('CreateQuiz'),
                 'Build new tests and assignments'
               )}
-              {renderCard(
-                'View All Quizzes', '📝', '#F59E0B',
-                () => navigation.navigate('QuizList'),
-                'Manage existing questionnaires'
-              )}
-              {renderCard(
-                'Performance Results', '📊', '#8B5CF6',
-                () => navigation.navigate('QuizResults'),
-                'Analyze student marks and trends'
-              )}
             </View>
 
             <Text style={[styles.sectionTitle, { marginTop: 24, color: theme.text }]}>Management 🎓</Text>
