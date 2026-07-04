@@ -1490,12 +1490,23 @@ export default function AdminScreen({ navigation }) {
 
   // ─── Admin Reward Modal Logic ───────────────────────────────────────────────
   const openRewardModal = async () => {
+    // Phase 1: Render instantly using cached students
+    const cachedStuds = getCache('reward_students');
+    if (cachedStuds) {
+      setRewardStudents(cachedStuds);
+    }
+    setRewardModalVisible(true);
+
+    // Phase 2: Fetch background data and reconcile
     try {
       const res = await apiClient.get('/rewards/teacher/students');
-      setRewardStudents(res.data.students || []);
-      setRewardModalVisible(true);
+      const studs = res.data.students || [];
+      setRewardStudents(studs);
+      setCache('reward_students', studs);
     } catch (e) {
-      Alert.alert('Error', 'Could not load students.');
+      if (!cachedStuds) {
+        Alert.alert('Error', 'Could not load students.');
+      }
     }
   };
 

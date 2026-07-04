@@ -339,28 +339,10 @@ export default function ProfileScreen({ navigation }) {
           {/* ── Personal Details ───────────────────────────────────────────── */}
           <SectionCard title="Personal Details" icon="👤" theme={theme}>
             <InfoRow label="Full Name" value={profile?.full_name} theme={theme} />
-            <InfoRow label="Email" value={profile?.email} theme={theme} editable onEdit={() =>
-              Alert.prompt('Edit Email', 'Enter new email:', async (val) => {
-                if (!val) return;
-                await apiClient.put('/profile/me', { email: val });
-                setProfile(prev => ({ ...prev, email: val }));
-              })
-            } />
-            <InfoRow label="Phone" value={profile?.phone} theme={theme} editable onEdit={() =>
-              Alert.prompt('Edit Phone', 'Enter new phone number:', async (val) => {
-                if (!val) return;
-                await apiClient.put('/profile/me', { phone: val });
-                setProfile(prev => ({ ...prev, phone: val }));
-              })
-            } />
+            <InfoRow label="Email" value={profile?.email} theme={theme} />
+            <InfoRow label="Phone" value={profile?.phone} theme={theme} />
             <InfoRow label="Date of Birth" value={profile?.dob} theme={theme} />
-            <InfoRow label="Standard" value={profile?.education_qualification} theme={theme} editable onEdit={() =>
-              Alert.prompt('Edit Standard', 'Enter your standard/class:', async (val) => {
-                if (!val) return;
-                await apiClient.put('/profile/me', { education_qualification: val });
-                setProfile(prev => ({ ...prev, education_qualification: val }));
-              })
-            } />
+            <InfoRow label="Standard" value={profile?.education_qualification} theme={theme} />
           </SectionCard>
 
           {/* ── Family Details ─────────────────────────────────────────────── */}

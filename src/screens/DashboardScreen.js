@@ -44,6 +44,10 @@ export default function DashboardScreen({ navigation }) {
     }, [])
   );
 
+  // Walkthrough state
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
+  const [walkthroughStep, setWalkthroughStep] = useState(0);
+
   useEffect(() => {
     const checkBiometricsPrompt = async () => {
       try {
@@ -92,7 +96,21 @@ export default function DashboardScreen({ navigation }) {
         console.warn('Error checking biometrics prompt:', err);
       }
     };
+
+    const checkFirstTimeWalkthrough = async () => {
+      try {
+        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+        const hasSeen = await AsyncStorage.getItem('buddybloom_walkthrough_seen');
+        if (hasSeen !== 'true') {
+          setShowWalkthrough(true);
+        }
+      } catch (e) {
+        console.warn('Error checking walkthrough status:', e);
+      }
+    };
+
     checkBiometricsPrompt();
+    checkFirstTimeWalkthrough();
   }, []);
 
   const fetchStats = async () => {
@@ -414,6 +432,62 @@ export default function DashboardScreen({ navigation }) {
 
       </ScrollView>
       <ChatFAB />
+
+      {/* ── First-Time User Walkthrough Overlay ───────────────────────── */}
+      <Modal
+        visible={showWalkthrough}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowWalkthrough(false)}
+      >
+        <View style={styles.walkthroughOverlay}>
+          <View style={[styles.walkthroughCard, { backgroundColor: theme.card }]}>
+            <Text style={styles.walkthroughEmoji}>
+              {walkthroughStep === 0 ? '👋' : walkthroughStep === 1 ? '👤' : '📅'}
+            </Text>
+            <Text style={[styles.walkthroughTitle, { color: theme.text }]}>
+              {walkthroughStep === 0 && "Welcome to VHA Edutech!"}
+              {walkthroughStep === 1 && "Access Your Profile"}
+              {walkthroughStep === 2 && "Daily Attendance"}
+            </Text>
+            <Text style={[styles.walkthroughText, { color: theme.subText }]}>
+              {walkthroughStep === 0 && "Let's take a quick 1-minute tour of your new dashboard to get you started."}
+              {walkthroughStep === 1 && "Tap your profile picture icon at the top-left of the screen to view details, update your photo, and configure biometric login."}
+              {walkthroughStep === 2 && "Keep track of daily attendance records directly from the main access panels below."}
+            </Text>
+
+            <View style={styles.walkthroughFooter}>
+              <TouchableOpacity
+                style={styles.walkthroughSkipBtn}
+                onPress={async () => {
+                  const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+                  await AsyncStorage.setItem('buddybloom_walkthrough_seen', 'true');
+                  setShowWalkthrough(false);
+                }}
+              >
+                <Text style={{ color: theme.muted, fontWeight: '600', fontSize: 14 }}>Skip</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.walkthroughNextBtn, { backgroundColor: theme.accent }]}
+                onPress={async () => {
+                  if (walkthroughStep < 2) {
+                    setWalkthroughStep(prev => prev + 1);
+                  } else {
+                    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+                    await AsyncStorage.setItem('buddybloom_walkthrough_seen', 'true');
+                    setShowWalkthrough(false);
+                  }
+                }}
+              >
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
+                  {walkthroughStep < 2 ? "Next" : "Got It!"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -747,5 +821,55 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#94A3B8',
     fontWeight: '600',
-  }
+  },
+  walkthroughOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  walkthroughCard: {
+    width: '90%',
+    maxWidth: 380,
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+  },
+  walkthroughEmoji: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  walkthroughTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  walkthroughText: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  walkthroughFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    alignItems: 'center',
+  },
+  walkthroughSkipBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  walkthroughNextBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+  },
 });

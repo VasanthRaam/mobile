@@ -248,16 +248,33 @@ export default function TeacherConsoleScreen({ navigation }) {
 
   // ── Reward Modal Logic ────────────────────────────────────────────────────────
   const openRewardModal = async () => {
+    // Phase 1: Render instantly using cached data
+    const cachedStuds = getCache('reward_students');
+    const cachedWallet = getCache('teacher_wallet');
+    if (cachedStuds) {
+      setRewardStudents(cachedStuds);
+    }
+    if (cachedWallet) {
+      setTeacherWalletBalance(cachedWallet.remaining_points ?? null);
+    }
+    setRewardModalVisible(true);
+
+    // Phase 2: Fetch background data and reconcile
     try {
       const [studRes, walletRes] = await Promise.all([
         apiClient.get('/rewards/teacher/students'),
         apiClient.get('/rewards/teacher/wallet'),
       ]);
-      setRewardStudents(studRes.data.students || []);
-      setTeacherWalletBalance(walletRes.data.remaining_points ?? null);
-      setRewardModalVisible(true);
+      const studs = studRes.data.students || [];
+      const wallet = walletRes.data;
+      setRewardStudents(studs);
+      setTeacherWalletBalance(wallet.remaining_points ?? null);
+      setCache('reward_students', studs);
+      setCache('teacher_wallet', wallet);
     } catch (e) {
-      Alert.alert('Error', 'Could not load student list.');
+      if (!cachedStuds) {
+        Alert.alert('Error', 'Could not load student list.');
+      }
     }
   };
 
