@@ -178,6 +178,8 @@ export default function ProfileScreen({ navigation }) {
       setProfile(prev => ({ ...prev, profile_picture: public_url }));
       // Also update cache
       setCache('user_profile', { ...profile, profile_picture: public_url });
+      // Update store user profile
+      useAuthStore.getState().updateUser({ profile_picture: public_url });
       Alert.alert('✅ Success', 'Profile photo updated!');
     } catch (err) {
       console.error('Photo upload error:', err);

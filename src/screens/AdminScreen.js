@@ -1489,6 +1489,8 @@ export default function AdminScreen({ navigation }) {
   };
 
   // ─── Admin Reward Modal Logic ───────────────────────────────────────────────
+  const [rewardModalLoading, setRewardModalLoading] = useState(false);
+
   const openRewardModal = async () => {
     // Phase 1: Render instantly using cached students
     const cachedStuds = getCache('reward_students');
@@ -1496,6 +1498,7 @@ export default function AdminScreen({ navigation }) {
       setRewardStudents(cachedStuds);
     }
     setRewardModalVisible(true);
+    setRewardModalLoading(true);
 
     // Phase 2: Fetch background data and reconcile
     try {
@@ -1507,6 +1510,8 @@ export default function AdminScreen({ navigation }) {
       if (!cachedStuds) {
         Alert.alert('Error', 'Could not load students.');
       }
+    } finally {
+      setRewardModalLoading(false);
     }
   };
 
@@ -1573,6 +1578,7 @@ export default function AdminScreen({ navigation }) {
               <Ionicons name="close" size={20} color={theme.text} />
             </TouchableOpacity>
           </View>
+          <LoadingRail loading={rewardModalLoading} theme={theme} />
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, gap: 16 }}>
             {/* Student Search */}

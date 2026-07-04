@@ -79,6 +79,7 @@ export default function TeacherConsoleScreen({ navigation }) {
   const [givingReward, setGivingReward] = useState(false);
   const [rewardStudentSearch, setRewardStudentSearch] = useState('');
   const [teacherWalletBalance, setTeacherWalletBalance] = useState(null);
+  const [rewardModalLoading, setRewardModalLoading] = useState(false);
 
   // ── Effects ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -258,6 +259,7 @@ export default function TeacherConsoleScreen({ navigation }) {
       setTeacherWalletBalance(cachedWallet.remaining_points ?? null);
     }
     setRewardModalVisible(true);
+    setRewardModalLoading(true);
 
     // Phase 2: Fetch background data and reconcile
     try {
@@ -275,6 +277,8 @@ export default function TeacherConsoleScreen({ navigation }) {
       if (!cachedStuds) {
         Alert.alert('Error', 'Could not load student list.');
       }
+    } finally {
+      setRewardModalLoading(false);
     }
   };
 
@@ -811,6 +815,7 @@ export default function TeacherConsoleScreen({ navigation }) {
               <Ionicons name="close" size={20} color={theme.text} />
             </TouchableOpacity>
           </View>
+          <LoadingRail loading={rewardModalLoading} theme={theme} />
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, gap: 16 }}>
             {/* Student Search */}

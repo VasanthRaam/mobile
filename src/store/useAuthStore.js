@@ -99,6 +99,13 @@ export const useAuthStore = create((set) => ({
       console.warn('Supabase signout failed', error);
     });
   },
+
+  updateUser: async (updatedData) => {
+    const { user } = useAuthStore.getState();
+    const newUser = { ...user, ...updatedData };
+    await saveUser(newUser);
+    set({ user: newUser });
+  },
 }));
 
 // Listen for Supabase token refreshes and keep both secure storage and Zustand store in sync

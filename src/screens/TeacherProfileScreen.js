@@ -240,10 +240,6 @@ export default function TeacherProfileScreen({ navigation }) {
             <Text style={styles.walletExpiry}>
               Expires: {profile?.wallet_expires_at ? new Date(profile.wallet_expires_at).toLocaleDateString() : '—'}
             </Text>
-
-            <TouchableOpacity style={styles.rewardBtn} onPress={openRewardModal} activeOpacity={0.8}>
-              <Text style={styles.rewardBtnText}>🎁 Reward a Student</Text>
-            </TouchableOpacity>
           </View>
 
         </Animated.View>

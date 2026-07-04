@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   ScrollView, Dimensions, Animated,
-  Alert
+  Alert, Modal, Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -240,49 +240,6 @@ export default function DashboardScreen({ navigation }) {
 
         {role === 'teacher' && (
           <>
-            <View style={[styles.perfSection, { backgroundColor: theme.card }]}>
-              <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: theme.text }]}>Weekly Engagement 📊</Text>
-                <Text style={[styles.viewAllText, { color: theme.accent }]}>Live View</Text>
-              </View>
-
-              <View style={styles.chartContainer}>
-                <View style={styles.chartYAxis}>
-                  <Text style={[styles.yAxisText, { color: theme.subText }]}>100%</Text>
-                  <Text style={[styles.yAxisText, { color: theme.subText }]}>50%</Text>
-                  <Text style={[styles.yAxisText, { color: theme.subText }]}>0%</Text>
-                </View>
-
-                <View style={[styles.chartContent, { borderColor: theme.border }]}>
-                  {[
-                    { day: 'Mon', val: 65, color: '#6366F1' },
-                    { day: 'Tue', val: 82, color: '#8B5CF6' },
-                    { day: 'Wed', val: 45, color: '#EC4899' },
-                    { day: 'Thu', val: 91, color: '#10B981' },
-                    { day: 'Fri', val: 75, color: '#F59E0B' },
-                  ].map((item, idx) => (
-                    <View key={idx} style={styles.barWrapper}>
-                      <View style={[styles.barValue, { bottom: `${item.val}%` }]}>
-                        <Text style={[styles.barValueText, { color: theme.muted }]}>{item.val}%</Text>
-                      </View>
-                      <View style={[styles.bar, { height: `${item.val}%`, backgroundColor: item.color }]}>
-                        <View style={styles.barHighlight} />
-                      </View>
-                      <Text style={[styles.barLabel, { color: theme.subText }]}>{item.day}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-
-              <View style={[styles.legend, { borderTopColor: theme.border }]}>
-                <View style={styles.legendItem}>
-                  <View style={[styles.dot, { backgroundColor: '#6366F1' }]} />
-                  <Text style={[styles.legendText, { color: theme.subText }]}>Avg Performance</Text>
-                </View>
-                <Text style={[styles.chartNote, { color: theme.muted }]}>* Based on recent quiz attempts</Text>
-              </View>
-            </View>
-
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Daily Operations 📋</Text>
             <View style={styles.grid}>
               {renderCard(
@@ -409,20 +366,6 @@ export default function DashboardScreen({ navigation }) {
         {/* ── XP Profile & Leaderboard ─────────────────────────────────── */}
         <Text style={[styles.sectionTitle, { color: theme.text, marginTop: 8 }]}>⭐ XP System</Text>
         <View style={styles.grid}>
-          {role === 'student' && (
-            renderCard(
-              'My Profile ⭐', '👤', '#6366F1',
-              () => navigation.navigate('Profile'),
-              'View your points, level & info'
-            )
-          )}
-          {role === 'teacher' && (
-            renderCard(
-              'My Profile 👩‍🏫', '👤', '#7C3AED',
-              () => navigation.navigate('TeacherProfile'),
-              'View wallet & reward students'
-            )
-          )}
           {renderCard(
             'Leaderboard 🏆', '🏅', '#F59E0B',
             () => navigation.navigate('Leaderboard'),
@@ -433,61 +376,100 @@ export default function DashboardScreen({ navigation }) {
       </ScrollView>
       <ChatFAB />
 
-      {/* ── First-Time User Walkthrough Overlay ───────────────────────── */}
-      <Modal
-        visible={showWalkthrough}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowWalkthrough(false)}
-      >
-        <View style={styles.walkthroughOverlay}>
-          <View style={[styles.walkthroughCard, { backgroundColor: theme.card }]}>
-            <Text style={styles.walkthroughEmoji}>
-              {walkthroughStep === 0 ? '👋' : walkthroughStep === 1 ? '👤' : '📅'}
-            </Text>
-            <Text style={[styles.walkthroughTitle, { color: theme.text }]}>
-              {walkthroughStep === 0 && "Welcome to VHA Edutech!"}
-              {walkthroughStep === 1 && "Access Your Profile"}
-              {walkthroughStep === 2 && "Daily Attendance"}
-            </Text>
-            <Text style={[styles.walkthroughText, { color: theme.subText }]}>
-              {walkthroughStep === 0 && "Let's take a quick 1-minute tour of your new dashboard to get you started."}
-              {walkthroughStep === 1 && "Tap your profile picture icon at the top-left of the screen to view details, update your photo, and configure biometric login."}
-              {walkthroughStep === 2 && "Keep track of daily attendance records directly from the main access panels below."}
-            </Text>
+      {/* ── First-Time User Walkthrough Overlay (Floating pointers near headers/cards) ───────────────────────── */}
+      {showWalkthrough && (
+        <Modal
+          visible={showWalkthrough}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowWalkthrough(false)}
+        >
+          <View style={styles.walkthroughOverlay}>
+            {/* Step 0: Welcome Bubble (Center pointer) */}
+            {walkthroughStep === 0 && (
+              <View style={[styles.tooltipContainer, { backgroundColor: theme.card, shadowColor: '#000' }]}>
+                <Text style={styles.tooltipEmoji}>👋</Text>
+                <Text style={[styles.tooltipTitle, { color: theme.text }]}>Welcome to VHA Edutech!</Text>
+                <Text style={[styles.tooltipText, { color: theme.subText }]}>Let's take a quick 1-minute tour of your dashboard to help you find your way around.</Text>
+                <View style={styles.tooltipFooter}>
+                  <TouchableOpacity onPress={() => setShowWalkthrough(false)}>
+                    <Text style={{ color: theme.muted, fontSize: 13, fontWeight: '600' }}>Skip</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.tooltipBtn, { backgroundColor: theme.accent }]} onPress={() => setWalkthroughStep(1)}>
+                    <Text style={styles.tooltipBtnText}>Start Tour</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
 
-            <View style={styles.walkthroughFooter}>
-              <TouchableOpacity
-                style={styles.walkthroughSkipBtn}
-                onPress={async () => {
-                  const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-                  await AsyncStorage.setItem('buddybloom_walkthrough_seen', 'true');
-                  setShowWalkthrough(false);
-                }}
-              >
-                <Text style={{ color: theme.muted, fontWeight: '600', fontSize: 14 }}>Skip</Text>
-              </TouchableOpacity>
+            {/* Step 1: Profile Tooltip (Anchored top-left) */}
+            {walkthroughStep === 1 && (
+              <View style={styles.absoluteTooltipTopLeft}>
+                <View style={styles.tooltipArrowUp} />
+                <View style={[styles.tooltipContainer, { backgroundColor: theme.card }]}>
+                  <Text style={styles.tooltipTitleSmall}>👤 Tap Profile Picture here!</Text>
+                  <Text style={[styles.tooltipText, { color: theme.subText, fontSize: 13 }]}>
+                    Tap your profile icon in the top left header to view stats, update your picture, or sign out.
+                  </Text>
+                  <View style={styles.tooltipFooter}>
+                    <TouchableOpacity onPress={() => setShowWalkthrough(false)}>
+                      <Text style={{ color: theme.muted, fontSize: 12 }}>Skip</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.tooltipBtn, { backgroundColor: theme.accent }]} onPress={() => setWalkthroughStep(2)}>
+                      <Text style={styles.tooltipBtnText}>Next</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            )}
 
-              <TouchableOpacity
-                style={[styles.walkthroughNextBtn, { backgroundColor: theme.accent }]}
-                onPress={async () => {
-                  if (walkthroughStep < 2) {
-                    setWalkthroughStep(prev => prev + 1);
-                  } else {
-                    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-                    await AsyncStorage.setItem('buddybloom_walkthrough_seen', 'true');
-                    setShowWalkthrough(false);
-                  }
-                }}
-              >
-                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
-                  {walkthroughStep < 2 ? "Next" : "Got It!"}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            {/* Step 2: Operations/Stats Tooltip (Anchored middle) */}
+            {walkthroughStep === 2 && (
+              <View style={styles.absoluteTooltipCenter}>
+                <View style={[styles.tooltipContainer, { backgroundColor: theme.card }]}>
+                  <Text style={styles.tooltipTitleSmall}>📅 Dashboard Operations</Text>
+                  <Text style={[styles.tooltipText, { color: theme.subText, fontSize: 13 }]}>
+                    Manage quizzes, attendance, fees, and homework assignments right from this operations panel.
+                  </Text>
+                  <View style={styles.tooltipFooter}>
+                    <TouchableOpacity onPress={() => setShowWalkthrough(false)}>
+                      <Text style={{ color: theme.muted, fontSize: 12 }}>Skip</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.tooltipBtn, { backgroundColor: theme.accent }]} onPress={() => setWalkthroughStep(3)}>
+                      <Text style={styles.tooltipBtnText}>Next</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Step 3: Rewards/Console Tooltip (Anchored lower middle) */}
+            {walkthroughStep === 3 && (
+              <View style={styles.absoluteTooltipCenter}>
+                <View style={[styles.tooltipContainer, { backgroundColor: theme.card }]}>
+                  <Text style={styles.tooltipTitleSmall}>🎁 XP & Leaderboards</Text>
+                  <Text style={[styles.tooltipText, { color: theme.subText, fontSize: 13 }]}>
+                    Students earn XP and compete on the leaderboard! Teachers/Admins can award points using the gift console icon.
+                  </Text>
+                  <View style={styles.tooltipFooter}>
+                    <View />
+                    <TouchableOpacity
+                      style={[styles.tooltipBtn, { backgroundColor: theme.accent }]}
+                      onPress={async () => {
+                        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+                        await AsyncStorage.setItem('buddybloom_walkthrough_seen', 'true');
+                        setShowWalkthrough(false);
+                      }}
+                    >
+                      <Text style={styles.tooltipBtnText}>Got It!</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            )}
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 }
@@ -824,52 +806,79 @@ const styles = StyleSheet.create({
   },
   walkthroughOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
   },
-  walkthroughCard: {
-    width: '90%',
-    maxWidth: 380,
-    borderRadius: 24,
-    padding: 24,
-    alignItems: 'center',
+  tooltipContainer: {
+    width: 280,
+    borderRadius: 20,
+    padding: 18,
     elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
   },
-  walkthroughEmoji: {
-    fontSize: 48,
-    marginBottom: 16,
+  tooltipEmoji: {
+    fontSize: 32,
+    marginBottom: 10,
+    textAlign: 'center',
   },
-  walkthroughTitle: {
-    fontSize: 20,
+  tooltipTitle: {
+    fontSize: 16,
     fontWeight: '800',
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  walkthroughText: {
+  tooltipTitleSmall: {
     fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
+    fontWeight: '800',
+    marginBottom: 8,
   },
-  walkthroughFooter: {
+  tooltipText: {
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  tooltipFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: '100%',
     alignItems: 'center',
+    width: '100%',
   },
-  walkthroughSkipBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+  tooltipBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 8,
   },
-  walkthroughNextBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    borderRadius: 12,
+  tooltipBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  absoluteTooltipTopLeft: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 95 : 75,
+    left: 20,
+    zIndex: 9999,
+  },
+  tooltipArrowUp: {
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 10,
+    borderRightWidth: 10,
+    borderBottomWidth: 10,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: '#FFF',
+    marginLeft: 15,
+  },
+  absoluteTooltipCenter: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
