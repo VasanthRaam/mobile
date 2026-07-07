@@ -3,7 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Alert, SafeAreaView, ScrollView,
   KeyboardAvoidingView, Platform, Animated, StatusBar, Image,
-  ActivityIndicator
+  ActivityIndicator, Modal, Dimensions
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
@@ -99,6 +99,10 @@ export default function RegisterScreen({ navigation, route }) {
   const [errors, setErrors] = useState({});
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [pushToken, setPushToken] = useState(null);
+
+  // Date picker states for mobile
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [pickerDate, setPickerDate] = useState(new Date());
 
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
@@ -342,6 +346,96 @@ export default function RegisterScreen({ navigation, route }) {
     }
   };
 
+  const renderDatePickerModal = () => {
+    const theme = useThemeStore.getState().theme;
+    const displayMonth = pickerDate.getMonth();
+    const displayYear = pickerDate.getFullYear();
+    
+    const daysInMonth = new Date(displayYear, displayMonth + 1, 0).getDate();
+    const firstDayOfMonth = new Date(displayYear, displayMonth, 1).getDay();
+
+    const changeMonth = (offset) => {
+      const next = new Date(pickerDate.getFullYear(), pickerDate.getMonth() + offset, 1);
+      setPickerDate(next);
+    };
+    
+    const days = [];
+    for (let i = 0; i < firstDayOfMonth; i++) days.push(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(i);
+
+    const handleSelectDay = (day) => {
+      if (!day) return;
+      const selectedStr = `${displayYear}-${(displayMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+      setDob(selectedStr);
+      setShowDatePicker(false);
+    };
+
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+    return (
+      <Modal
+        visible={showDatePicker}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowDatePicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.calendarModalCard, { backgroundColor: theme.card }]}>
+            <View style={styles.calendarModalHeader}>
+              <TouchableOpacity onPress={() => changeMonth(-1)} style={[styles.arrowBtn, { backgroundColor: theme.chipBg }]}>
+                <Text style={[styles.arrowText, { color: theme.text }]}>←</Text>
+              </TouchableOpacity>
+              <Text style={[styles.monthTitle, { color: theme.text }]}>
+                {monthNames[displayMonth]} {displayYear}
+              </Text>
+              <TouchableOpacity onPress={() => changeMonth(1)} style={[styles.arrowBtn, { backgroundColor: theme.chipBg }]}>
+                <Text style={[styles.arrowText, { color: theme.text }]}>→</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.weekDays}>
+              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, idx) => (
+                <Text key={idx} style={[styles.weekDayText, { color: theme.subText }]}>{d}</Text>
+              ))}
+            </View>
+
+            <View style={styles.daysGrid}>
+              {days.map((day, idx) => {
+                if (!day) return <View key={`empty-${idx}`} style={styles.dayBox} />;
+                
+                const dateStr = `${displayYear}-${(displayMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                const isSelected = dateStr === dob;
+                
+                return (
+                  <TouchableOpacity 
+                    key={idx} 
+                    style={[
+                      styles.dayBox, 
+                      isSelected ? { backgroundColor: theme.accent } : null
+                    ]}
+                    onPress={() => handleSelectDay(day)}
+                  >
+                    <Text style={[
+                      styles.dayText,
+                      { color: isSelected ? '#fff' : theme.text }
+                    ]}>{day}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.closeModalBtn, { backgroundColor: theme.chipBg }]} 
+              onPress={() => setShowDatePicker(false)}
+            >
+              <Text style={[styles.closeModalBtnText, { color: theme.text }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
   // Full-screen loading overlay while Google OAuth is in progress
   if (googleCallbackLoading) {
     return (
@@ -376,6 +470,7 @@ export default function RegisterScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+      {renderDatePickerModal()}
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -473,7 +568,21 @@ export default function RegisterScreen({ navigation, route }) {
               </>
             )}
             
-            <Field label="Date of Birth" value={dob} onChangeText={setDob} placeholder="YYYY-MM-DD" type="date" />
+            {Platform.OS === 'web' ? (
+              <Field label="Date of Birth" value={dob} onChangeText={setDob} placeholder="YYYY-MM-DD" type="date" />
+            ) : (
+              <View style={styles.fieldWrapper}>
+                <Text style={[styles.fieldLabel, { color: theme.text }]}>Date of Birth</Text>
+                <TouchableOpacity 
+                  style={[styles.datePickerTrigger, { backgroundColor: theme.inputBg, borderColor: theme.border }]}
+                  onPress={() => setShowDatePicker(true)}
+                >
+                  <Text style={[styles.datePickerTriggerText, { color: theme.text }, !dob && { color: theme.muted }]}>
+                    {dob ? dob : 'Select Date of Birth (YYYY-MM-DD)'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
             <Field label="Educational Qualification" value={educationQualification} onChangeText={setEducationQualification} placeholder="e.g. 5th std, B.Sc" />
 
             <Field label="Email Address" value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" editable={authMethod !== 'google'} isReadOnly={authMethod === 'google'} />
@@ -666,4 +775,89 @@ const styles = StyleSheet.create({
   // Read-only badge for auto-filled fields
   readOnlyBadge: { marginLeft: 8, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, borderWidth: 1 },
   readOnlyText: { fontSize: 10, fontWeight: '600' },
+  // Date picker modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  calendarModalCard: {
+    width: width * 0.9,
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  calendarModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  arrowBtn: {
+    padding: 10,
+    borderRadius: 12,
+  },
+  arrowText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  monthTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  weekDays: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 10,
+  },
+  weekDayText: {
+    width: 40,
+    textAlign: 'center',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  daysGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    rowGap: 8,
+  },
+  dayBox: {
+    width: (width * 0.9 - 40) / 7,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 20,
+  },
+  dayText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  closeModalBtn: {
+    marginTop: 15,
+    padding: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  closeModalBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  datePickerTrigger: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    height: 50,
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  datePickerTriggerText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
 });
