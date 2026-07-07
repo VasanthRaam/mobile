@@ -38,7 +38,32 @@ export const setCache = async (key, val) => {
   try {
     const valStr = JSON.stringify(val);
     if (Platform.OS === 'web') {
-      localStorage.setItem('bb_cache_' + key, valStr);
+      try {
+        localStorage.setItem('bb_cache_' + key, valStr);
+      } catch (domException) {
+        // Handle localStorage quota limits
+        if (
+          domException.name === 'QuotaExceededError' ||
+          domException.name === 'NS_ERROR_DOM_QUOTA_REACHED'
+        ) {
+          console.warn('Cache quota exceeded. Pruning older caches to free space...');
+          const keys = Object.keys(localStorage);
+          keys.forEach(k => {
+            if (k.startsWith('bb_cache_') && k !== 'bb_cache_' + key) {
+              localStorage.removeItem(k);
+              delete memoryCache[k.replace('bb_cache_', '')];
+            }
+          });
+          // Retry setting the item
+          try {
+            localStorage.setItem('bb_cache_' + key, valStr);
+          } catch (retryErr) {
+            console.error('Failed to set cache even after pruning:', retryErr);
+          }
+        } else {
+          throw domException;
+        }
+      }
     } else {
       await SecureStore.setItemAsync('bb_cache_' + key, valStr);
       // Update key index
