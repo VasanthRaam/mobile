@@ -8,6 +8,8 @@ import { useThemeStore } from '../store/useThemeStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore } from '../store/useAuthStore';
 import apiClient from '../api/apiClient';
+import { PRIVACY_POLICY, TERMS_OF_SERVICE } from '../constants/legalTexts';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 function SectionCard({ title, icon, children, theme }) {
   return (
@@ -36,7 +38,7 @@ function SettingRow({ label, icon, theme, rightElement, onPress, danger = false 
       </View>
       <View style={styles.settingRowRight}>
         {rightElement ? rightElement : (
-          onPress && <Text style={{ color: theme.subText }}>›</Text>
+          onPress && <Text style={{ color: theme.subText, fontSize: 18, marginTop: -2 }}>›</Text>
         )}
       </View>
     </View>
@@ -104,16 +106,21 @@ export default function SettingsScreen({ navigation }) {
   const openLegalModal = (type) => {
     if (type === 'privacy') {
       setLegalModalTitle('Privacy Policy');
-      setLegalModalContent('This is a placeholder for the Privacy Policy. Please refer to the generated document for the full content.');
+      setLegalModalContent(PRIVACY_POLICY);
     } else {
       setLegalModalTitle('Terms of Service');
-      setLegalModalContent('This is a placeholder for the Terms of Service. Please refer to the generated document for the full content.');
+      setLegalModalContent(TERMS_OF_SERVICE);
     }
     setLegalModalVisible(true);
   };
 
-  const handleWalkthrough = () => {
-    Alert.alert('App Walkthrough', 'The app walkthrough tour will be shown next time you visit the dashboard.');
+  const handleWalkthrough = async () => {
+    try {
+      await AsyncStorage.removeItem('buddybloom_walkthrough_seen');
+      navigation.navigate('Dashboard');
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   return (
@@ -172,6 +179,9 @@ export default function SettingsScreen({ navigation }) {
               />
             }
           />
+          <Text style={{ color: theme.subText, fontSize: 12, paddingHorizontal: 16, paddingBottom: 14 }}>
+            Enjoy up to 10 prompts a day with our smart assistant.
+          </Text>
         </SectionCard>
 
         <SectionCard title="General" icon="📱" theme={theme}>
