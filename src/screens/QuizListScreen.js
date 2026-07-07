@@ -23,7 +23,7 @@ export default function QuizListScreen({ navigation }) {
 
   const fetchQuizzes = async () => {
     try {
-      const response = await apiClient.get('/quizzes');
+      const response = await apiClient.get('/quizzes/');
       console.log('Fetched quizzes:', response.data.length);
       setQuizzes(response.data);
       setCache('quiz_list', response.data);

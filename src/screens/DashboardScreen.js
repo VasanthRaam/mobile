@@ -12,6 +12,7 @@ import NotificationBar from '../components/NotificationBar';
 import apiClient from '../api/apiClient';
 import ChatFAB from '../components/ChatFAB';
 import { getCache, setCache } from '../utils/cacheManager';
+import { useSettingsStore } from '../store/useSettingsStore';
 
 const { width } = Dimensions.get('window');
 
@@ -22,6 +23,13 @@ export default function DashboardScreen({ navigation }) {
 
   const [stats, setStats] = useState(getCache('dashboard_stats'));
   const [loading, setLoading] = useState(!getCache('dashboard_stats'));
+  const { aiAssistantEnabled, isInitialized, initSettings } = useSettingsStore();
+
+  useEffect(() => {
+    if (!isInitialized) {
+      initSettings();
+    }
+  }, [isInitialized]);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -41,6 +49,21 @@ export default function DashboardScreen({ navigation }) {
           useNativeDriver: true,
         })
       ]).start();
+
+      const checkFirstTimeWalkthrough = async () => {
+        try {
+          const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+          const hasSeen = await AsyncStorage.getItem('buddybloom_walkthrough_seen');
+          if (hasSeen !== 'true') {
+            setShowWalkthrough(true);
+          } else {
+            setShowWalkthrough(false);
+          }
+        } catch (e) {
+          console.warn('Error checking walkthrough status:', e);
+        }
+      };
+      checkFirstTimeWalkthrough();
     }, [])
   );
 
@@ -97,20 +120,7 @@ export default function DashboardScreen({ navigation }) {
       }
     };
 
-    const checkFirstTimeWalkthrough = async () => {
-      try {
-        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-        const hasSeen = await AsyncStorage.getItem('buddybloom_walkthrough_seen');
-        if (hasSeen !== 'true') {
-          setShowWalkthrough(true);
-        }
-      } catch (e) {
-        console.warn('Error checking walkthrough status:', e);
-      }
-    };
-
     checkBiometricsPrompt();
-    checkFirstTimeWalkthrough();
   }, []);
 
   const fetchStats = async () => {
@@ -374,7 +384,7 @@ export default function DashboardScreen({ navigation }) {
         </View>
 
       </ScrollView>
-      <ChatFAB />
+      {aiAssistantEnabled && <ChatFAB />}
 
       {/* ── First-Time User Walkthrough Overlay (Floating pointers near headers/cards) ───────────────────────── */}
       {showWalkthrough && (

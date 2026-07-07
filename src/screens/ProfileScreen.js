@@ -375,13 +375,23 @@ export default function ProfileScreen({ navigation }) {
 
         {/* ── Account Actions ────────────────────────────────────────────── */}
         <Animated.View style={{ opacity: fadeAnim, paddingHorizontal: 20, paddingBottom: 40 }}>
-          <TouchableOpacity
-            style={[styles.logoutBtn, { backgroundColor: isDark ? '#ef444415' : '#fef2f2', borderColor: '#ef4444' }]}
-            onPress={handleLogout}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.logoutText}>Logout</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 12, marginTop: 20 }}>
+            <TouchableOpacity
+              style={[styles.settingsBtn, { backgroundColor: isDark ? '#334155' : '#E2E8F0', flex: 1 }]}
+              onPress={() => navigation.navigate('Settings')}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.settingsText, { color: theme.text }]}>⚙️ Settings</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.logoutBtn, { backgroundColor: isDark ? '#ef444415' : '#fef2f2', borderColor: '#ef4444', flex: 1 }]}
+              onPress={handleLogout}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.logoutText}>Logout</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={[styles.appVersion, { color: theme.muted }]}>BuddyBloom Academy · v1.0</Text>
         </Animated.View>
       </ScrollView>
@@ -544,6 +554,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#4F46E5',
     height: 160,
   },
+  settingsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    padding: 14,
+    gap: 8,
+  },
+  settingsText: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -551,7 +573,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderRadius: 12,
     padding: 14,
-    marginTop: 20,
     gap: 8,
   },
   logoutIcon: {

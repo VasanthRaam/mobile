@@ -36,6 +36,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import TeacherProfileScreen from '../screens/TeacherProfileScreen';
 import LeaderboardScreen from '../screens/LeaderboardScreen';
 import TeacherConsoleScreen from '../screens/TeacherConsoleScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 
 function DashboardProfileIcon({ navigation }) {
   const { user } = useAuthStore();
@@ -168,6 +169,7 @@ export default function AppNavigator() {
             <Stack.Screen name="Chat" component={ChatScreen} options={{ title: 'Academy AI Teacher' }} />
             <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
             <Stack.Screen name="TeacherProfile" component={TeacherProfileScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Leaderboard" component={LeaderboardScreen} options={{ headerShown: false }} />
             <Stack.Screen name="TeacherConsole" component={TeacherConsoleScreen} options={{ headerShown: false }} />
           </Stack.Group>
