@@ -17,6 +17,8 @@ import * as ImagePicker from 'expo-image-picker';
 
 WebBrowser.maybeCompleteAuthSession();
 
+const { width } = Dimensions.get('window');
+
 // ─── Role options ─────────────────────────────────────────────────────────────
 const ROLES = [
   { label: 'Student', value: 'student', icon: '🎒', desc: 'I am enrolled in a class' },
