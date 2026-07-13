@@ -82,3 +82,33 @@ export const setCache = async (key, val) => {
 export const getCache = (key) => {
   return memoryCache[key] || null;
 };
+
+export const clearCache = async () => {
+  // Clear memory cache
+  for (const key in memoryCache) {
+    delete memoryCache[key];
+  }
+  
+  try {
+    if (Platform.OS === 'web') {
+      const keys = Object.keys(localStorage);
+      keys.forEach(key => {
+        if (key.startsWith('bb_cache_')) {
+          localStorage.removeItem(key);
+        }
+      });
+    } else {
+      const keysStr = await SecureStore.getItemAsync('bb_cache_keys');
+      if (keysStr) {
+        const keys = JSON.parse(keysStr);
+        for (const key of keys) {
+          await SecureStore.deleteItemAsync('bb_cache_' + key);
+        }
+        await SecureStore.deleteItemAsync('bb_cache_keys');
+      }
+    }
+    console.log('Persistent cache cleared successfully.');
+  } catch (e) {
+    console.error('Failed to clear cache:', e);
+  }
+};

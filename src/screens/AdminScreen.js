@@ -96,6 +96,19 @@ export default function AdminScreen({ navigation }) {
   const [statsLoading, setStatsLoading] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
 
+  // Student editing/deleting states
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editFirstName, setEditFirstName] = useState('');
+  const [editLastName, setEditLastName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editDOB, setEditDOB] = useState('');
+  const [editMotherName, setEditMotherName] = useState('');
+  const [editFatherName, setEditFatherName] = useState('');
+  const [editParentPhone, setEditParentPhone] = useState('');
+  const [updatingStudent, setUpdatingStudent] = useState(false);
+  const [deletingStudent, setDeletingStudent] = useState(false);
+
   // --- Student Search/Filter/Sort States ---
   const [studentSearch, setStudentSearch] = useState('');
   const [debouncedStudentSearch, setDebouncedStudentSearch] = useState('');
@@ -388,6 +401,101 @@ export default function AdminScreen({ navigation }) {
       .finally(() => {
         setStatsLoading(false);
       });
+  };
+
+  const handleOpenEditStudent = () => {
+    if (!selectedStudent) return;
+    setEditFirstName(selectedStudent.first_name || '');
+    setEditLastName(selectedStudent.last_name || '');
+    setEditEmail(selectedStudent.email || studentStats.email || '');
+    setEditPhone(selectedStudent.phone || studentStats.phone || '');
+    setEditDOB(selectedStudent.date_of_birth || '');
+    setEditMotherName(selectedStudent.mother_name || '');
+    setEditFatherName(selectedStudent.father_name || '');
+    setEditParentPhone(selectedStudent.parent_phone_number || '');
+    setEditModalVisible(true);
+  };
+
+  const handleUpdateStudent = async () => {
+    if (!editFirstName.trim() || !editLastName.trim()) {
+      if (Platform.OS === 'web') window.alert('First Name and Last Name are required.');
+      else Alert.alert('Error', 'First Name and Last Name are required.');
+      return;
+    }
+
+    setUpdatingStudent(true);
+    try {
+      const response = await apiClient.put(`/students/${selectedStudent.id}`, {
+        first_name: editFirstName.trim(),
+        last_name: editLastName.trim(),
+        email: editEmail.trim() || null,
+        phone: editPhone.trim() || null,
+        date_of_birth: editDOB || null,
+        mother_name: editMotherName.trim() || null,
+        father_name: editFatherName.trim() || null,
+        parent_phone_number: editParentPhone.trim() || null,
+      });
+
+      const updatedData = response.data;
+      
+      setSelectedStudent(prev => ({ ...prev, ...updatedData }));
+      setStudentStats(prev => ({
+        ...prev,
+        email: updatedData.email || prev.email,
+        phone: updatedData.phone || prev.phone,
+      }));
+
+      setStudents(prev => prev.map(s => s.id === selectedStudent.id ? { ...s, ...updatedData } : s));
+
+      if (Platform.OS === 'web') window.alert('Student details updated successfully!');
+      else Alert.alert('Success', 'Student details updated successfully!');
+      
+      setEditModalVisible(false);
+    } catch (err) {
+      console.error('Update student failed:', err);
+      const errMsg = err.response?.data?.detail || 'An error occurred while updating.';
+      if (Platform.OS === 'web') window.alert(errMsg);
+      else Alert.alert('Update Failed', errMsg);
+    } finally {
+      setUpdatingStudent(false);
+    }
+  };
+
+  const handleDeleteStudent = () => {
+    const performDelete = async () => {
+      setDeletingStudent(true);
+      try {
+        await apiClient.delete(`/students/${selectedStudent.id}`);
+        setStudents(prev => prev.filter(s => s.id !== selectedStudent.id));
+        
+        if (Platform.OS === 'web') window.alert('Student has been deleted.');
+        else Alert.alert('Success', 'Student has been deleted.');
+
+        setDetailModalVisible(false);
+      } catch (err) {
+        console.error('Delete student failed:', err);
+        const errMsg = err.response?.data?.detail || 'An error occurred while deleting.';
+        if (Platform.OS === 'web') window.alert(errMsg);
+        else Alert.alert('Delete Failed', errMsg);
+      } finally {
+        setDeletingStudent(false);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Are you sure you want to permanently delete student ${selectedStudent.first_name} ${selectedStudent.last_name}? This will also delete their login account.`)) {
+        performDelete();
+      }
+    } else {
+      Alert.alert(
+        'Confirm Delete',
+        `Are you sure you want to permanently delete student ${selectedStudent.first_name} ${selectedStudent.last_name}? This will also delete their login account.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Delete', style: 'destructive', onPress: performDelete }
+        ]
+      );
+    }
   };
 
   useEffect(() => {
@@ -1482,6 +1590,175 @@ export default function AdminScreen({ navigation }) {
                 )}
               </View>
             </ScrollView>
+
+            {/* Admin Student Actions (Edit / Delete) */}
+            <View style={[styles.modalActionsRow, { borderTopColor: theme.border, borderTopWidth: 1 }]}>
+              <TouchableOpacity
+                style={[styles.modalActionBtn, { backgroundColor: theme.chipBg }]}
+                onPress={handleOpenEditStudent}
+              >
+                <Ionicons name="create-outline" size={18} color={theme.text} style={{ marginRight: 6 }} />
+                <Text style={[styles.modalActionBtnText, { color: theme.text }]}>Edit Details</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalActionBtn, { backgroundColor: '#FEE2E2' }]}
+                onPress={handleDeleteStudent}
+                disabled={deletingStudent}
+              >
+                {deletingStudent ? (
+                  <ActivityIndicator size="small" color="#DC2626" />
+                ) : (
+                  <>
+                    <Ionicons name="trash-outline" size={18} color="#DC2626" style={{ marginRight: 6 }} />
+                    <Text style={[styles.modalActionBtnText, { color: '#DC2626', fontWeight: '600' }]}>Delete Student</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
+  const renderEditStudentModal = () => {
+    return (
+      <Modal
+        visible={editModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { backgroundColor: theme.card, maxHeight: '85%' }]}>
+            {/* Modal Header */}
+            <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
+              <Text style={[styles.modalHeaderTitle, { color: theme.text }]}>Edit Student Details</Text>
+              <TouchableOpacity
+                style={[styles.closeBtn, { backgroundColor: theme.chipBg }]}
+                onPress={() => setEditModalVisible(false)}
+              >
+                <Ionicons name="close" size={20} color={theme.text} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Form Fields */}
+            <ScrollView contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, { color: theme.text }]}>First Name *</Text>
+                <TextInput
+                  style={[styles.modalTextInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                  value={editFirstName}
+                  onChangeText={setEditFirstName}
+                  placeholder="First Name"
+                  placeholderTextColor={theme.muted}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, { color: theme.text }]}>Last Name *</Text>
+                <TextInput
+                  style={[styles.modalTextInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                  value={editLastName}
+                  onChangeText={setEditLastName}
+                  placeholder="Last Name"
+                  placeholderTextColor={theme.muted}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, { color: theme.text }]}>Email Address</Text>
+                <TextInput
+                  style={[styles.modalTextInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                  value={editEmail}
+                  onChangeText={setEditEmail}
+                  placeholder="email@example.com"
+                  placeholderTextColor={theme.muted}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, { color: theme.text }]}>Phone Number</Text>
+                <TextInput
+                  style={[styles.modalTextInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                  value={editPhone}
+                  onChangeText={setEditPhone}
+                  placeholder="Phone number"
+                  placeholderTextColor={theme.muted}
+                  keyboardType="phone-pad"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, { color: theme.text }]}>Date of Birth (YYYY-MM-DD)</Text>
+                <TextInput
+                  style={[styles.modalTextInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                  value={editDOB}
+                  onChangeText={setEditDOB}
+                  placeholder="2012-05-15"
+                  placeholderTextColor={theme.muted}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, { color: theme.text }]}>Mother's Name</Text>
+                <TextInput
+                  style={[styles.modalTextInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                  value={editMotherName}
+                  onChangeText={setEditMotherName}
+                  placeholder="Mother's Name"
+                  placeholderTextColor={theme.muted}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, { color: theme.text }]}>Father's Name</Text>
+                <TextInput
+                  style={[styles.modalTextInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                  value={editFatherName}
+                  onChangeText={setEditFatherName}
+                  placeholder="Father's Name"
+                  placeholderTextColor={theme.muted}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, { color: theme.text }]}>Parent's Phone Number</Text>
+                <TextInput
+                  style={[styles.modalTextInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                  value={editParentPhone}
+                  onChangeText={setEditParentPhone}
+                  placeholder="Parent's Phone"
+                  placeholderTextColor={theme.muted}
+                  keyboardType="phone-pad"
+                />
+              </View>
+            </ScrollView>
+
+            {/* Actions */}
+            <View style={[styles.modalActionsRow, { borderTopColor: theme.border, borderTopWidth: 1 }]}>
+              <TouchableOpacity
+                style={[styles.modalActionBtn, { backgroundColor: theme.chipBg }]}
+                onPress={() => setEditModalVisible(false)}
+              >
+                <Text style={[styles.modalActionBtnText, { color: theme.text }]}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalActionBtn, { backgroundColor: theme.accent }]}
+                onPress={handleUpdateStudent}
+                disabled={updatingStudent}
+              >
+                {updatingStudent ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={[styles.modalActionBtnText, { color: '#FFFFFF', fontWeight: '600' }]}>Save Changes</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -1740,6 +2017,9 @@ export default function AdminScreen({ navigation }) {
 
       {/* Student Detail Modal */}
       {renderStudentDetailModal()}
+
+      {/* Student Edit Modal */}
+      {renderEditStudentModal()}
 
       {/* Admin Reward Modal */}
       {renderAdminRewardModal()}
@@ -2383,5 +2663,40 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  modalActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 16,
+    gap: 12,
+  },
+  modalActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalActionBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  inputGroup: {
+    marginBottom: 16,
+    width: '100%',
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  modalTextInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 48,
+    fontSize: 14,
+    width: '100%',
   },
 });

@@ -9,8 +9,10 @@ import { getToken } from '../utils/secureStore';
 
 // --- Backend API URL Toggle ---
 // Uncomment the environment you want to build/run:
-//const BASE_URL = 'https://buddybloom-dev-981707949514.asia-south1.run.app/api/v1'; // Development
-const BASE_URL = 'https://buddybloom-prod-981707949514.asia-south1.run.app/api/v1'; // Production
+// const BASE_URL = 'http://localhost:8000/api/v1'; // Local Development (Web / iOS Simulator)
+// const BASE_URL = 'http://10.0.2.2:8000/api/v1'; // Local Development (Android Emulator)
+const BASE_URL = 'https://buddybloom-dev-981707949514.asia-south1.run.app/api/v1'; // Development
+// const BASE_URL = 'https://buddybloom-prod-981707949514.asia-south1.run.app/api/v1'; // Production
 
 
 const apiClient = axios.create({

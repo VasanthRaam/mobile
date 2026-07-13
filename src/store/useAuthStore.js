@@ -1,7 +1,54 @@
 import { create } from 'zustand';
+import { Platform } from 'react-native';
 import { saveToken, deleteToken, getToken, saveUser, getUser, deleteUser, getBiometricsEnabled } from '../utils/secureStore';
 import { supabase } from '../utils/supabase';
 import * as LocalAuthentication from 'expo-local-authentication';
+
+const isTokenExpired = (token) => {
+  if (!token) return true;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return true;
+    
+    const payloadStr = parts[1];
+    let base64 = payloadStr.replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4) {
+      base64 += '=';
+    }
+    
+    let decodedStr = '';
+    if (Platform.OS === 'web') {
+      decodedStr = atob(base64);
+    } else {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+      let output = '';
+      let buffer = 0;
+      let bc = 0;
+      for (let i = 0; i < base64.length; i++) {
+        const char = base64.charAt(i);
+        const charIdx = chars.indexOf(char);
+        if (charIdx === -1) continue;
+        buffer = bc % 4 ? buffer * 64 + charIdx : charIdx;
+        if (bc++ % 4) {
+          output += String.fromCharCode(255 & (buffer >> ((-2 * bc) & 6)));
+        }
+      }
+      decodedStr = output;
+    }
+    
+    const payload = JSON.parse(decodedStr);
+    const exp = payload.exp;
+    if (exp) {
+      const expDate = exp * 1000;
+      const extendedAllowance = 30 * 24 * 60 * 60 * 1000; // 30 days
+      return Date.now() >= expDate + extendedAllowance;
+    }
+    return false;
+  } catch (e) {
+    console.warn('Failed to parse token expiration:', e);
+    return true;
+  }
+};
 
 export const useAuthStore = create((set) => ({
   user: null,
@@ -32,7 +79,7 @@ export const useAuthStore = create((set) => ({
         console.warn('Supabase getSession failed:', sbError);
       }
 
-      if (token) {
+      if (token && !isTokenExpired(token)) {
         // If biometrics are not explicitly enabled, bypass and restore session directly
         if (biometricsEnabled !== 'true') {
           set({ token, user, isAuthenticated: true, requiresUnlock: false, isLoading: false });
@@ -72,6 +119,13 @@ export const useAuthStore = create((set) => ({
           set({ isAuthenticated: false, requiresUnlock: true, isLoading: false, user, token });
         }
       } else {
+        // Token is missing or expired -> clean up storage to prevent stale logins
+        try {
+          const { clearCache } = require('../utils/cacheManager');
+          await Promise.all([deleteToken(), deleteUser(), clearCache()]);
+        } catch (cleanupErr) {
+          console.warn('Storage cleanup failed during restoreSession:', cleanupErr);
+        }
         set({ token: null, user: null, isAuthenticated: false, requiresUnlock: false, isLoading: false });
       }
     } catch (e) {
@@ -88,16 +142,21 @@ export const useAuthStore = create((set) => ({
   // Call this function to log out
   logout: async () => {
     try {
-      await Promise.all([deleteToken(), deleteUser()]);
-    } catch (error) {
-      console.warn('Storage cleanup failed', error);
+      await supabase.auth.signOut().catch(error => {
+        console.warn('Supabase signout failed during logout:', error);
+      });
+    } catch (e) {
+      console.warn('Supabase signout exception during logout:', e);
     }
-    set({ token: null, user: null, isAuthenticated: false, requiresUnlock: false });
+
+    try {
+      const { clearCache } = require('../utils/cacheManager');
+      await Promise.all([deleteToken(), deleteUser(), clearCache()]);
+    } catch (error) {
+      console.warn('Storage/Cache cleanup failed during logout:', error);
+    }
     
-    // Background Supabase sign out without blocking UI
-    supabase.auth.signOut().catch(error => {
-      console.warn('Supabase signout failed', error);
-    });
+    set({ token: null, user: null, isAuthenticated: false, requiresUnlock: false });
   },
 
   updateUser: async (updatedData) => {
@@ -113,6 +172,11 @@ supabase.auth.onAuthStateChange(async (event, session) => {
   if (session && session.access_token) {
     await saveToken(session.access_token);
     useAuthStore.setState({ token: session.access_token });
+  } else if (event === 'SIGNED_OUT' || !session) {
+    const state = useAuthStore.getState();
+    if (state.isAuthenticated) {
+      await state.logout();
+    }
   }
 });
 

@@ -28,7 +28,8 @@ const ChatScreen = ({ navigation }) => {
   const { theme, isDark } = useThemeStore();
   const insets = useSafeAreaInsets();
   const user = useAuthStore((state) => state.user);
-  const cacheKey = user?.id ? `chat_history_${user.id}` : 'chat_history';
+  const [chatMode, setChatMode] = useState('general'); // 'general' or 'translation'
+  const cacheKey = user?.id ? `chat_history_${chatMode}_${user.id}` : `chat_history_${chatMode}`;
 
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
@@ -94,23 +95,26 @@ const ChatScreen = ({ navigation }) => {
     }
   };
 
-  // Initialize messages from cache when cacheKey (user) changes
+  // Initialize messages from cache when cacheKey changes
   useEffect(() => {
     const cached = getCache(cacheKey);
     if (cached && cached.length > 0) {
       setMessages(cached);
     } else {
+      const defaultText = chatMode === 'translation'
+        ? 'Namaste! I am your Hindi translation tutor. Ask me any phrase to translate!'
+        : 'Namaste! I am the Academy AI Teacher. How can I help you today?';
       setMessages([
-        { id: 'initial-msg', text: 'Namaste! I am the Academy AI Teacher. How can I help you today?', isUser: false }
+        { id: 'initial-msg', text: defaultText, isUser: false }
       ]);
     }
-  }, [cacheKey]);
+  }, [cacheKey, chatMode]);
 
   useEffect(() => {
     const fetchHistory = async () => {
       setIsFetchingHistory(true);
       try {
-        const response = await apiClient.get('/chat/');
+        const response = await apiClient.get(`/chat/?mode=${chatMode}`);
         if (response.data && response.data.length > 0) {
           const formatted = response.data.map(msg => ({
             id: msg.id,
@@ -119,6 +123,14 @@ const ChatScreen = ({ navigation }) => {
           }));
           setMessages(formatted);
           setCache(cacheKey, formatted);
+        } else {
+          // If no history returned from server, preserve the default initial message
+          const defaultText = chatMode === 'translation'
+            ? 'Namaste! I am your Hindi translation tutor. Ask me any phrase to translate!'
+            : 'Namaste! I am the Academy AI Teacher. How can I help you today?';
+          setMessages([
+            { id: 'initial-msg', text: defaultText, isUser: false }
+          ]);
         }
       } catch (error) {
         console.error('Failed to load chat history:', error);
@@ -127,7 +139,7 @@ const ChatScreen = ({ navigation }) => {
       }
     };
     fetchHistory();
-  }, [cacheKey]);
+  }, [cacheKey, chatMode]);
 
   useEffect(() => {
     const scrollTimeout = setTimeout(() => {
@@ -154,7 +166,10 @@ const ChatScreen = ({ navigation }) => {
     setIsLoading(true);
 
     try {
-      const response = await apiClient.post('/chat/', { message: userMessageText });
+      const response = await apiClient.post('/chat/', { 
+        message: userMessageText,
+        mode: chatMode
+      });
       
       const botMessage = {
         id: Date.now().toString() + '-bot',
@@ -268,6 +283,54 @@ const ChatScreen = ({ navigation }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.select({ ios: 90, android: 80, default: 0 })}
       >
+        <View style={[styles.toggleContainer, { backgroundColor: theme.card, borderBottomColor: theme.border, borderBottomWidth: 1 }]}>
+          <View style={[styles.togglePill, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
+            <TouchableOpacity 
+              style={[
+                styles.toggleItem, 
+                chatMode === 'general' && [styles.toggleItemActive, { backgroundColor: theme.accent }]
+              ]} 
+              onPress={() => setChatMode('general')}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons 
+                name="school" 
+                size={16} 
+                color={chatMode === 'general' ? '#ffffff' : theme.subText} 
+                style={styles.toggleIcon}
+              />
+              <Text style={[
+                styles.toggleText, 
+                { color: chatMode === 'general' ? '#ffffff' : theme.text }
+              ]}>
+                General Tutor
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[
+                styles.toggleItem, 
+                chatMode === 'translation' && [styles.toggleItemActive, { backgroundColor: theme.accent }]
+              ]} 
+              onPress={() => setChatMode('translation')}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons 
+                name="translate" 
+                size={16} 
+                color={chatMode === 'translation' ? '#ffffff' : theme.subText} 
+                style={styles.toggleIcon}
+              />
+              <Text style={[
+                styles.toggleText, 
+                { color: chatMode === 'translation' ? '#ffffff' : theme.text }
+              ]}>
+                Hindi Translator
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         <FlatList
           ref={flatListRef}
           data={messages}
@@ -296,7 +359,7 @@ const ChatScreen = ({ navigation }) => {
             style={[styles.textInput, { backgroundColor: theme.inputBg, color: theme.text }]}
             value={inputText}
             onChangeText={setInputText}
-            placeholder="Type your message..."
+            placeholder={chatMode === 'translation' ? "Type a phrase to translate..." : "Ask the AI Teacher anything..."}
             placeholderTextColor={theme.muted}
             multiline
           />
@@ -460,6 +523,38 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 2,
     elevation: 3,
+  },
+  toggleContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  togglePill: {
+    flexDirection: 'row',
+    borderRadius: 25,
+    borderWidth: 1,
+    padding: 3,
+  },
+  toggleItem: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderRadius: 22,
+  },
+  toggleItemActive: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  toggleIcon: {
+    marginRight: 6,
+  },
+  toggleText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
 
