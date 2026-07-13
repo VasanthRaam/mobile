@@ -1,7 +1,6 @@
 import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
 import Constants from 'expo-constants';
-import { Platform, Alert } from 'react-native';
+import { Platform } from 'react-native';
 import apiClient from '../api/apiClient';
 
 export async function registerForPushNotificationsAsync() {
@@ -11,9 +10,6 @@ export async function registerForPushNotificationsAsync() {
     return null;
   }
 
-  // Support both physical devices and emulators with Play Services for testing
-  const isPhysical = Device.isDevice;
-  
   try {
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
@@ -24,18 +20,33 @@ export async function registerForPushNotificationsAsync() {
     }
     
     if (finalStatus !== 'granted') {
-      Alert.alert('Notification Permission', 'Push notification permission was denied. Please enable notifications in your app settings.');
+      console.warn('[PUSH-DIAG] Push notification permission was denied by the user.');
       return null;
     }
     
     // Get the token from Expo
     const projectId = Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId || '82ce1a25-8ad1-4016-a55c-63dba49ed567';
     console.log('[PUSH-DIAG] Registering token for project ID:', projectId);
-    token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-    console.log('[PUSH-DIAG] Token retrieved successfully:', token);
+
+    // Retrieve the token with retries in case of transient network issues
+    const maxRetries = 3;
+    const retryDelay = 3000;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+        console.log('[PUSH-DIAG] Token retrieved successfully:', token);
+        break;
+      } catch (err) {
+        console.warn(`[PUSH-DIAG] Fetch token attempt ${attempt} failed: ${err.message}`);
+        if (attempt === maxRetries) {
+          throw err;
+        }
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      }
+    }
   } catch (e) {
     console.error('[PUSH-DIAG] ERROR getting token:', e.message);
-    Alert.alert('Push Token Error', `Failed to generate Expo token: ${e.message}`);
+    // Logging internally instead of displaying an Alert.alert popup to avoid blocking the user flow.
   }
 
   return token;
@@ -50,7 +61,6 @@ export async function syncPushTokenWithBackend(token, retryCount = 0) {
       device_type: Platform.OS
     });
     console.log('[PUSH-DIAG] Token sync success:', response.data);
-    // Success logged internally, no popup needed in production
   } catch (error) {
     const errMsg = error.response?.data?.detail || error.message;
     console.error('[PUSH-DIAG] Failed to sync push token:', errMsg);
@@ -58,7 +68,7 @@ export async function syncPushTokenWithBackend(token, retryCount = 0) {
     if (error.response?.status === 401 && retryCount < 2) {
       setTimeout(() => syncPushTokenWithBackend(token, retryCount + 1), 3000);
     } else {
-      Alert.alert('Sync Token Failed', `Could not save push token to backend: ${errMsg}`);
+      console.warn('[PUSH-DIAG] Could not save push token to backend:', errMsg);
     }
   }
 }

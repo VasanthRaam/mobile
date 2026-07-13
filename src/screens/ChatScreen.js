@@ -7,10 +7,11 @@ import {
   TouchableOpacity,
   FlatList,
   KeyboardAvoidingView,
-  Platform,
-  SafeAreaView
+  Platform
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Speech from 'expo-speech';
 import apiClient from '../api/apiClient';
 import { getCache, setCache } from '../utils/cacheManager';
 import { useThemeStore } from '../store/useThemeStore';
@@ -25,6 +26,7 @@ import { useAuthStore } from '../store/useAuthStore';
 
 const ChatScreen = ({ navigation }) => {
   const { theme, isDark } = useThemeStore();
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((state) => state.user);
   const cacheKey = user?.id ? `chat_history_${user.id}` : 'chat_history';
 
@@ -34,6 +36,63 @@ const ChatScreen = ({ navigation }) => {
   const flatListRef = useRef(null);
 
   const [isFetchingHistory, setIsFetchingHistory] = useState(false);
+  const [speakingMessageId, setSpeakingMessageId] = useState(null);
+  const activeSpeakingIdRef = useRef(null);
+
+  // Stop speech when component unmounts
+  useEffect(() => {
+    return () => {
+      Speech.stop();
+    };
+  }, []);
+
+  const playVoice = async (id, englishText, hindiText) => {
+    try {
+      if (speakingMessageId === id) {
+        await Speech.stop();
+        setSpeakingMessageId(null);
+        activeSpeakingIdRef.current = null;
+        return;
+      }
+      
+      setSpeakingMessageId(id);
+      activeSpeakingIdRef.current = id;
+      await Speech.stop();
+      
+      Speech.speak(englishText, {
+        language: 'en',
+        onDone: () => {
+          if (activeSpeakingIdRef.current === id) {
+            Speech.speak(hindiText, {
+              language: 'hi',
+              onDone: () => {
+                if (activeSpeakingIdRef.current === id) {
+                  setSpeakingMessageId(null);
+                  activeSpeakingIdRef.current = null;
+                }
+              },
+              onError: () => {
+                if (activeSpeakingIdRef.current === id) {
+                  setSpeakingMessageId(null);
+                  activeSpeakingIdRef.current = null;
+                }
+              }
+            });
+          }
+        },
+        onError: () => {
+          if (activeSpeakingIdRef.current === id) {
+            setSpeakingMessageId(null);
+            activeSpeakingIdRef.current = null;
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Speech synthesis error:', error);
+      setSpeakingMessageId(null);
+      activeSpeakingIdRef.current = null;
+    }
+  };
 
   // Initialize messages from cache when cacheKey (user) changes
   useEffect(() => {
@@ -122,34 +181,91 @@ const ChatScreen = ({ navigation }) => {
     }
   };
 
-  const renderMessage = ({ item }) => (
-    <View style={[
-      styles.messageWrapper,
-      item.isUser ? styles.messageWrapperUser : styles.messageWrapperBot
-    ]}>
+  const renderMessage = ({ item }) => {
+    let parsedTranslation = null;
+    if (!item.isUser) {
+      try {
+        parsedTranslation = JSON.parse(item.text);
+      } catch (e) {
+        // Not valid JSON, treat as legacy message
+      }
+    }
+
+    const isSpeaking = speakingMessageId === item.id;
+
+    return (
       <View style={[
-        styles.messageBubble,
-        item.isUser 
-          ? [styles.messageBubbleUser, { backgroundColor: theme.accent }] 
-          : [styles.messageBubbleBot, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]
+        styles.messageWrapper,
+        item.isUser ? styles.messageWrapperUser : styles.messageWrapperBot
       ]}>
-        <Text style={[
-          styles.messageText,
+        <View style={[
+          styles.messageBubble,
           item.isUser 
-            ? [styles.messageTextUser, { color: '#ffffff' }] 
-            : [styles.messageTextBot, { color: theme.text }]
+            ? [styles.messageBubbleUser, { backgroundColor: theme.accent }] 
+            : [styles.messageBubbleBot, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]
         ]}>
-          {item.text}
-        </Text>
+          {parsedTranslation ? (
+            <View style={styles.translationContainer}>
+              <View style={styles.translationTextContainer}>
+                {parsedTranslation.english && (
+                  <View style={styles.phraseSection}>
+                    <Text style={[styles.sectionLabel, { color: theme.subText }]}>English</Text>
+                    <Text style={[styles.englishText, { color: theme.text }]}>{parsedTranslation.english}</Text>
+                  </View>
+                )}
+                {parsedTranslation.hindi_script && (
+                  <View style={styles.phraseSection}>
+                    <Text style={[styles.sectionLabel, { color: theme.subText }]}>Hindi Script</Text>
+                    <Text style={[styles.hindiScriptText, { color: theme.accent }]}>{parsedTranslation.hindi_script}</Text>
+                  </View>
+                )}
+                {parsedTranslation.hindi_romanized && (
+                  <View style={styles.phraseSection}>
+                    <Text style={[styles.sectionLabel, { color: theme.subText }]}>Pronunciation</Text>
+                    <Text style={[styles.romanizedText, { color: theme.textMid }]}>{parsedTranslation.hindi_romanized}</Text>
+                  </View>
+                )}
+              </View>
+              
+              <TouchableOpacity 
+                style={[
+                  styles.voiceButton, 
+                  { 
+                    backgroundColor: isSpeaking ? theme.accent : theme.accentLight,
+                    borderColor: theme.accent,
+                    borderWidth: 1
+                  }
+                ]}
+                onPress={() => playVoice(item.id, parsedTranslation.english || "", parsedTranslation.hindi_script || "")}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons 
+                  name={isSpeaking ? "volume-high" : "volume-medium"} 
+                  size={20} 
+                  color={isSpeaking ? "#ffffff" : theme.accent} 
+                />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <Text style={[
+              styles.messageText,
+              item.isUser 
+                ? [styles.messageTextUser, { color: '#ffffff' }] 
+                : [styles.messageTextBot, { color: theme.text }]
+            ]}>
+              {item.text}
+            </Text>
+          )}
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView 
         style={styles.keyboardView} 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.select({ ios: 90, android: 80, default: 0 })}
       >
         <FlatList
@@ -168,7 +284,14 @@ const ChatScreen = ({ navigation }) => {
           </View>
         )}
 
-        <View style={[styles.inputContainer, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
+        <View style={[
+          styles.inputContainer, 
+          { 
+            backgroundColor: theme.card, 
+            borderTopColor: theme.border,
+            paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 24) : Math.max(insets.bottom, 12)
+          }
+        ]}>
           <TextInput
             style={[styles.textInput, { backgroundColor: theme.inputBg, color: theme.text }]}
             value={inputText}
@@ -260,7 +383,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 12,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
@@ -287,6 +409,57 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     backgroundColor: '#CBD5E1',
+  },
+  translationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    minWidth: 220,
+    paddingVertical: 4,
+  },
+  translationTextContainer: {
+    flex: 1,
+    paddingRight: 16,
+  },
+  phraseSection: {
+    marginBottom: 12,
+  },
+  sectionLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 4,
+  },
+  englishText: {
+    fontSize: 15,
+    fontWeight: '500',
+    lineHeight: 20,
+  },
+  hindiScriptText: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    lineHeight: 30,
+    marginTop: 2,
+  },
+  romanizedText: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    lineHeight: 18,
+  },
+  voiceButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    elevation: 3,
   },
 });
 

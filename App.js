@@ -9,6 +9,7 @@ import { navigationRef } from './src/navigation/AppNavigator';
 import { initCache } from './src/utils/cacheManager';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // Configure how notifications are handled when the app is open
 Notifications.setNotificationHandler({
@@ -151,10 +152,10 @@ export default function App() {
   }
 
   return (
-    <>
+    <SafeAreaProvider>
       <StatusBar style="auto" />
       <AppNavigator />
-    </>
+    </SafeAreaProvider>
   );
 }
 
