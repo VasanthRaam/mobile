@@ -6,12 +6,12 @@ import { Platform } from 'react-native';
 // Uncomment the environment you want to build/run:
 
 // 1. Development (Dev Database)
-//const supabaseUrl = 'https://dgmmkirxdpflxniqpako.supabase.co';
-//const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnbW1raXJ4ZHBmbHhuaXFwYWtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5ODAzMTgsImV4cCI6MjA5ODU1NjMxOH0.G0rS7AuSzWQJCEUllYDLRBDeXG-mDCq9uepxSCDANRc';
+const supabaseUrl = 'https://dgmmkirxdpflxniqpako.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnbW1raXJ4ZHBmbHhuaXFwYWtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5ODAzMTgsImV4cCI6MjA5ODU1NjMxOH0.G0rS7AuSzWQJCEUllYDLRBDeXG-mDCq9uepxSCDANRc';
 
 // 2. Production (Prod Database)
-const supabaseUrl = 'https://kzjtserfhbkgzvcfpoyx.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6anRzZXJmaGJrZ3p2Y2Zwb3l4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NTQ4NjAsImV4cCI6MjA5MjMzMDg2MH0.JL3YNBYMq7j8zhA3ZBgq_hTRH87jYHVNSWo1tN01qls';
+// const supabaseUrl = 'https://kzjtserfhbkgzvcfpoyx.supabase.co';
+// const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6anRzZXJmaGJrZ3p2Y2Zwb3l4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NTQ4NjAsImV4cCI6MjA5MjMzMDg2MH0.JL3YNBYMq7j8zhA3ZBgq_hTRH87jYHVNSWo1tN01qls';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
