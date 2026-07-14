@@ -55,7 +55,8 @@ export default function MobileOTPVerifyScreen({ route, navigation }) {
       }
     } catch (error) {
       console.error(error);
-      Alert.alert('Error', error.message || error.response?.data?.detail || 'Failed to verify OTP.');
+      const errorDetail = error.response?.data?.detail || error.message || 'Failed to verify OTP.';
+      Alert.alert('Error', errorDetail);
     } finally {
       setLoading(false);
     }

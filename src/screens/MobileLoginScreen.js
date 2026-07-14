@@ -106,7 +106,8 @@ export default function MobileLoginScreen({ navigation }) {
       }
     } catch (error) {
       console.error(error);
-      Alert.alert('Verification Failed', error.message || 'Invalid or expired OTP.');
+      const errorDetail = error.response?.data?.detail || error.message || 'Invalid or expired OTP.';
+      Alert.alert('Verification Failed', errorDetail);
     } finally {
       setLoading(false);
     }

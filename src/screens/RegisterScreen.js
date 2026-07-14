@@ -233,7 +233,8 @@ export default function RegisterScreen({ navigation, route }) {
       }
     } catch (error) {
       console.error(error);
-      showAlert('Google Registration Failed', error.message);
+      const errorDetail = error.response?.data?.detail || error.message || 'An error occurred during authentication.';
+      showAlert('Google Registration Failed', errorDetail);
     } finally {
       setGoogleCallbackLoading(false);
     }
@@ -307,7 +308,8 @@ export default function RegisterScreen({ navigation, route }) {
       }
     } catch (error) {
       console.error(error);
-      showAlert('Google Registration Failed', error.message);
+      const errorDetail = error.response?.data?.detail || error.message || 'An error occurred during authentication.';
+      showAlert('Google Registration Failed', errorDetail);
     } finally {
       setGoogleCallbackLoading(false);
     }

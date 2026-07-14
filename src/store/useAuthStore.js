@@ -80,54 +80,90 @@ export const useAuthStore = create((set) => ({
       }
 
       if (token && !isTokenExpired(token)) {
-        // If biometrics are not explicitly enabled, bypass and restore session directly
-        if (biometricsEnabled !== 'true') {
-          set({ token, user, isAuthenticated: true, requiresUnlock: false, isLoading: false });
+        // Verify token & fetch fresh user profile from backend
+        let freshUser = null;
+        try {
+          const apiClient = require('../api/apiClient').default;
+          console.log('[restoreSession] Verifying session with backend /profile/me...');
+          
+          // Explicitly pass authorization header to avoid race conditions with secure storage updates
+          const res = await apiClient.get('/profile/me', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          freshUser = res.data;
+          console.log('[restoreSession] Session is valid. User:', freshUser.email);
+        } catch (apiErr) {
+          console.warn('[restoreSession] Session verification with backend failed:', apiErr.message);
+          // If backend says unauthorized or user not found, treat token as invalid/stale and clean up
+          try {
+            const { clearCache } = require('../utils/cacheManager');
+            await Promise.all([
+              deleteToken(),
+              deleteUser(),
+              clearCache(),
+              supabase.auth.signOut().catch(() => {})
+            ]);
+          } catch (cleanupErr) {
+            console.warn('Storage cleanup failed during invalid token restore:', cleanupErr);
+          }
+          set({ token: null, user: null, isAuthenticated: false, requiresUnlock: false, isLoading: false });
           return;
         }
 
-        // Token exists and biometrics are enabled, now prompt for Biometrics
-        let biometricSuccess = false;
-        try {
-          const hasHardware = await LocalAuthentication.hasHardwareAsync();
-          const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+        if (freshUser) {
+          // Save the fresh user profile
+          await saveUser(freshUser);
+          
+          // If biometrics are not explicitly enabled, bypass and restore session directly
+          if (biometricsEnabled !== 'true') {
+            set({ token, user: freshUser, isAuthenticated: true, requiresUnlock: false, isLoading: false });
+            return;
+          }
 
-          if (hasHardware && isEnrolled) {
-            const result = await LocalAuthentication.authenticateAsync({
-              promptMessage: 'Unlock VHA EduTech',
-              fallbackLabel: 'Use Passcode',
-              cancelLabel: 'Cancel',
-              disableDeviceFallback: false,
-            });
-            biometricSuccess = result.success;
-          } else {
-            // No biometrics on device, or not enrolled. Allow entry.
+          // Prompt for Biometrics
+          let biometricSuccess = false;
+          try {
+            const hasHardware = await LocalAuthentication.hasHardwareAsync();
+            const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+            if (hasHardware && isEnrolled) {
+              const result = await LocalAuthentication.authenticateAsync({
+                promptMessage: 'Unlock VHA EduTech',
+                fallbackLabel: 'Use Passcode',
+                cancelLabel: 'Cancel',
+                disableDeviceFallback: false,
+              });
+              biometricSuccess = result.success;
+            } else {
+              biometricSuccess = true;
+            }
+          } catch (authError) {
+            console.warn('Biometric auth error:', authError);
             biometricSuccess = true;
           }
-        } catch (authError) {
-          console.warn('Biometric auth error:', authError);
-          // If biometric APIs throw an error (e.g. on web or unsupported devices),
-          // fallback to true so we don't lock the user out of their session.
-          biometricSuccess = true;
-        }
 
-        if (biometricSuccess) {
-          set({ token, user, isAuthenticated: true, requiresUnlock: false, isLoading: false });
-        } else {
-          // Failed biometric (e.g. canceled). Do not wipe token, just don't authenticate for this session
-          // so they can choose to try again or log in via other means.
-          set({ isAuthenticated: false, requiresUnlock: true, isLoading: false, user, token });
+          if (biometricSuccess) {
+            set({ token, user: freshUser, isAuthenticated: true, requiresUnlock: false, isLoading: false });
+          } else {
+            set({ isAuthenticated: false, requiresUnlock: true, isLoading: false, user: freshUser, token });
+          }
+          return;
         }
-      } else {
-        // Token is missing or expired -> clean up storage to prevent stale logins
-        try {
-          const { clearCache } = require('../utils/cacheManager');
-          await Promise.all([deleteToken(), deleteUser(), clearCache()]);
-        } catch (cleanupErr) {
-          console.warn('Storage cleanup failed during restoreSession:', cleanupErr);
-        }
-        set({ token: null, user: null, isAuthenticated: false, requiresUnlock: false, isLoading: false });
       }
+
+      // Token is missing, expired, or failed verification -> clean up storage to prevent stale logins
+      try {
+        const { clearCache } = require('../utils/cacheManager');
+        await Promise.all([
+          deleteToken(),
+          deleteUser(),
+          clearCache(),
+          supabase.auth.signOut().catch(() => {})
+        ]);
+      } catch (cleanupErr) {
+        console.warn('Storage cleanup failed during restoreSession:', cleanupErr);
+      }
+      set({ token: null, user: null, isAuthenticated: false, requiresUnlock: false, isLoading: false });
     } catch (e) {
       set({ token: null, user: null, isAuthenticated: false, requiresUnlock: false, isLoading: false });
     }

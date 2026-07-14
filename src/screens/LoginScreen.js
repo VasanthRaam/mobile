@@ -152,7 +152,8 @@ export default function LoginScreen({ navigation }) {
           supabaseUid: user.id
         });
       } else {
-        Alert.alert('Google Sync Failed', error.message || 'An error occurred during authentication.');
+        const errorDetail = error.response?.data?.detail || error.message || 'An error occurred during authentication.';
+        Alert.alert('Google Sync Failed', errorDetail);
       }
     } finally {
       console.log("[GOOGLE-LOGIN] Setting loading = false");
