@@ -184,7 +184,7 @@ supabase.auth.onAuthStateChange(async (event, session) => {
   if (session && session.access_token) {
     await saveToken(session.access_token);
     useAuthStore.setState({ token: session.access_token });
-  } else if (event === 'SIGNED_OUT' || !session) {
+  } else if (event === 'SIGNED_OUT') {
     const state = useAuthStore.getState();
     if (state.isAuthenticated) {
       await state.logout();
