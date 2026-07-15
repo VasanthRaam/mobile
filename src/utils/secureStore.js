@@ -193,3 +193,26 @@ export const getBiometricsPrompted = async () => {
     return null;
   }
 };
+
+/**
+ * Clears all authentication preferences (biometrics settings and walkthrough status)
+ */
+export const clearAuthPreferences = async () => {
+  try {
+    if (Platform.OS === 'web') {
+      localStorage.removeItem(BIOMETRICS_ENABLED_KEY);
+      localStorage.removeItem(BIOMETRICS_PROMPTED_KEY);
+      localStorage.removeItem('buddybloom_walkthrough_seen');
+    } else {
+      await Promise.all([
+        SecureStore.deleteItemAsync(BIOMETRICS_ENABLED_KEY).catch(() => {}),
+        SecureStore.deleteItemAsync(BIOMETRICS_PROMPTED_KEY).catch(() => {}),
+        AsyncStorage.removeItem(BIOMETRICS_ENABLED_KEY).catch(() => {}),
+        AsyncStorage.removeItem(BIOMETRICS_PROMPTED_KEY).catch(() => {}),
+        AsyncStorage.removeItem('buddybloom_walkthrough_seen').catch(() => {})
+      ]);
+    }
+  } catch (error) {
+    console.error('Error clearing auth preferences', error);
+  }
+};

@@ -71,50 +71,61 @@ export default function DashboardScreen({ navigation }) {
   const [showWalkthrough, setShowWalkthrough] = useState(false);
   const [walkthroughStep, setWalkthroughStep] = useState(0);
 
-  useEffect(() => {
-    const checkBiometricsPrompt = async () => {
-      try {
-        const { getBiometricsPrompted, saveBiometricsPrompted } = require('../utils/secureStore');
-        const { useSettingsStore } = require('../store/useSettingsStore');
-        const LocalAuthentication = require('expo-local-authentication');
+  const checkBiometricsPrompt = async () => {
+    try {
+      const { getBiometricsPrompted, saveBiometricsPrompted } = require('../utils/secureStore');
+      const { useSettingsStore } = require('../store/useSettingsStore');
+      const LocalAuthentication = require('expo-local-authentication');
 
-        const hasHardware = await LocalAuthentication.hasHardwareAsync();
-        const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
 
-        if (hasHardware && isEnrolled) {
-          const alreadyPrompted = await getBiometricsPrompted();
-          if (alreadyPrompted !== 'true') {
-            Alert.alert(
-              'Enable Biometric Login',
-              'Would you like to use Face ID or Touch ID for faster login next time?',
-              [
-                {
-                  text: 'No, thanks',
-                  onPress: async () => {
-                    await saveBiometricsPrompted(true);
-                    await useSettingsStore.getState().setBiometricsEnabled(false);
-                  },
-                  style: 'cancel',
+      if (hasHardware && isEnrolled) {
+        const alreadyPrompted = await getBiometricsPrompted();
+        if (alreadyPrompted !== 'true') {
+          Alert.alert(
+            'Enable Biometric Login',
+            'Would you like to use Face ID or Touch ID for faster login next time?',
+            [
+              {
+                text: 'No, thanks',
+                onPress: async () => {
+                  await saveBiometricsPrompted(true);
+                  await useSettingsStore.getState().setBiometricsEnabled(false);
                 },
-                {
-                  text: 'Enable',
-                  onPress: async () => {
-                    await saveBiometricsPrompted(true);
-                    // This will handle the biometric prompt and success/fail alerts internally
-                    await useSettingsStore.getState().setBiometricsEnabled(true);
-                  },
+                style: 'cancel',
+              },
+              {
+                text: 'Enable',
+                onPress: async () => {
+                  await saveBiometricsPrompted(true);
+                  // This will handle the biometric prompt and success/fail alerts internally
+                  await useSettingsStore.getState().setBiometricsEnabled(true);
                 },
-              ],
-              { cancelable: false }
-            );
-          }
+              },
+            ],
+            { cancelable: false }
+          );
         }
-      } catch (err) {
-        console.warn('Error checking biometrics prompt:', err);
+      }
+    } catch (err) {
+      console.warn('Error checking biometrics prompt:', err);
+    }
+  };
+
+  useEffect(() => {
+    const checkStartup = async () => {
+      try {
+        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+        const hasSeen = await AsyncStorage.getItem('buddybloom_walkthrough_seen');
+        if (hasSeen === 'true') {
+          checkBiometricsPrompt();
+        }
+      } catch (e) {
+        console.warn('Error checking walkthrough seen status:', e);
       }
     };
-
-    checkBiometricsPrompt();
+    checkStartup();
   }, []);
 
   const fetchStats = async () => {
@@ -463,6 +474,9 @@ export default function DashboardScreen({ navigation }) {
                         const AsyncStorage = require('@react-native-async-storage/async-storage').default;
                         await AsyncStorage.setItem('buddybloom_walkthrough_seen', 'true');
                         setShowWalkthrough(false);
+                        setTimeout(() => {
+                          checkBiometricsPrompt();
+                        }, 500);
                       }}
                     >
                       <Text style={styles.tooltipBtnText}>Got It!</Text>

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Platform } from 'react-native';
-import { saveToken, deleteToken, getToken, saveUser, getUser, deleteUser, getBiometricsEnabled } from '../utils/secureStore';
+import { saveToken, deleteToken, getToken, saveUser, getUser, deleteUser, getBiometricsEnabled, clearAuthPreferences } from '../utils/secureStore';
 import { supabase } from '../utils/supabase';
 import * as LocalAuthentication from 'expo-local-authentication';
 
@@ -101,6 +101,7 @@ export const useAuthStore = create((set) => ({
               deleteToken(),
               deleteUser(),
               clearCache(),
+              clearAuthPreferences(),
               supabase.auth.signOut().catch(() => {})
             ]);
           } catch (cleanupErr) {
@@ -134,6 +135,7 @@ export const useAuthStore = create((set) => ({
           deleteToken(),
           deleteUser(),
           clearCache(),
+          clearAuthPreferences(),
           supabase.auth.signOut().catch(() => {})
         ]);
       } catch (cleanupErr) {
@@ -163,7 +165,7 @@ export const useAuthStore = create((set) => ({
 
     try {
       const { clearCache } = require('../utils/cacheManager');
-      await Promise.all([deleteToken(), deleteUser(), clearCache()]);
+      await Promise.all([deleteToken(), deleteUser(), clearCache(), clearAuthPreferences()]);
     } catch (error) {
       console.warn('Storage/Cache cleanup failed during logout:', error);
     }
