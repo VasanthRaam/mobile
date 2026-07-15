@@ -38,8 +38,8 @@ export default function EmailLoginScreen({ navigation }) {
           password,
         });
       } else {
-        const { access_token, user: userData } = response.data;
-        await login(access_token, userData);
+        const { access_token, refresh_token, user: userData } = response.data;
+        await login(access_token, userData, refresh_token);
       }
     } catch (error) {
       console.error(error);

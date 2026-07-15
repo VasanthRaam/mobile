@@ -51,8 +51,9 @@ export default function ProfileSelectionScreen({ route, navigation }) {
       // Check if it is login success or type matches
       if (response.data.type === 'login_success' || response.data.access_token) {
         const tokenToUse = response.data.access_token || access_token;
+        const refreshTokenToUse = response.data.refresh_token || null;
         const userData = response.data.user;
-        await login(tokenToUse, userData);
+        await login(tokenToUse, userData, refreshTokenToUse);
         // Navigation is handled automatically by the auth state change
       } else {
         throw new Error('Unexpected response format.');

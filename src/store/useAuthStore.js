@@ -148,8 +148,16 @@ export const useAuthStore = create((set) => ({
   },
 
   // Call this function upon successful login
-  login: async (token, userData) => {
+  login: async (token, userData, refreshToken) => {
     await Promise.all([saveToken(token), saveUser(userData)]);
+    if (refreshToken) {
+      try {
+        console.log('[login] Saving refresh_token and registering session in Supabase client...');
+        await supabase.auth.setSession({ access_token: token, refresh_token: refreshToken });
+      } catch (err) {
+        console.warn('[login] Failed to set Supabase session with refresh_token:', err);
+      }
+    }
     set({ token, user: userData, isAuthenticated: true });
   },
 
