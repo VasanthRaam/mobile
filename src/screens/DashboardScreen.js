@@ -74,7 +74,8 @@ export default function DashboardScreen({ navigation }) {
   useEffect(() => {
     const checkBiometricsPrompt = async () => {
       try {
-        const { getBiometricsPrompted, saveBiometricsPrompted, saveBiometricsEnabled } = require('../utils/secureStore');
+        const { getBiometricsPrompted, saveBiometricsPrompted } = require('../utils/secureStore');
+        const { useSettingsStore } = require('../store/useSettingsStore');
         const LocalAuthentication = require('expo-local-authentication');
 
         const hasHardware = await LocalAuthentication.hasHardwareAsync();
@@ -91,23 +92,16 @@ export default function DashboardScreen({ navigation }) {
                   text: 'No, thanks',
                   onPress: async () => {
                     await saveBiometricsPrompted(true);
-                    await saveBiometricsEnabled(false);
+                    await useSettingsStore.getState().setBiometricsEnabled(false);
                   },
                   style: 'cancel',
                 },
                 {
                   text: 'Enable',
                   onPress: async () => {
-                    const result = await LocalAuthentication.authenticateAsync({
-                      promptMessage: 'Confirm identity to enable Biometric Login',
-                    });
                     await saveBiometricsPrompted(true);
-                    if (result.success) {
-                      await saveBiometricsEnabled(true);
-                      Alert.alert('Success', 'Biometric login enabled successfully!');
-                    } else {
-                      await saveBiometricsEnabled(false);
-                    }
+                    // This will handle the biometric prompt and success/fail alerts internally
+                    await useSettingsStore.getState().setBiometricsEnabled(true);
                   },
                 },
               ],
