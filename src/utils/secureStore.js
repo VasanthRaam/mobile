@@ -202,14 +202,12 @@ export const clearAuthPreferences = async () => {
     if (Platform.OS === 'web') {
       localStorage.removeItem(BIOMETRICS_ENABLED_KEY);
       localStorage.removeItem(BIOMETRICS_PROMPTED_KEY);
-      localStorage.removeItem('buddybloom_walkthrough_seen');
     } else {
       await Promise.all([
         SecureStore.deleteItemAsync(BIOMETRICS_ENABLED_KEY).catch(() => {}),
         SecureStore.deleteItemAsync(BIOMETRICS_PROMPTED_KEY).catch(() => {}),
         AsyncStorage.removeItem(BIOMETRICS_ENABLED_KEY).catch(() => {}),
-        AsyncStorage.removeItem(BIOMETRICS_PROMPTED_KEY).catch(() => {}),
-        AsyncStorage.removeItem('buddybloom_walkthrough_seen').catch(() => {})
+        AsyncStorage.removeItem(BIOMETRICS_PROMPTED_KEY).catch(() => {})
       ]);
     }
   } catch (error) {

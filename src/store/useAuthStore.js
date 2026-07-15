@@ -79,62 +79,66 @@ export const useAuthStore = create((set) => ({
         console.warn('Supabase getSession failed:', sbError);
       }
 
-      if (token && !isTokenExpired(token)) {
-        // Verify token & fetch fresh user profile from backend
-        let freshUser = null;
-        try {
-          const apiClient = require('../api/apiClient').default;
-          console.log('[restoreSession] Verifying session with backend /profile/me...');
-          
-          // Explicitly pass authorization header to avoid race conditions with secure storage updates
-          const res = await apiClient.get('/profile/me', {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          freshUser = res.data;
-          console.log('[restoreSession] Session is valid. User:', freshUser.email);
-        } catch (apiErr) {
-          console.warn('[restoreSession] Session verification with backend failed:', apiErr.message);
-          
-          // Check if the error is explicitly a 401 Unauthorized or 404 Not Found
-          const isExplicitAuthFailure = apiErr.response && (apiErr.response.status === 401 || apiErr.response.status === 404);
-          
-          if (isExplicitAuthFailure) {
-            console.log('[restoreSession] Explicit authorization failure (401/404). Wiping session credentials.');
-            try {
-              const { clearCache } = require('../utils/cacheManager');
-              await Promise.all([
-                deleteToken(),
-                deleteUser(),
-                clearCache(),
-                clearAuthPreferences(),
-                supabase.auth.signOut().catch(() => {})
-              ]);
-            } catch (cleanupErr) {
-              console.warn('Storage cleanup failed during invalid token restore:', cleanupErr);
-            }
-            set({ token: null, user: null, isAuthenticated: false, requiresUnlock: false, isLoading: false });
-            return;
-          } else {
-            console.log('[restoreSession] Network or server error. Bypassing validation and keeping local session.');
-            // Allow them to proceed with the cached session details (e.g. biometric lock screen if enabled)
-            freshUser = user; // Fall back to the cached user object
-          }
+      if (token) {
+        // --- 🚀 BIOMETRIC FAST-TRACK ---
+        // If biometrics are enabled, we bypass the synchronous backend /profile/me check.
+        // We trust the locally stored user profile, allowing instant startup and offline capability.
+        // Any true token expiration will be caught gracefully by the apiClient interceptor (401 -> logout) during regular app usage.
+        if (biometricsEnabled === 'true') {
+          console.log('[restoreSession] Biometrics enabled. Fast-tracking to lock screen...');
+          set({ token, user, isAuthenticated: false, requiresUnlock: true, isLoading: false });
+          return;
         }
 
-        if (freshUser) {
-          // Save the fresh user profile
-          await saveUser(freshUser);
-          
-          // If biometrics are enabled, transition to lock screen and let it handle the prompt
-          if (biometricsEnabled === 'true') {
-            console.log('[restoreSession] Biometrics enabled. Transitioning to lock screen...');
-            set({ token, user: freshUser, isAuthenticated: false, requiresUnlock: true, isLoading: false });
-            return;
+        if (!isTokenExpired(token)) {
+          // Verify token & fetch fresh user profile from backend
+          let freshUser = null;
+          try {
+            const apiClient = require('../api/apiClient').default;
+            console.log('[restoreSession] Verifying session with backend /profile/me...');
+            
+            // Explicitly pass authorization header to avoid race conditions with secure storage updates
+            const res = await apiClient.get('/profile/me', {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            freshUser = res.data;
+            console.log('[restoreSession] Session is valid. User:', freshUser.email);
+          } catch (apiErr) {
+            console.warn('[restoreSession] Session verification with backend failed:', apiErr.message);
+            
+            // Check if the error is explicitly a 401 Unauthorized or 404 Not Found
+            const isExplicitAuthFailure = apiErr.response && (apiErr.response.status === 401 || apiErr.response.status === 404);
+            
+            if (isExplicitAuthFailure) {
+              console.log('[restoreSession] Explicit authorization failure (401/404). Wiping session credentials.');
+              try {
+                const { clearCache } = require('../utils/cacheManager');
+                await Promise.all([
+                  deleteToken(),
+                  deleteUser(),
+                  clearCache(),
+                  clearAuthPreferences(),
+                  supabase.auth.signOut().catch(() => {})
+                ]);
+              } catch (cleanupErr) {
+                console.warn('Storage cleanup failed during invalid token restore:', cleanupErr);
+              }
+              set({ token: null, user: null, isAuthenticated: false, requiresUnlock: false, isLoading: false });
+              return;
+            } else {
+              console.log('[restoreSession] Network or server error. Bypassing validation and keeping local session.');
+              freshUser = user; // Fall back to the cached user object
+            }
           }
 
-          // Otherwise, bypass and restore session directly
-          set({ token, user: freshUser, isAuthenticated: true, requiresUnlock: false, isLoading: false });
-          return;
+          if (freshUser) {
+            // Save the fresh user profile
+            await saveUser(freshUser);
+            
+            // Bypass and restore session directly
+            set({ token, user: freshUser, isAuthenticated: true, requiresUnlock: false, isLoading: false });
+            return;
+          }
         }
       }
 
