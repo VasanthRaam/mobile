@@ -44,6 +44,11 @@ export default function UnlockScreen() {
     }
   };
 
+  React.useEffect(() => {
+    // Automatically trigger biometric authentication when the screen mounts
+    handleUnlock();
+  }, []);
+
   const handleLogout = () => {
     logout();
   };

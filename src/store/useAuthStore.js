@@ -114,39 +114,15 @@ export const useAuthStore = create((set) => ({
           // Save the fresh user profile
           await saveUser(freshUser);
           
-          // If biometrics are not explicitly enabled, bypass and restore session directly
-          if (biometricsEnabled !== 'true') {
-            set({ token, user: freshUser, isAuthenticated: true, requiresUnlock: false, isLoading: false });
+          // If biometrics are enabled, transition to lock screen and let it handle the prompt
+          if (biometricsEnabled === 'true') {
+            console.log('[restoreSession] Biometrics enabled. Transitioning to lock screen...');
+            set({ token, user: freshUser, isAuthenticated: false, requiresUnlock: true, isLoading: false });
             return;
           }
 
-          // Prompt for Biometrics
-          let biometricSuccess = false;
-          try {
-            const hasHardware = await LocalAuthentication.hasHardwareAsync();
-            const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-
-            if (hasHardware && isEnrolled) {
-              const result = await LocalAuthentication.authenticateAsync({
-                promptMessage: 'Unlock VHA EduTech',
-                fallbackLabel: 'Use Passcode',
-                cancelLabel: 'Cancel',
-                disableDeviceFallback: false,
-              });
-              biometricSuccess = result.success;
-            } else {
-              biometricSuccess = true;
-            }
-          } catch (authError) {
-            console.warn('Biometric auth error:', authError);
-            biometricSuccess = true;
-          }
-
-          if (biometricSuccess) {
-            set({ token, user: freshUser, isAuthenticated: true, requiresUnlock: false, isLoading: false });
-          } else {
-            set({ isAuthenticated: false, requiresUnlock: true, isLoading: false, user: freshUser, token });
-          }
+          // Otherwise, bypass and restore session directly
+          set({ token, user: freshUser, isAuthenticated: true, requiresUnlock: false, isLoading: false });
           return;
         }
       }
