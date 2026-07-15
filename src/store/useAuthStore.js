@@ -94,21 +94,31 @@ export const useAuthStore = create((set) => ({
           console.log('[restoreSession] Session is valid. User:', freshUser.email);
         } catch (apiErr) {
           console.warn('[restoreSession] Session verification with backend failed:', apiErr.message);
-          // If backend says unauthorized or user not found, treat token as invalid/stale and clean up
-          try {
-            const { clearCache } = require('../utils/cacheManager');
-            await Promise.all([
-              deleteToken(),
-              deleteUser(),
-              clearCache(),
-              clearAuthPreferences(),
-              supabase.auth.signOut().catch(() => {})
-            ]);
-          } catch (cleanupErr) {
-            console.warn('Storage cleanup failed during invalid token restore:', cleanupErr);
+          
+          // Check if the error is explicitly a 401 Unauthorized or 404 Not Found
+          const isExplicitAuthFailure = apiErr.response && (apiErr.response.status === 401 || apiErr.response.status === 404);
+          
+          if (isExplicitAuthFailure) {
+            console.log('[restoreSession] Explicit authorization failure (401/404). Wiping session credentials.');
+            try {
+              const { clearCache } = require('../utils/cacheManager');
+              await Promise.all([
+                deleteToken(),
+                deleteUser(),
+                clearCache(),
+                clearAuthPreferences(),
+                supabase.auth.signOut().catch(() => {})
+              ]);
+            } catch (cleanupErr) {
+              console.warn('Storage cleanup failed during invalid token restore:', cleanupErr);
+            }
+            set({ token: null, user: null, isAuthenticated: false, requiresUnlock: false, isLoading: false });
+            return;
+          } else {
+            console.log('[restoreSession] Network or server error. Bypassing validation and keeping local session.');
+            // Allow them to proceed with the cached session details (e.g. biometric lock screen if enabled)
+            freshUser = user; // Fall back to the cached user object
           }
-          set({ token: null, user: null, isAuthenticated: false, requiresUnlock: false, isLoading: false });
-          return;
         }
 
         if (freshUser) {
