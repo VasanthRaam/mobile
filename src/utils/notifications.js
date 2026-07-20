@@ -11,11 +11,37 @@ export async function registerForPushNotificationsAsync() {
   }
 
   try {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    const Device = require('expo-device');
+    
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#4F46E5',
+      });
+    }
+
+    if (!Device.isDevice) {
+      console.warn('[PUSH-DIAG] Must use physical device for Push Notifications');
+      // Continue anyway for emulator testing in some cases, but expect it might fail or return a fake token
+    }
+
+    const { status: existingStatus, canAskAgain } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
     
     if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
+      if (!canAskAgain) {
+        console.warn('[PUSH-DIAG] Push permission permanently denied. User must change in OS settings.');
+      }
+      const { status } = await Notifications.requestPermissionsAsync({
+        ios: {
+          allowAlert: true,
+          allowBadge: true,
+          allowSound: true,
+          allowAnnouncements: true,
+        },
+      });
       finalStatus = status;
     }
     

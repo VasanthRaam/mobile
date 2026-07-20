@@ -18,11 +18,13 @@ const { width } = Dimensions.get('window');
 
 export default function DashboardScreen({ navigation }) {
   const { user } = useAuthStore();
-  const role = user?.role;
+  const role = (user?.role || 'student').toLowerCase();
+  const userId = user?.id || 'guest';
+  const cacheKey = `dashboard_stats_${userId}`;
   const { theme, isDark } = useThemeStore();
 
-  const [stats, setStats] = useState(getCache('dashboard_stats'));
-  const [loading, setLoading] = useState(!getCache('dashboard_stats'));
+  const [stats, setStats] = useState(getCache(cacheKey));
+  const [loading, setLoading] = useState(!getCache(cacheKey));
   const { aiAssistantEnabled, isInitialized, initSettings } = useSettingsStore();
 
   useEffect(() => {
@@ -64,7 +66,7 @@ export default function DashboardScreen({ navigation }) {
         }
       };
       checkFirstTimeWalkthrough();
-    }, [])
+    }, [cacheKey])
   );
 
   // Walkthrough state
@@ -132,7 +134,7 @@ export default function DashboardScreen({ navigation }) {
     try {
       const response = await apiClient.get('/dashboard/stats');
       setStats(response.data);
-      setCache('dashboard_stats', response.data);
+      setCache(cacheKey, response.data);
     } catch (error) {
       console.error('Failed to fetch stats:', error);
     } finally {

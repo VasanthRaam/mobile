@@ -132,11 +132,15 @@ export const useAuthStore = create((set) => ({
           }
 
           if (freshUser) {
+            const normalizedUser = {
+              ...freshUser,
+              role: (freshUser.role || 'student').toLowerCase()
+            };
             // Save the fresh user profile
-            await saveUser(freshUser);
+            await saveUser(normalizedUser);
             
             // Bypass and restore session directly
-            set({ token, user: freshUser, isAuthenticated: true, requiresUnlock: false, isLoading: false });
+            set({ token, user: normalizedUser, isAuthenticated: true, requiresUnlock: false, isLoading: false });
             return;
           }
         }
@@ -163,7 +167,19 @@ export const useAuthStore = create((set) => ({
 
   // Call this function upon successful login
   login: async (token, userData, refreshToken) => {
-    await Promise.all([saveToken(token), saveUser(userData)]);
+    try {
+      const { clearCache } = require('../utils/cacheManager');
+      await clearCache();
+    } catch (cErr) {
+      console.warn('[login] Failed to clear old cache:', cErr);
+    }
+
+    const normalizedUser = userData ? {
+      ...userData,
+      role: (userData.role || 'student').toLowerCase()
+    } : null;
+
+    await Promise.all([saveToken(token), saveUser(normalizedUser)]);
     if (refreshToken) {
       try {
         console.log('[login] Saving refresh_token and registering session in Supabase client...');
@@ -172,7 +188,7 @@ export const useAuthStore = create((set) => ({
         console.warn('[login] Failed to set Supabase session with refresh_token:', err);
       }
     }
-    set({ token, user: userData, isAuthenticated: true });
+    set({ token, user: normalizedUser, isAuthenticated: true });
   },
 
   // Call this function to log out
@@ -197,9 +213,13 @@ export const useAuthStore = create((set) => ({
 
   updateUser: async (updatedData) => {
     const { user } = useAuthStore.getState();
-    const newUser = { ...user, ...updatedData };
-    await saveUser(newUser);
-    set({ user: newUser });
+    const rawUser = { ...user, ...updatedData };
+    const normalizedUser = {
+      ...rawUser,
+      role: (rawUser.role || 'student').toLowerCase()
+    };
+    await saveUser(normalizedUser);
+    set({ user: normalizedUser });
   },
 }));
 
