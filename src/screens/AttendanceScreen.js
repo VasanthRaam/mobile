@@ -323,19 +323,7 @@ export default function AttendanceScreen({ navigation }) {
               let status = recordsMap[dateStr];
               const isAcademyHoliday = holidayDates.includes(dateStr);
               
-              if (!status && !isAcademyHoliday) {
-                const dateObj = new Date(displayYear, displayMonth, day);
-                const isWeekend = dateObj.getDay() === 0; // Assuming Sunday is a weekend/holiday
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                
-                const joinDate = user?.created_at ? new Date(user.created_at) : new Date();
-                joinDate.setHours(0, 0, 0, 0);
-                
-                if (!isWeekend && dateObj <= today && dateObj >= joinDate) {
-                  status = 'present';
-                }
-              }
+
               
               return (
                 <View key={idx} style={[

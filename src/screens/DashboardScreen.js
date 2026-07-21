@@ -73,6 +73,19 @@ export default function DashboardScreen({ navigation }) {
   const [showWalkthrough, setShowWalkthrough] = useState(false);
   const [walkthroughStep, setWalkthroughStep] = useState(0);
 
+  const dismissWalkthrough = async () => {
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      await AsyncStorage.setItem('buddybloom_walkthrough_seen', 'true');
+    } catch (e) {
+      console.warn('Error saving walkthrough seen state:', e);
+    }
+    setShowWalkthrough(false);
+    setTimeout(() => {
+      checkBiometricsPrompt();
+    }, 500);
+  };
+
   const checkBiometricsPrompt = async () => {
     try {
       const { getBiometricsPrompted, saveBiometricsPrompted } = require('../utils/secureStore');
@@ -399,7 +412,7 @@ export default function DashboardScreen({ navigation }) {
           visible={showWalkthrough}
           transparent
           animationType="fade"
-          onRequestClose={() => setShowWalkthrough(false)}
+          onRequestClose={dismissWalkthrough}
         >
           <View style={styles.walkthroughOverlay}>
             {/* Step 0: Welcome Bubble (Center pointer) */}
@@ -409,7 +422,7 @@ export default function DashboardScreen({ navigation }) {
                 <Text style={[styles.tooltipTitle, { color: theme.text }]}>Welcome to VHA Edutech!</Text>
                 <Text style={[styles.tooltipText, { color: theme.subText }]}>Let's take a quick 1-minute tour of your dashboard to help you find your way around.</Text>
                 <View style={styles.tooltipFooter}>
-                  <TouchableOpacity onPress={() => setShowWalkthrough(false)}>
+                  <TouchableOpacity onPress={dismissWalkthrough}>
                     <Text style={{ color: theme.muted, fontSize: 13, fontWeight: '600' }}>Skip</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={[styles.tooltipBtn, { backgroundColor: theme.accent }]} onPress={() => setWalkthroughStep(1)}>
@@ -429,7 +442,7 @@ export default function DashboardScreen({ navigation }) {
                     Tap your profile icon in the top left header to view stats, update your picture, or sign out.
                   </Text>
                   <View style={styles.tooltipFooter}>
-                    <TouchableOpacity onPress={() => setShowWalkthrough(false)}>
+                    <TouchableOpacity onPress={dismissWalkthrough}>
                       <Text style={{ color: theme.muted, fontSize: 12 }}>Skip</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={[styles.tooltipBtn, { backgroundColor: theme.accent }]} onPress={() => setWalkthroughStep(2)}>
@@ -449,7 +462,7 @@ export default function DashboardScreen({ navigation }) {
                     Manage quizzes, attendance, fees, and homework assignments right from this operations panel.
                   </Text>
                   <View style={styles.tooltipFooter}>
-                    <TouchableOpacity onPress={() => setShowWalkthrough(false)}>
+                    <TouchableOpacity onPress={dismissWalkthrough}>
                       <Text style={{ color: theme.muted, fontSize: 12 }}>Skip</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={[styles.tooltipBtn, { backgroundColor: theme.accent }]} onPress={() => setWalkthroughStep(3)}>
@@ -472,14 +485,7 @@ export default function DashboardScreen({ navigation }) {
                     <View />
                     <TouchableOpacity
                       style={[styles.tooltipBtn, { backgroundColor: theme.accent }]}
-                      onPress={async () => {
-                        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-                        await AsyncStorage.setItem('buddybloom_walkthrough_seen', 'true');
-                        setShowWalkthrough(false);
-                        setTimeout(() => {
-                          checkBiometricsPrompt();
-                        }, 500);
-                      }}
+                      onPress={dismissWalkthrough}
                     >
                       <Text style={styles.tooltipBtnText}>Got It!</Text>
                     </TouchableOpacity>
