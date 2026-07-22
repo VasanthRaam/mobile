@@ -144,7 +144,7 @@ export default function TeacherConsoleScreen({ navigation }) {
     setStudentStats(optimistic);
     setDetailModalVisible(true);
 
-    const userId = student.user_id;
+    const userId = student.user_id || student.id;
     if (!userId) return;
     setStatsLoading(true);
 

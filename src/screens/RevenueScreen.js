@@ -70,7 +70,7 @@ export default function RevenueScreen() {
   // Phase 2 (reconcile): when the response arrives, update only the stats
   //   section — the rest of the card never flickers.
   const fetchStudentDetails = (item) => {
-    const userId = item.user_id || item.user?.id;
+    const userId = item.user_id || item.user?.id || item.id || item.student_id;
 
     // ── Phase 0: compute everything we already know locally ───────────────
     const totalPaid = fees
@@ -110,19 +110,18 @@ export default function RevenueScreen() {
         // ── Phase 2: reconcile — merge backend stats into existing card ───
         setStudentStats(prev => ({
           ...prev, // keep the local billing/contact data we showed instantly
-          attendanceRate: data.attendance?.rate ?? prev.attendanceRate ?? 92,
-          progressVal: data.quiz?.avg_pct ?? prev.progressVal ?? 85,
+          attendanceRate: data.attendance?.rate ?? null,
+          progressVal: data.quiz?.avg_pct ?? null,
           quizCount: data.quiz?.count ?? 0,
           joinedDate: data.joined_date ?? prev.joinedDate,
         }));
       })
       .catch(err => {
-        console.log('[StudentSummary] background fetch failed, keeping optimistic data:', err?.message);
-        // On failure, fill in sensible fallbacks so the card stays useful
+        console.log('[StudentSummary] background fetch failed:', err?.message);
         setStudentStats(prev => ({
           ...prev,
-          attendanceRate: prev.attendanceRate ?? 92,
-          progressVal: prev.progressVal ?? 85,
+          attendanceRate: null,
+          progressVal: null,
           quizCount: prev.quizCount ?? 0,
         }));
       })

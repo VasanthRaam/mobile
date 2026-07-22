@@ -373,7 +373,7 @@ export default function AdminScreen({ navigation }) {
     setDetailModalVisible(true);
 
     // Check if we can fetch summary details
-    const userId = student.user_id;
+    const userId = student.user_id || student.id;
     if (!userId) return;
 
     // Phase 1 & 2: Background fetch
@@ -383,19 +383,19 @@ export default function AdminScreen({ navigation }) {
         const data = res.data;
         setStudentStats(prev => ({
           ...prev,
-          attendanceRate: data.attendance?.rate ?? 100,
+          attendanceRate: data.attendance?.rate ?? null,
           quizCount: data.quiz?.count ?? 0,
-          progressVal: data.quiz?.avg_pct ?? 0,
+          progressVal: data.quiz?.avg_pct ?? null,
           joinedDate: data.joined_date ?? prev.joinedDate,
         }));
       })
       .catch(err => {
-        console.warn('[StudentSummary] fetch failed, using fallbacks:', err?.message);
+        console.warn('[StudentSummary] fetch failed:', err?.message);
         setStudentStats(prev => ({
           ...prev,
-          attendanceRate: 92,
-          quizCount: 2,
-          progressVal: 85,
+          attendanceRate: null,
+          quizCount: 0,
+          progressVal: null,
         }));
       })
       .finally(() => {
